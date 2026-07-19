@@ -1,0 +1,25 @@
+# Real config — contains OBS websocket password and machine-specific paths.
+# Only config.template.toml is committed.
+config.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+venv/
+.venv/
+
+# Project output
+output/
+clips/
+*.dem
+*.dem.info
+*.mp4
+*.mkv
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
