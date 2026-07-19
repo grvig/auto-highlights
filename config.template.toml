@@ -1,0 +1,25 @@
+# Copy this file to config.toml and fill in your own values.
+# config.toml is git-ignored — never commit real passwords.
+
+[paths]
+# Root of the CS2 install (the folder containing game/bin/win64/cs2.exe).
+# Watch out: Steam can leave an empty stub folder of the same name in a
+# different library. Point at the one that actually has the executable.
+cs2_root = "D:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive"
+
+# Where finished reels are written.
+output_dir = "./output"
+
+# Where raw per-moment clips land before stitching.
+clips_dir = "./clips"
+
+[obs]
+host = "localhost"
+port = 4455
+# From OBS: Tools -> WebSocket Server Settings -> Show Connect Info.
+password = "your-obs-websocket-password"
+
+[clips]
+# Seconds of footage kept either side of a highlight moment.
+pre_roll_seconds = 3.0
+post_roll_seconds = 2.0
