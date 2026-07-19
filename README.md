@@ -49,6 +49,31 @@ machine-specific paths. `config.template.toml` is the committed shape.
   *Tools → WebSocket Server Settings*. Note the port and password.
 - **ffmpeg** — needed for stitching (layer 3), must be on PATH.
 
+## Usage
+
+Layer 1 works on its own — no CS2, no OBS. Inspect a demo:
+
+```powershell
+python -m highlights.cli "path\to\match.dem"
+```
+
+```
+Map        : de_nuke
+Demo type  : GOTV (SourceTV Demo)
+Tickrate   : 64
+Rounds     : 24
+Kills      : 184
+
+Players (10):
+  #   SIDE  NAME                        K    D    K/D
+  --------------------------------------------------
+  1   CT    ICECUBE                    12   18   0.67
+  ...
+```
+
+Your own demos live under `<cs2_root>\game\csgo\replays\`.
+
 ## Status
 
-Under construction, engine first. See the commit history for progress.
+Engine parsing works and is verified against real matchmaking demos.
+Highlight detection is next. See the commit history for progress.
