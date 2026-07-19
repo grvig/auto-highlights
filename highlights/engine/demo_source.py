@@ -14,6 +14,7 @@ from pathlib import Path
 import polars as pl
 from awpy import Demo
 
+from highlights.engine.models import Kill, Round, extract_kills, extract_rounds
 from highlights.engine.timing import CS2_TICKRATE
 
 logger = logging.getLogger(__name__)
@@ -103,6 +104,14 @@ class DemoSource:
             )
             for row in first_seen.iter_rows(named=True)
         ]
+
+    def round_list(self) -> list[Round]:
+        """The match's rounds as internal models."""
+        return extract_rounds(self.rounds)
+
+    def kill_list(self) -> list[Kill]:
+        """The match's kills as internal models, world deaths excluded."""
+        return extract_kills(self.kills)
 
     @property
     def rounds(self) -> pl.DataFrame:
