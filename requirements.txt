@@ -1,5 +1,7 @@
 # Layer 1 — Engine (parsing). No game or recorder required.
 awpy>=2.0.0
+# awpy returns polars DataFrames; the engine works with them directly.
+polars>=1.0.0
 
 # Layer 2 — Recorder (OBS backend).
 obsws-python>=1.6.0
