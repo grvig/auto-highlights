@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
 from highlights.engine.demo_source import DemoSource
-from highlights.engine.models import Kill, Round
+from highlights.engine.models import Blind, Kill, Round
 from highlights.engine.moments import HighlightType, Moment, pad_window
 
 
@@ -29,6 +29,7 @@ class DetectionContext:
     tickrate: int
     # steamid -> side, per round number. Handles the halftime side swap.
     round_rosters: dict[int, dict[str, str]] = field(default_factory=dict)
+    blinds: list[Blind] = field(default_factory=list)
 
     @classmethod
     def from_source(
@@ -49,11 +50,19 @@ class DetectionContext:
             post_roll_seconds=post_roll_seconds,
             tickrate=source.tickrate,
             round_rosters=source.round_rosters(),
+            blinds=source.blind_list(),
         )
 
     def round_by_number(self, number: int) -> Round | None:
         for rnd in self.rounds:
             if rnd.number == number:
+                return rnd
+        return None
+
+    def round_of_tick(self, tick: int) -> Round | None:
+        """The round containing a tick, or None if it falls between rounds."""
+        for rnd in self.rounds:
+            if rnd.contains_tick(tick):
                 return rnd
         return None
 

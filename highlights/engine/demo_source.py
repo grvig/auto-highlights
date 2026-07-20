@@ -14,7 +14,14 @@ from pathlib import Path
 import polars as pl
 from awpy import Demo
 
-from highlights.engine.models import Kill, Round, extract_kills, extract_rounds
+from highlights.engine.models import (
+    Blind,
+    Kill,
+    Round,
+    extract_blinds,
+    extract_kills,
+    extract_rounds,
+)
 from highlights.engine.timing import CS2_TICKRATE
 
 logger = logging.getLogger(__name__)
@@ -142,6 +149,18 @@ class DemoSource:
     def kill_list(self) -> list[Kill]:
         """The match's kills as internal models, world deaths excluded."""
         return extract_kills(self.kills)
+
+    def blind_list(self) -> list[Blind]:
+        """Flash events as Blind models.
+
+        player_blind is not in awpy's default event set, so it is parsed on
+        demand here. Returns an empty list if the demo carries no flash events.
+        """
+        parsed = self._demo.parse_events(["player_blind"])
+        frame = parsed.get("player_blind")
+        if frame is None or frame.height == 0:
+            return []
+        return extract_blinds(frame)
 
     @property
     def rounds(self) -> pl.DataFrame:

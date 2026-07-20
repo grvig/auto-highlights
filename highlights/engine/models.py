@@ -63,6 +63,18 @@ class Kill:
         )
 
 
+@dataclass(frozen=True)
+class Blind:
+    """One player being flashed by another (a player_blind event)."""
+
+    tick: int
+    flasher_steamid: str
+    flasher_name: str
+    victim_steamid: str
+    victim_name: str
+    duration_seconds: float
+
+
 def _as_int(value: object, default: int = 0) -> int:
     return default if value is None else int(value)
 
@@ -112,6 +124,27 @@ def extract_kills(kills: pl.DataFrame) -> list[Kill]:
         if row["attacker_steamid"] is not None
     ]
     return sorted(result, key=lambda k: k.tick)
+
+
+def extract_blinds(blinds: pl.DataFrame) -> list[Blind]:
+    """Convert awpy's player_blind event frame into Blind models, tick-ordered.
+
+    The event's user_* fields are the blinded victim and attacker_* the flasher.
+    Rows with no flasher steamid are dropped.
+    """
+    result = [
+        Blind(
+            tick=_as_int(row["tick"]),
+            flasher_steamid=_as_str(row["attacker_steamid"]),
+            flasher_name=_as_str(row["attacker_name"]),
+            victim_steamid=_as_str(row["user_steamid"]),
+            victim_name=_as_str(row["user_name"]),
+            duration_seconds=float(row["blind_duration"] or 0.0),
+        )
+        for row in blinds.iter_rows(named=True)
+        if row["attacker_steamid"] is not None
+    ]
+    return sorted(result, key=lambda b: b.tick)
 
 
 def kills_by_player(kills: list[Kill], steamid: str) -> list[Kill]:
