@@ -7,7 +7,24 @@ synthetic matches rather than parsing a demo. These keep that construction terse
 from __future__ import annotations
 
 from highlights.engine.detection import DetectionContext
-from highlights.engine.models import Kill, Round
+from highlights.engine.models import Blind, Kill, Round
+
+
+def make_blind(
+    tick: int,
+    flasher: str,
+    victim: str,
+    *,
+    duration: float = 2.0,
+) -> Blind:
+    return Blind(
+        tick=tick,
+        flasher_steamid=flasher,
+        flasher_name=f"f-{flasher}",
+        victim_steamid=victim,
+        victim_name=f"v-{victim}",
+        duration_seconds=duration,
+    )
 
 
 def make_round(number: int, start: int = 0, end: int = 5000, winner: str = "ct") -> Round:
@@ -52,6 +69,7 @@ def make_context(
     rounds: list[Round] | None = None,
     *,
     round_rosters: dict[int, dict[str, str]] | None = None,
+    blinds: list[Blind] | None = None,
     pre_roll: float = 3.0,
     post_roll: float = 2.0,
     first_tick: int = 0,
@@ -66,4 +84,5 @@ def make_context(
         post_roll_seconds=post_roll,
         tickrate=64,
         round_rosters=round_rosters or {},
+        blinds=blinds or [],
     )
