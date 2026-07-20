@@ -75,6 +75,22 @@ class Blind:
     duration_seconds: float
 
 
+@dataclass(frozen=True)
+class Damage:
+    """One damage event (a player_hurt)."""
+
+    round_number: int
+    tick: int
+    attacker_steamid: str
+    attacker_name: str
+    attacker_side: str
+    victim_steamid: str
+    victim_side: str
+    weapon: str
+    # Health actually removed, capped at the victim's remaining health.
+    damage: int
+
+
 def _as_int(value: object, default: int = 0) -> int:
     return default if value is None else int(value)
 
@@ -145,6 +161,32 @@ def extract_blinds(blinds: pl.DataFrame) -> list[Blind]:
         if row["attacker_steamid"] is not None
     ]
     return sorted(result, key=lambda b: b.tick)
+
+
+def extract_damages(damages: pl.DataFrame) -> list[Damage]:
+    """Convert awpy's damages frame into Damage models, tick-ordered.
+
+    Uses dmg_health_real (health actually removed) rather than raw damage, so
+    over-damage on a nearly-dead victim is not counted. Rows with no attacker
+    (world damage) are dropped.
+    """
+    real = "dmg_health_real" if "dmg_health_real" in damages.columns else "dmg_health"
+    result = [
+        Damage(
+            round_number=_as_int(row["round_num"]),
+            tick=_as_int(row["tick"]),
+            attacker_steamid=_as_str(row["attacker_steamid"]),
+            attacker_name=_as_str(row["attacker_name"]),
+            attacker_side=_as_str(row["attacker_side"]),
+            victim_steamid=_as_str(row["victim_steamid"]),
+            victim_side=_as_str(row["victim_side"]),
+            weapon=_as_str(row["weapon"], "unknown"),
+            damage=_as_int(row[real]),
+        )
+        for row in damages.iter_rows(named=True)
+        if row["attacker_steamid"] is not None
+    ]
+    return sorted(result, key=lambda d: d.tick)
 
 
 def kills_by_player(kills: list[Kill], steamid: str) -> list[Kill]:

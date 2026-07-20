@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
 from highlights.engine.demo_source import DemoSource
-from highlights.engine.models import Blind, Kill, Round
+from highlights.engine.models import Blind, Damage, Kill, Round
 from highlights.engine.moments import HighlightType, Moment, pad_window
 
 
@@ -30,6 +30,7 @@ class DetectionContext:
     # steamid -> side, per round number. Handles the halftime side swap.
     round_rosters: dict[int, dict[str, str]] = field(default_factory=dict)
     blinds: list[Blind] = field(default_factory=list)
+    damages: list[Damage] = field(default_factory=list)
 
     @classmethod
     def from_source(
@@ -51,6 +52,7 @@ class DetectionContext:
             tickrate=source.tickrate,
             round_rosters=source.round_rosters(),
             blinds=source.blind_list(),
+            damages=source.damage_list(),
         )
 
     def round_by_number(self, number: int) -> Round | None:

@@ -16,9 +16,11 @@ from awpy import Demo
 
 from highlights.engine.models import (
     Blind,
+    Damage,
     Kill,
     Round,
     extract_blinds,
+    extract_damages,
     extract_kills,
     extract_rounds,
 )
@@ -161,6 +163,10 @@ class DemoSource:
         if frame is None or frame.height == 0:
             return []
         return extract_blinds(frame)
+
+    def damage_list(self) -> list[Damage]:
+        """Damage events as Damage models, world damage excluded."""
+        return extract_damages(self.damages)
 
     @property
     def rounds(self) -> pl.DataFrame:
