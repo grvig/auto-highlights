@@ -31,6 +31,31 @@ DETECTOR_REGISTRY: dict[HighlightType, list[Detector]] = {
 }
 
 
+# Cluster moments already contain the individual frags, so a single KILL that
+# overlaps one of these would just re-record the same footage.
+_ABSORBING_TYPES = frozenset(
+    {HighlightType.MULTI_KILL, HighlightType.ACE, HighlightType.CLUTCH}
+)
+
+
+def merge_overlaps(moments: list[Moment]) -> list[Moment]:
+    """Drop single-kill moments already covered by a richer overlapping moment.
+
+    Only KILL moments are absorbed, and only by multi-kill, ace, or clutch
+    moments — every other pairing (a death overlapping a kill, two utility
+    moments) is a distinct highlight and kept.
+    """
+    absorbers = [m for m in moments if m.highlight_type in _ABSORBING_TYPES]
+    kept: list[Moment] = []
+    for moment in moments:
+        if moment.highlight_type is HighlightType.KILL and any(
+            moment.overlaps(a) for a in absorbers
+        ):
+            continue
+        kept.append(moment)
+    return kept
+
+
 @dataclass(frozen=True)
 class ClipPlan:
     """An ordered set of moments to record for one player."""
@@ -51,8 +76,15 @@ def build_clip_plan(
     ctx: DetectionContext,
     player_steamid: str,
     selected_types: Iterable[HighlightType],
+    *,
+    merge: bool = True,
 ) -> ClipPlan:
-    """Run the detectors for the selected types and order the result by time."""
+    """Run the detectors for the selected types and order the result by time.
+
+    With merge on (the default), single kills already shown inside a
+    multi-kill, ace, or clutch are dropped so the same footage is not
+    recorded twice.
+    """
     types = tuple(dict.fromkeys(selected_types))  # de-dupe, preserve order
     moments: list[Moment] = []
     for highlight_type in types:
@@ -60,6 +92,8 @@ def build_clip_plan(
             moments.extend(detector.detect(ctx, player_steamid))
 
     moments.sort(key=lambda m: (m.core_tick, m.highlight_type))
+    if merge:
+        moments = merge_overlaps(moments)
     return ClipPlan(
         player_steamid=player_steamid,
         selected_types=types,
