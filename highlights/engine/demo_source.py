@@ -109,6 +109,36 @@ class DemoSource:
         """The match's rounds as internal models."""
         return extract_rounds(self.rounds)
 
+    def tick_bounds(self) -> tuple[int, int]:
+        """The first and last playable ticks in the demo.
+
+        Used to clamp padded moment windows so a seek never runs off either
+        end of the recording.
+        """
+        ticks = self.ticks
+        return int(ticks["tick"].min()), int(ticks["tick"].max())
+
+    def round_rosters(self) -> dict[int, dict[str, str]]:
+        """Per-round {steamid: side}, taken from the tick stream.
+
+        Sides are read per round rather than once, so the halftime swap is
+        reflected correctly. A player's side within a round is their most
+        common side across that round's ticks, guarding against the odd
+        transitional tick at a round boundary.
+        """
+        per_round = (
+            self.ticks.group_by(["round_num", "steamid", "side"])
+            .len()
+            .sort("len", descending=True)
+            .unique(subset=["round_num", "steamid"], keep="first")
+        )
+        rosters: dict[int, dict[str, str]] = {}
+        for row in per_round.iter_rows(named=True):
+            rosters.setdefault(int(row["round_num"]), {})[str(row["steamid"])] = str(
+                row["side"]
+            )
+        return rosters
+
     def kill_list(self) -> list[Kill]:
         """The match's kills as internal models, world deaths excluded."""
         return extract_kills(self.kills)
