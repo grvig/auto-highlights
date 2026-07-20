@@ -73,7 +73,39 @@ Players (10):
 
 Your own demos live under `<cs2_root>\game\csgo\replays\`.
 
+Plan a chosen player's highlights:
+
+```powershell
+python -m highlights.cli "path\to\match.dem" --player semi --types clutch,ace,multi_kill
+```
+
+```
+Highlight plan for semi
+Types      : clutch, ace, multi_kill
+Moments    : 4  (239s of footage)
+  #   RND   TIME TYPE        DESCRIPTION
+  ------------------------------------------------------------
+  1     5  07:06 clutch      1v3 clutch (won)
+  2     5  08:28 ace         ACE (5 kills)
+  3    12  19:13 clutch      1v1 clutch (won)
+  4    12  19:33 multi_kill  Triple kill (3 kills)
+```
+
+`--types` accepts `kill`, `multi_kill`, `ace`, `clutch`, `death`, `utility`
+(comma-separated, or `all`). Single kills already shown inside a multi-kill,
+ace, or clutch are dropped so footage is not recorded twice.
+
 ## Status
 
-Engine parsing works and is verified against real matchmaking demos.
-Highlight detection is next. See the commit history for progress.
+**Engine (Layer 1) is complete and verified against real matchmaking demos.**
+
+- Parsing: header, roster, rounds, kills, damage, flashes.
+- Detectors: single kills, multi-kills, aces, clutches (last-alive win),
+  deaths, and utility impact (multi-enemy flashes, HE/molotov damage).
+- Clip-plan builder composes selected detectors into one ordered, deduped plan.
+
+Deferred: "meaningful smoke" detection (Milestone 2) — judging a smoke's
+usefulness needs more heuristics than the other utility signals, so it is left
+out rather than shipped as noise. Next up is Layer 2, the recorder.
+
+See the commit history for detail.
