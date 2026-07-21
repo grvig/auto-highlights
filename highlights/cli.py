@@ -12,11 +12,18 @@ import logging
 import sys
 from pathlib import Path
 
+from highlights.config import ConfigError, load_config
 from highlights.engine.clip_plan import build_clip_plan
 from highlights.engine.demo_source import DemoError, DemoSource, Player
 from highlights.engine.detection import DetectionContext
 from highlights.engine.models import deaths_of_player, kills_by_player
 from highlights.engine.moments import HighlightType
+from highlights.recorder.cs2_controller import Cs2Controller, Cs2Error
+from highlights.recorder.dry_run import DryRunRecorder
+from highlights.recorder.naming import build_clip_requests
+from highlights.recorder.obs_backend import ObsRecorder
+from highlights.recorder.obs_client import ObsClient, ObsError
+from highlights.recorder.session import record_requests
 
 # CLI-friendly aliases on top of the HighlightType values.
 _TYPE_ALIASES = {
@@ -49,6 +56,18 @@ def build_parser() -> argparse.ArgumentParser:
         default="all",
         help="comma-separated highlight types (default: all). "
         "e.g. kill,multi_kill,ace,clutch,death,utility",
+    )
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="log what would be recorded without launching CS2 or OBS",
+    )
+    mode.add_argument(
+        "--record",
+        action="store_true",
+        help="record the plan for real (needs CS2 running with -netconport "
+        "and OBS with its WebSocket server enabled)",
     )
     return parser
 
@@ -136,6 +155,51 @@ def print_clip_plan(
         )
 
 
+def run_recording(
+    source: DemoSource, player: Player, types: list[HighlightType], live: bool
+) -> int:
+    """Record the player's plan, dry by default. Returns an exit code."""
+    ctx = DetectionContext.from_source(source)
+    plan = build_clip_plan(ctx, player.steamid, types)
+    if not plan.moments:
+        print("\nNothing to record: the plan is empty.")
+        return 0
+
+    config = load_config()
+    requests = build_clip_requests(
+        plan=plan,
+        demo_path=source.path,
+        player_name=player.name,
+        output_dir=config.clips_dir,
+    )
+
+    if live:
+        recorder = ObsRecorder(
+            cs2=Cs2Controller(config.cs2_root),
+            obs=ObsClient(
+                host=config.obs.host,
+                port=config.obs.port,
+                password=config.obs.password,
+            ),
+            output_dir=config.clips_dir,
+        )
+    else:
+        recorder = DryRunRecorder()
+
+    print(f"\nRecording {len(requests)} clip(s) with the {recorder.name} backend")
+    try:
+        clips = record_requests(recorder, requests)
+    except (Cs2Error, ObsError) as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+
+    failed = [c for c in clips if not c.succeeded]
+    print(f"Done: {len(clips) - len(failed)} succeeded, {len(failed)} failed")
+    for clip in failed:
+        print(f"  #{clip.index:03d} {clip.error}", file=sys.stderr)
+    return 1 if failed else 0
+
+
 def use_utf8_output() -> None:
     """Stop the Windows console's default codec choking on non-Latin names.
 
@@ -179,6 +243,13 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 1
         print_clip_plan(source, player, types)
+
+        if args.dry_run or args.record:
+            try:
+                return run_recording(source, player, types, live=args.record)
+            except ConfigError as error:
+                print(f"Error: {error}", file=sys.stderr)
+                return 1
 
     return 0
 

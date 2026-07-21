@@ -95,6 +95,24 @@ Moments    : 4  (239s of footage)
 (comma-separated, or `all`). Single kills already shown inside a multi-kill,
 ace, or clutch are dropped so footage is not recorded twice.
 
+### Recording
+
+Check what would be captured, without launching anything:
+
+```powershell
+python -m highlights.cli "match.dem" --player semi --types ace,clutch --dry-run -v
+```
+
+Record for real — this needs **CS2 already running** with `-netconport 29000`
+in its launch options, and **OBS running** with its WebSocket server enabled:
+
+```powershell
+python -m highlights.cli "match.dem" --player semi --types ace,clutch --record
+```
+
+Clips land in `clips_dir` from your config, numbered in plan order
+(`001_r05_ace_semi.mkv`) so the stitcher can concatenate them directly.
+
 ## Status
 
 **Engine (Layer 1) is complete and verified against real matchmaking demos.**
@@ -104,8 +122,26 @@ ace, or clutch are dropped so footage is not recorded twice.
   deaths, and utility impact (multi-enemy flashes, HE/molotov damage).
 - Clip-plan builder composes selected detectors into one ordered, deduped plan.
 
+**Recorder (Layer 2) is built and unit-tested, but not yet proven against a
+live CS2.**
+
+- `Recorder` interface with a dry-run backend that logs a plan and launches
+  nothing — the whole pipeline runs on a machine with no game and no OBS.
+- CS2 control: process launch/attach, netcon console transport (verified
+  against a real loopback socket server), demo loading, POV spectating,
+  seeking, and playing an exact tick window.
+- OBS control via obs-websocket: connect, set record directory, start/stop,
+  and move each recording to its clip filename.
+
+Not yet verified: the CS2 console command names, and the end-to-end capture
+with the game actually running. Every command sent is logged, so a rejected
+one is visible immediately, and all game-facing strings live in a single
+module (`recorder/cs2_commands.py`) to fix after a CS2 update.
+
 Deferred: "meaningful smoke" detection (Milestone 2) — judging a smoke's
 usefulness needs more heuristics than the other utility signals, so it is left
-out rather than shipped as noise. Next up is Layer 2, the recorder.
+out rather than shipped as noise.
+
+Next: orchestration and timing (Milestone 4), then ffmpeg stitching.
 
 See the commit history for detail.
