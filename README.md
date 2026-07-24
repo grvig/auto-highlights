@@ -113,6 +113,17 @@ python -m highlights.cli "match.dem" --player semi --types ace,clutch --record
 Clips land in `clips_dir` from your config, numbered in plan order
 (`001_r05_ace_semi.mkv`) so the stitcher can concatenate them directly.
 
+Add `--stitch` to concatenate the recorded clips into one reel with ffmpeg:
+
+```powershell
+python -m highlights.cli "match.dem" --player semi --types ace,clutch --record --stitch
+```
+
+The reel is written to `output_dir` as `<player>_highlights.mkv`. Stitching
+tries a fast stream copy first and falls back to a re-encode if the clips do
+not concatenate cleanly. Needs ffmpeg on PATH, or its path set in
+`config.toml`.
+
 ## Status
 
 **Engine (Layer 1) is complete and verified against real matchmaking demos.**
@@ -142,6 +153,22 @@ Deferred: "meaningful smoke" detection (Milestone 2) — judging a smoke's
 usefulness needs more heuristics than the other utility signals, so it is left
 out rather than shipped as noise.
 
-Next: orchestration and timing (Milestone 4), then ffmpeg stitching.
+**Stitcher (Layer 3) is built and unit-tested.**
+
+- Concat-demuxer list file with ffmpeg's quoting rules handled.
+- Stream-copy concatenation with a re-encode fallback for mismatched clips.
+- Only successful, on-disk clips are included, so a failed clip does not
+  abort the reel.
+- Wired into the CLI behind `--stitch`.
+
+Not yet verified: an actual ffmpeg run — ffmpeg is not installed here, and the
+subprocess is faked in tests. Install ffmpeg to exercise it for real.
+
+Deferred: "meaningful smoke" detection (Milestone 2) — judging a smoke's
+usefulness needs more heuristics than the other utility signals, so it is left
+out rather than shipped as noise.
+
+Remaining: the live recording proof (does CS2 accept the console commands?),
+orchestration/timing polish (Milestone 4), and the GUI (Milestone 6).
 
 See the commit history for detail.

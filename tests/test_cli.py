@@ -50,3 +50,15 @@ def test_parser_reads_player_and_types():
     args = build_parser().parse_args(["m.dem", "-p", "3", "-t", "kill,ace"])
     assert args.player == "3"
     assert args.types == "kill,ace"
+
+
+def test_parser_reads_record_and_stitch_flags():
+    args = build_parser().parse_args(["m.dem", "-p", "3", "--record", "--stitch"])
+    assert args.record
+    assert args.stitch
+    assert not args.dry_run
+
+
+def test_dry_run_and_record_are_mutually_exclusive():
+    with pytest.raises(SystemExit):
+        build_parser().parse_args(["m.dem", "--dry-run", "--record"])

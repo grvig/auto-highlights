@@ -12,18 +12,21 @@ import logging
 import sys
 from pathlib import Path
 
-from highlights.config import ConfigError, load_config
+from highlights.config import Config, ConfigError, load_config
 from highlights.engine.clip_plan import build_clip_plan
 from highlights.engine.demo_source import DemoError, DemoSource, Player
 from highlights.engine.detection import DetectionContext
 from highlights.engine.models import deaths_of_player, kills_by_player
 from highlights.engine.moments import HighlightType
+from highlights.recorder.base import RecordedClip
 from highlights.recorder.cs2_controller import Cs2Controller, Cs2Error
 from highlights.recorder.dry_run import DryRunRecorder
-from highlights.recorder.naming import build_clip_requests
+from highlights.recorder.naming import build_clip_requests, sanitise_part
 from highlights.recorder.obs_backend import ObsRecorder
 from highlights.recorder.obs_client import ObsClient, ObsError
 from highlights.recorder.session import record_requests
+from highlights.stitcher.runner import StitchError
+from highlights.stitcher.stitch import stitch_clips
 
 # CLI-friendly aliases on top of the HighlightType values.
 _TYPE_ALIASES = {
@@ -68,6 +71,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="record the plan for real (needs CS2 running with -netconport "
         "and OBS with its WebSocket server enabled)",
+    )
+    parser.add_argument(
+        "--stitch",
+        action="store_true",
+        help="after recording, concatenate the clips into one reel (needs "
+        "ffmpeg; has no effect on --dry-run, which writes no clips)",
     )
     return parser
 
@@ -156,7 +165,11 @@ def print_clip_plan(
 
 
 def run_recording(
-    source: DemoSource, player: Player, types: list[HighlightType], live: bool
+    source: DemoSource,
+    player: Player,
+    types: list[HighlightType],
+    live: bool,
+    stitch: bool = False,
 ) -> int:
     """Record the player's plan, dry by default. Returns an exit code."""
     ctx = DetectionContext.from_source(source)
@@ -197,7 +210,31 @@ def run_recording(
     print(f"Done: {len(clips) - len(failed)} succeeded, {len(failed)} failed")
     for clip in failed:
         print(f"  #{clip.index:03d} {clip.error}", file=sys.stderr)
+
+    if stitch:
+        stitch_code = stitch_recorded(clips, player, config)
+        if stitch_code != 0:
+            return stitch_code
+
     return 1 if failed else 0
+
+
+def stitch_recorded(
+    clips: list[RecordedClip], player: Player, config: Config
+) -> int:
+    """Stitch recorded clips into a final reel. Returns an exit code."""
+    reel_name = f"{sanitise_part(player.name)}_highlights.mkv"
+    reel_path = config.output_dir / reel_name
+    print(f"\nStitching {len(clips)} clip(s) into {reel_name}")
+    try:
+        output = stitch_clips(
+            clips, reel_path, config.ffmpeg_path, work_dir=config.clips_dir
+        )
+    except StitchError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+    print(f"Reel written: {output}")
+    return 0
 
 
 def use_utf8_output() -> None:
@@ -246,7 +283,13 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.dry_run or args.record:
             try:
-                return run_recording(source, player, types, live=args.record)
+                return run_recording(
+                    source,
+                    player,
+                    types,
+                    live=args.record,
+                    stitch=args.stitch and args.record,
+                )
             except ConfigError as error:
                 print(f"Error: {error}", file=sys.stderr)
                 return 1
