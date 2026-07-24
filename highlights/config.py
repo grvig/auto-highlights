@@ -43,6 +43,10 @@ class Config:
     clips_dir: Path
     obs: ObsConfig
     clips: ClipConfig
+    # Either a bare command found on PATH ("ffmpeg") or an absolute path to the
+    # executable. Kept as a string, not a resolved Path, so a bare command is
+    # not accidentally rewritten relative to the config file.
+    ffmpeg_path: str = "ffmpeg"
 
     @property
     def cs2_executable(self) -> Path:
@@ -99,6 +103,7 @@ def load_config(path: Path | str | None = None) -> Config:
             pre_roll_seconds=float(clips.get("pre_roll_seconds", 3.0)),
             post_roll_seconds=float(clips.get("post_roll_seconds", 2.0)),
         ),
+        ffmpeg_path=str(paths.get("ffmpeg", "ffmpeg")),
     )
 
 
