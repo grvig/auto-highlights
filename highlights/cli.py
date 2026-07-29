@@ -8,11 +8,11 @@ Layer 1 only — parses and reports. Launches no game and records nothing.
 from __future__ import annotations
 
 import argparse
-import logging
 import sys
 from pathlib import Path
 
 from highlights.config import Config, ConfigError, load_config
+from highlights.logging_setup import LEVELS, configure_logging
 from highlights.engine.clip_plan import build_clip_plan
 from highlights.engine.demo_source import DemoError, DemoSource, Player
 from highlights.engine.detection import DetectionContext
@@ -46,7 +46,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("demo", type=Path, help="path to a .dem file")
     parser.add_argument(
-        "-v", "--verbose", action="store_true", help="show parsing progress"
+        "-v", "--verbose", action="store_true", help="show progress (INFO logs)"
+    )
+    parser.add_argument(
+        "--log-level",
+        choices=LEVELS,
+        help="console log level; overrides --verbose",
+    )
+    parser.add_argument(
+        "--log-file",
+        type=Path,
+        help="also write full DEBUG logs here — keeps the CS2/OBS command "
+        "exchange for diagnosing a failed capture",
     )
     parser.add_argument(
         "-p",
@@ -252,10 +263,8 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     use_utf8_output()
 
-    logging.basicConfig(
-        level=logging.INFO if args.verbose else logging.WARNING,
-        format="%(levelname)s %(message)s",
-    )
+    level = args.log_level or ("info" if args.verbose else "warning")
+    configure_logging(level=level, log_file=args.log_file)
 
     try:
         source = DemoSource(args.demo)

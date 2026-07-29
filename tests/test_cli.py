@@ -62,3 +62,16 @@ def test_parser_reads_record_and_stitch_flags():
 def test_dry_run_and_record_are_mutually_exclusive():
     with pytest.raises(SystemExit):
         build_parser().parse_args(["m.dem", "--dry-run", "--record"])
+
+
+def test_parser_reads_log_flags(tmp_path):
+    args = build_parser().parse_args(
+        ["m.dem", "--log-level", "debug", "--log-file", str(tmp_path / "r.log")]
+    )
+    assert args.log_level == "debug"
+    assert args.log_file.name == "r.log"
+
+
+def test_log_level_rejects_unknown():
+    with pytest.raises(SystemExit):
+        build_parser().parse_args(["m.dem", "--log-level", "verbose"])
