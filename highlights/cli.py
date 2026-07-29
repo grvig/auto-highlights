@@ -13,6 +13,7 @@ from pathlib import Path
 
 from highlights.config import Config, ConfigError, load_config
 from highlights.logging_setup import LEVELS, configure_logging
+from highlights.preflight import all_passed, run_preflight
 from highlights.engine.clip_plan import build_clip_plan
 from highlights.engine.demo_source import DemoError, DemoSource, Player
 from highlights.engine.detection import DetectionContext
@@ -44,7 +45,15 @@ def build_parser() -> argparse.ArgumentParser:
         prog="highlights",
         description="Parse a CS2 demo and report its players, stats, and highlights.",
     )
-    parser.add_argument("demo", type=Path, help="path to a .dem file")
+    parser.add_argument(
+        "demo", type=Path, nargs="?", help="path to a .dem file"
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="report environment readiness (config, CS2, ffmpeg, folders) and "
+        "exit; needs no demo and launches nothing",
+    )
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="show progress (INFO logs)"
     )
@@ -248,6 +257,27 @@ def stitch_recorded(
     return 0
 
 
+def run_check() -> int:
+    """Print the environment readiness report. Returns an exit code."""
+    try:
+        config = load_config()
+    except ConfigError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+
+    checks = run_preflight(config)
+    print("\nEnvironment check:")
+    for check in checks:
+        mark = "OK  " if check.ok else "FAIL"
+        print(f"  [{mark}] {check.name:<20} {check.detail}")
+
+    if all_passed(checks):
+        print("\nAll checks passed.")
+        return 0
+    print("\nSome checks failed — see above.")
+    return 1
+
+
 def use_utf8_output() -> None:
     """Stop the Windows console's default codec choking on non-Latin names.
 
@@ -265,6 +295,13 @@ def main(argv: list[str] | None = None) -> int:
 
     level = args.log_level or ("info" if args.verbose else "warning")
     configure_logging(level=level, log_file=args.log_file)
+
+    if args.check:
+        return run_check()
+
+    if args.demo is None:
+        print("Error: a demo path is required (or use --check)", file=sys.stderr)
+        return 1
 
     try:
         source = DemoSource(args.demo)

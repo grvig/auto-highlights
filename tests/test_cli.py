@@ -6,9 +6,17 @@ from highlights.cli import build_parser, main, parse_types
 from highlights.engine.moments import HighlightType
 
 
-def test_parser_requires_a_demo_path():
-    with pytest.raises(SystemExit):
-        build_parser().parse_args([])
+def test_demo_is_optional_at_parse_time_for_check():
+    # demo is optional so --check can run without one; it is required at
+    # runtime otherwise (see test_missing_demo_argument_exits_nonzero).
+    args = build_parser().parse_args([])
+    assert args.demo is None
+
+
+def test_missing_demo_argument_exits_nonzero(capsys):
+    exit_code = main([])
+    assert exit_code == 1
+    assert "demo path is required" in capsys.readouterr().err
 
 
 def test_parser_reads_demo_and_verbose_flag():
