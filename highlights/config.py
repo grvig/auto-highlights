@@ -65,6 +65,32 @@ class Config:
                 "another library — point cs2_root at the one with the executable."
             )
 
+    def validate(self) -> None:
+        """Check the config values themselves make sense.
+
+        Value-level only — it does not touch the filesystem or the network, so
+        it is safe to call before any game or OBS is running. Raises
+        ConfigError listing every problem at once, rather than failing on the
+        first one deep inside a run.
+        """
+        problems: list[str] = []
+
+        if not (1 <= self.obs.port <= 65535):
+            problems.append(f"obs.port {self.obs.port} is not in 1-65535")
+        if not self.obs.password:
+            problems.append("obs.password is empty")
+        if self.clips.pre_roll_seconds < 0:
+            problems.append("clips.pre_roll_seconds is negative")
+        if self.clips.post_roll_seconds < 0:
+            problems.append("clips.post_roll_seconds is negative")
+        if not self.ffmpeg_path.strip():
+            problems.append("paths.ffmpeg is empty")
+
+        if problems:
+            raise ConfigError(
+                "Invalid config:\n" + "\n".join(f"  - {p}" for p in problems)
+            )
+
 
 def _require(table: dict, key: str, section: str) -> object:
     if key not in table:
