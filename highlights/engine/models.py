@@ -49,6 +49,10 @@ class Kill:
     victim_side: str
     weapon: str
     headshot: bool
+    # Where the victim died, in map units. Defaulted so hand-built Kills in
+    # tests need not supply them; used to correlate kills with nearby utility.
+    victim_x: float = 0.0
+    victim_y: float = 0.0
 
     @property
     def timestamp(self) -> str:
@@ -61,6 +65,17 @@ class Kill:
             f"{self.attacker_name} killed {self.victim_name} "
             f"with {self.weapon}{how}"
         )
+
+
+@dataclass(frozen=True)
+class Smoke:
+    """A smoke grenade detonating (a smokegrenade_detonate event)."""
+
+    tick: int
+    thrower_steamid: str
+    thrower_name: str
+    x: float
+    y: float
 
 
 @dataclass(frozen=True)
@@ -99,6 +114,10 @@ def _as_str(value: object, default: str = "") -> str:
     return default if value is None else str(value)
 
 
+def _as_float(value: object, default: float = 0.0) -> float:
+    return default if value is None else float(value)
+
+
 def extract_rounds(rounds: pl.DataFrame) -> list[Round]:
     """Convert awpy's rounds dataframe into Round models, ordered by number."""
     result = [
@@ -135,11 +154,33 @@ def extract_kills(kills: pl.DataFrame) -> list[Kill]:
             victim_side=_as_str(row["victim_side"]),
             weapon=_as_str(row["weapon"], "unknown"),
             headshot=bool(row["headshot"]),
+            victim_x=_as_float(row.get("victim_X")),
+            victim_y=_as_float(row.get("victim_Y")),
         )
         for row in kills.iter_rows(named=True)
         if row["attacker_steamid"] is not None
     ]
     return sorted(result, key=lambda k: k.tick)
+
+
+def extract_smokes(smokes: pl.DataFrame) -> list[Smoke]:
+    """Convert awpy's smokegrenade_detonate frame into Smoke models, tick-ordered.
+
+    The event's user_* fields are the thrower; x/y are the detonation point.
+    Rows with no thrower are dropped.
+    """
+    result = [
+        Smoke(
+            tick=_as_int(row["tick"]),
+            thrower_steamid=_as_str(row["user_steamid"]),
+            thrower_name=_as_str(row["user_name"]),
+            x=_as_float(row.get("x")),
+            y=_as_float(row.get("y")),
+        )
+        for row in smokes.iter_rows(named=True)
+        if row["user_steamid"] is not None
+    ]
+    return sorted(result, key=lambda s: s.tick)
 
 
 def extract_blinds(blinds: pl.DataFrame) -> list[Blind]:

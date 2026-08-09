@@ -19,10 +19,12 @@ from highlights.engine.models import (
     Damage,
     Kill,
     Round,
+    Smoke,
     extract_blinds,
     extract_damages,
     extract_kills,
     extract_rounds,
+    extract_smokes,
 )
 from highlights.engine.timing import CS2_TICKRATE
 
@@ -167,6 +169,18 @@ class DemoSource:
     def damage_list(self) -> list[Damage]:
         """Damage events as Damage models, world damage excluded."""
         return extract_damages(self.damages)
+
+    def smoke_list(self) -> list[Smoke]:
+        """Smoke detonations as Smoke models.
+
+        smokegrenade_detonate is not in awpy's default event set, so it is
+        parsed on demand. Returns an empty list if the demo has no smokes.
+        """
+        parsed = self._demo.parse_events(["smokegrenade_detonate"])
+        frame = parsed.get("smokegrenade_detonate")
+        if frame is None or frame.height == 0:
+            return []
+        return extract_smokes(frame)
 
     @property
     def rounds(self) -> pl.DataFrame:

@@ -7,7 +7,23 @@ synthetic matches rather than parsing a demo. These keep that construction terse
 from __future__ import annotations
 
 from highlights.engine.detection import DetectionContext
-from highlights.engine.models import Blind, Damage, Kill, Round
+from highlights.engine.models import Blind, Damage, Kill, Round, Smoke
+
+
+def make_smoke(
+    tick: int,
+    thrower: str,
+    *,
+    x: float = 0.0,
+    y: float = 0.0,
+) -> Smoke:
+    return Smoke(
+        tick=tick,
+        thrower_steamid=thrower,
+        thrower_name=f"t-{thrower}",
+        x=x,
+        y=y,
+    )
 
 
 def make_damage(
@@ -73,6 +89,8 @@ def make_kill(
     victim_side: str = "t",
     weapon: str = "ak47",
     headshot: bool = False,
+    victim_x: float = 0.0,
+    victim_y: float = 0.0,
 ) -> Kill:
     return Kill(
         round_number=round_number,
@@ -85,6 +103,8 @@ def make_kill(
         victim_side=victim_side,
         weapon=weapon,
         headshot=headshot,
+        victim_x=victim_x,
+        victim_y=victim_y,
     )
 
 
@@ -95,6 +115,7 @@ def make_context(
     round_rosters: dict[int, dict[str, str]] | None = None,
     blinds: list[Blind] | None = None,
     damages: list[Damage] | None = None,
+    smokes: list[Smoke] | None = None,
     pre_roll: float = 3.0,
     post_roll: float = 2.0,
     first_tick: int = 0,
@@ -111,4 +132,5 @@ def make_context(
         round_rosters=round_rosters or {},
         blinds=blinds or [],
         damages=damages or [],
+        smokes=smokes or [],
     )
