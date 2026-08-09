@@ -60,6 +60,18 @@ def test_pad_clamps_to_bounds():
     assert end == 10_050
 
 
+def test_pad_caps_span_only_when_requested():
+    ctx = make_context(max_span_seconds=25.0)
+    # A 40s span, capped vs uncapped.
+    uncapped = ctx.pad(50_000, span_start_tick=50_000 - 40 * 64, span_end_tick=50_000)
+    capped = ctx.pad(
+        50_000, span_start_tick=50_000 - 40 * 64, span_end_tick=50_000, cap_span=True
+    )
+    # uncapped reaches back the full 40s (plus pre-roll); capped only 25s.
+    assert capped[0] > uncapped[0]
+    assert capped[0] == (50_000 - 25 * 64) - 3 * 64
+
+
 class _StubDetector:
     highlight_type = HighlightType.KILL
 
