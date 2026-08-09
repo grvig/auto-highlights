@@ -93,7 +93,13 @@ Moments    : 4  (239s of footage)
 
 `--types` accepts `kill`, `multi_kill`, `ace`, `clutch`, `death`, `utility`
 (comma-separated, or `all`). Single kills already shown inside a multi-kill,
-ace, or clutch are dropped so footage is not recorded twice.
+ace, or clutch are dropped so footage is not recorded twice. Span moments
+(multi-kills, aces, clutches) are capped at ~25s ending on the finishing play,
+so a round-spanning ace does not become a minute-long clip.
+
+`utility` covers three signals: a single flash that blinds multiple enemies,
+grenade (HE/molotov) damage over a threshold, and a smoke that sets up a
+nearby enemy kill.
 
 ### Recording
 
@@ -128,9 +134,12 @@ not concatenate cleanly. Needs ffmpeg on PATH, or its path set in
 
 **Engine (Layer 1) is complete and verified against real matchmaking demos.**
 
-- Parsing: header, roster, rounds, kills, damage, flashes.
+- Parsing: header, roster, rounds, kills (with positions), damage, flashes,
+  smokes.
 - Detectors: single kills, multi-kills, aces, clutches (last-alive win),
-  deaths, and utility impact (multi-enemy flashes, HE/molotov damage).
+  deaths, and utility impact (multi-enemy flashes, HE/molotov damage, and
+  smokes that set up a kill).
+- Span moments are capped at ~25s ending on the finishing play.
 - Clip-plan builder composes selected detectors into one ordered, deduped plan.
 
 **Recorder (Layer 2) is built and unit-tested, but not yet proven against a
@@ -149,10 +158,6 @@ with the game actually running. Every command sent is logged, so a rejected
 one is visible immediately, and all game-facing strings live in a single
 module (`recorder/cs2_commands.py`) to fix after a CS2 update.
 
-Deferred: "meaningful smoke" detection (Milestone 2) — judging a smoke's
-usefulness needs more heuristics than the other utility signals, so it is left
-out rather than shipped as noise.
-
 **Stitcher (Layer 3) is built and unit-tested.**
 
 - Concat-demuxer list file with ffmpeg's quoting rules handled.
@@ -163,10 +168,6 @@ out rather than shipped as noise.
 
 Not yet verified: an actual ffmpeg run — ffmpeg is not installed here, and the
 subprocess is faked in tests. Install ffmpeg to exercise it for real.
-
-Deferred: "meaningful smoke" detection (Milestone 2) — judging a smoke's
-usefulness needs more heuristics than the other utility signals, so it is left
-out rather than shipped as noise.
 
 Remaining: the live recording proof (does CS2 accept the console commands?),
 orchestration/timing polish (Milestone 4), and the GUI (Milestone 6).
