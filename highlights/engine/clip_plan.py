@@ -17,6 +17,7 @@ from highlights.engine.detectors.kills import SingleKillDetector
 from highlights.engine.detectors.multikills import AceDetector, MultiKillDetector
 from highlights.engine.detectors.utility_damage import UtilityDamageDetector
 from highlights.engine.detectors.utility_flash import FlashUtilityDetector
+from highlights.engine.detectors.utility_smoke import SmokeUtilityDetector
 from highlights.engine.moments import HighlightType, Moment
 
 # One HighlightType can map to several detectors — utility covers both flashes
@@ -27,7 +28,11 @@ DETECTOR_REGISTRY: dict[HighlightType, list[Detector]] = {
     HighlightType.ACE: [AceDetector()],
     HighlightType.CLUTCH: [ClutchDetector()],
     HighlightType.DEATH: [DeathDetector()],
-    HighlightType.UTILITY: [FlashUtilityDetector(), UtilityDamageDetector()],
+    HighlightType.UTILITY: [
+        FlashUtilityDetector(),
+        UtilityDamageDetector(),
+        SmokeUtilityDetector(),
+    ],
 }
 
 
