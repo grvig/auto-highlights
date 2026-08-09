@@ -44,12 +44,23 @@ def test_five_kills_is_an_ace_not_a_multikill():
 
 
 def test_multikill_spans_first_to_last_kill():
-    kills = round_with_kills("A", [5000, 6000, 7000])
+    # A short span (under the 25s cap) is kept whole.
+    kills = round_with_kills("A", [5000, 5500, 6000])
     moment = MultiKillDetector().detect(make_context(kills), "A")[0]
-    # window spans from before the first kill to after the last
     assert moment.start_tick == 5000 - 3 * 64
-    assert moment.end_tick == 7000 + 2 * 64
-    assert moment.core_tick == 7000
+    assert moment.end_tick == 6000 + 2 * 64
+    assert moment.core_tick == 6000
+
+
+def test_long_multikill_span_is_capped():
+    # Three kills strung across 40s; the span must trim to 25s before the last.
+    last_tick = 10_000 + 40 * 64
+    kills = round_with_kills("A", [10_000, 11_000, last_tick])
+    ctx = make_context(kills, rounds=[make_round(1, 0, 100_000)])
+    moment = MultiKillDetector().detect(ctx, "A")[0]
+    assert moment.core_tick == last_tick
+    assert moment.start_tick == (last_tick - 25 * 64) - 3 * 64
+    assert moment.end_tick == last_tick + 2 * 64
 
 
 def test_multikills_across_two_rounds():

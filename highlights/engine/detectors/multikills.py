@@ -38,7 +38,10 @@ def _round_moment(
 ) -> Moment:
     first, last = round_kills[0], round_kills[-1]
     start, end = ctx.pad(
-        last.tick, span_start_tick=first.tick, span_end_tick=last.tick
+        last.tick,
+        span_start_tick=first.tick,
+        span_end_tick=last.tick,
+        cap_span=True,
     )
     return Moment(
         round_number=first.round_number,
