@@ -175,12 +175,13 @@ def print_clip_plan(
     print(f"\nHighlight plan for {player.name}")
     print(f"Types      : {selected}")
     print(f"Moments    : {len(plan)}  ({plan.total_seconds:.0f}s of footage)")
-    print(f"  {'#':<3} {'RND':>3} {'TIME':>6} {'TYPE':<11} DESCRIPTION")
-    print(f"  {'-' * 60}")
+    print(f"  {'#':<3} {'RND':>3} {'TIME':>6} {'LEN':>5} {'TYPE':<11} DESCRIPTION")
+    print(f"  {'-' * 66}")
     for index, moment in enumerate(plan.moments, start=1):
+        length = f"{moment.duration_seconds:.0f}s"
         print(
             f"  {index:<3} {moment.round_number:>3} {moment.timestamp:>6} "
-            f"{str(moment.highlight_type):<11} {moment.description}"
+            f"{length:>5} {str(moment.highlight_type):<11} {moment.description}"
         )
 
 
