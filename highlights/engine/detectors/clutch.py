@@ -67,7 +67,10 @@ class ClutchDetector:
                 continue
             span_end = max(rnd.end_tick, sit.start_tick)
             start, end = ctx.pad(
-                sit.start_tick, span_start_tick=sit.start_tick, span_end_tick=span_end
+                sit.start_tick,
+                span_start_tick=sit.start_tick,
+                span_end_tick=span_end,
+                cap_span=True,
             )
             moments.append(
                 Moment(

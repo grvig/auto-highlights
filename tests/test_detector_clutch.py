@@ -67,6 +67,27 @@ def test_no_clutch_for_player_not_in_situation():
 
 def test_clutch_moment_spans_to_round_end():
     moment = ClutchDetector().detect(context(), "P")[0]
-    # padded from the clutch start; end clamped near round end + post-roll
+    # short clutch (under the cap): padded from the clutch start to round end
     assert moment.start_tick == 1600 - 3 * 64
     assert moment.end_tick == 2000 + 2 * 64
+
+
+def test_long_clutch_is_capped_to_keep_the_finish():
+    # A clutch that begins 40s before the round ends must trim to the last 25s.
+    round_end = 60_000
+    clutch_start = round_end - 40 * 64
+    kills = [
+        make_kill(clutch_start - 300, "E1", "T1", round_number=1),
+        make_kill(clutch_start - 200, "E1", "T2", round_number=1),
+        make_kill(clutch_start - 100, "E1", "T3", round_number=1),
+        make_kill(clutch_start, "E1", "T4", round_number=1),  # 1v5 begins
+    ]
+    ctx = make_context(
+        kills,
+        rounds=[make_round(1, start=clutch_start - 1000, end=round_end, winner="ct")],
+        round_rosters={1: ROSTER},
+    )
+    moment = ClutchDetector().detect(ctx, "P")[0]
+    # window trimmed to 25s before round end, still ending at round end + post-roll
+    assert moment.start_tick == (round_end - 25 * 64) - 3 * 64
+    assert moment.end_tick == round_end + 2 * 64
