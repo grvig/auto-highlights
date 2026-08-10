@@ -1,8 +1,9 @@
-"""Command-line entry point for inspecting a demo.
+"""Command-line entry point.
 
-Layer 1 only — parses and reports. Launches no game and records nothing.
+Parses a demo, reports players and a highlight plan, and optionally records
+(dry-run or live) and stitches the clips into a reel.
 
-    python -m highlights.cli path/to/demo.dem
+    python -m highlights.cli path/to/demo.dem --player semi --dry-run
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from highlights import __version__
 from highlights.config import Config, ConfigError, load_config
 from highlights.logging_setup import LEVELS, configure_logging
 from highlights.preflight import all_passed, run_preflight
@@ -47,6 +49,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "demo", type=Path, nargs="?", help="path to a .dem file"
+    )
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__version__}"
     )
     parser.add_argument(
         "--check",

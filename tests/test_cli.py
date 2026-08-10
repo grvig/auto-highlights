@@ -103,3 +103,12 @@ def test_pov_warning_names_the_player():
     warning = pov_recording_warning(is_gotv=False, player_name="ORYX", live=True)
     assert "ORYX" in warning
     assert "POV demo" in warning
+
+
+def test_version_flag_prints_version_and_exits(capsys):
+    from highlights import __version__
+
+    with pytest.raises(SystemExit) as info:
+        build_parser().parse_args(["--version"])
+    assert info.value.code == 0
+    assert __version__ in capsys.readouterr().out
