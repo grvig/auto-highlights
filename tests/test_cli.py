@@ -2,7 +2,12 @@
 
 import pytest
 
-from highlights.cli import build_parser, main, parse_types
+from highlights.cli import (
+    build_parser,
+    main,
+    parse_types,
+    pov_recording_warning,
+)
 from highlights.engine.moments import HighlightType
 
 
@@ -83,3 +88,18 @@ def test_parser_reads_log_flags(tmp_path):
 def test_log_level_rejects_unknown():
     with pytest.raises(SystemExit):
         build_parser().parse_args(["m.dem", "--log-level", "verbose"])
+
+
+def test_pov_warning_only_fires_for_live_pov_demos():
+    # Live recording off a POV demo warns.
+    assert pov_recording_warning(is_gotv=False, player_name="semi", live=True)
+    # GOTV demos are fine.
+    assert pov_recording_warning(is_gotv=True, player_name="semi", live=True) is None
+    # Dry run launches nothing, so demo type is irrelevant.
+    assert pov_recording_warning(is_gotv=False, player_name="semi", live=False) is None
+
+
+def test_pov_warning_names_the_player():
+    warning = pov_recording_warning(is_gotv=False, player_name="ORYX", live=True)
+    assert "ORYX" in warning
+    assert "POV demo" in warning

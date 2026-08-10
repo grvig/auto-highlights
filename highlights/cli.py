@@ -190,6 +190,21 @@ def print_clip_plan(
         )
 
 
+def pov_recording_warning(is_gotv: bool, player_name: str, live: bool) -> str | None:
+    """Warn before a live capture off a POV demo, which has one perspective.
+
+    Only for live recording — a dry run launches nothing, so the demo type
+    does not matter there.
+    """
+    if not live or is_gotv:
+        return None
+    return (
+        "\nWarning: this is a POV demo, which only holds one player's "
+        f"perspective. Spectating {player_name} may not work unless they are "
+        "the player who recorded it. GOTV demos spectate any player."
+    )
+
+
 def run_recording(
     source: DemoSource,
     player: Player,
@@ -198,6 +213,10 @@ def run_recording(
     stitch: bool = False,
 ) -> int:
     """Record the player's plan, dry by default. Returns an exit code."""
+    warning = pov_recording_warning(source.info.is_gotv, player.name, live)
+    if warning:
+        print(warning, file=sys.stderr)
+
     ctx = DetectionContext.from_source(source)
     plan = build_clip_plan(ctx, player.steamid, types)
     if not plan.moments:
