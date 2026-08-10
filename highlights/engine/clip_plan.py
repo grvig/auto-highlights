@@ -76,6 +76,17 @@ class ClipPlan:
     def total_seconds(self) -> float:
         return sum(m.duration_seconds for m in self.moments)
 
+    def counts_by_type(self) -> dict[HighlightType, int]:
+        """How many moments of each type are in the plan.
+
+        Only types that actually occur are included, ordered by first
+        appearance in the (already chronological) moment list.
+        """
+        counts: dict[HighlightType, int] = {}
+        for moment in self.moments:
+            counts[moment.highlight_type] = counts.get(moment.highlight_type, 0) + 1
+        return counts
+
 
 def build_clip_plan(
     ctx: DetectionContext,

@@ -175,6 +175,11 @@ def print_clip_plan(
     print(f"\nHighlight plan for {player.name}")
     print(f"Types      : {selected}")
     print(f"Moments    : {len(plan)}  ({plan.total_seconds:.0f}s of footage)")
+    breakdown = ", ".join(
+        f"{count} {htype}" for htype, count in plan.counts_by_type().items()
+    )
+    if breakdown:
+        print(f"Breakdown  : {breakdown}")
     print(f"  {'#':<3} {'RND':>3} {'TIME':>6} {'LEN':>5} {'TYPE':<11} DESCRIPTION")
     print(f"  {'-' * 66}")
     for index, moment in enumerate(plan.moments, start=1):

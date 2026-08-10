@@ -49,3 +49,28 @@ def test_total_seconds_sums_moment_durations():
     plan = build_clip_plan(make_context(kills), "P", [HighlightType.KILL])
     # one padded kill: 3s pre + 2s post = 5s
     assert plan.total_seconds == 5.0
+
+
+def test_counts_by_type_tallies_each_type():
+    kills = [
+        make_kill(1000, "P", "E1"),
+        make_kill(2000, "P", "E2"),
+        make_kill(3000, "E3", "P"),  # a death
+    ]
+    plan = build_clip_plan(
+        make_context(kills), "P", [HighlightType.KILL, HighlightType.DEATH]
+    )
+    counts = plan.counts_by_type()
+    assert counts[HighlightType.KILL] == 2
+    assert counts[HighlightType.DEATH] == 1
+
+
+def test_counts_by_type_omits_absent_types():
+    kills = [make_kill(1000, "P", "E1")]
+    plan = build_clip_plan(make_context(kills), "P", [HighlightType.KILL])
+    assert plan.counts_by_type() == {HighlightType.KILL: 1}
+
+
+def test_counts_by_type_empty_plan():
+    plan = build_clip_plan(make_context([]), "P", [HighlightType.KILL])
+    assert plan.counts_by_type() == {}
