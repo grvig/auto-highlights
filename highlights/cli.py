@@ -133,6 +133,22 @@ def resolve_player(source: DemoSource, selector: str) -> Player | None:
     return matches[0] if len(matches) == 1 else None
 
 
+def describe_player_lookup_failure(source: DemoSource, selector: str) -> str:
+    """Explain why resolve_player returned nothing: absent, out of range, or
+
+    ambiguous — and for ambiguity, list the names that matched so the user can
+    pick a more specific one.
+    """
+    players = source.players()
+    if selector.isdigit():
+        return f"player number {selector} is out of range (1-{len(players)})"
+    matches = [p for p in players if selector.lower() in p.name.lower()]
+    if not matches:
+        return f"no player matching '{selector}'"
+    names = ", ".join(p.name for p in matches)
+    return f"'{selector}' is ambiguous — matches: {names}"
+
+
 def print_match_summary(source: DemoSource) -> None:
     info = source.info
     rounds = source.round_list()
@@ -350,10 +366,8 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         player = resolve_player(source, args.player)
         if player is None:
-            print(
-                f"Error: no unique player matching '{args.player}'",
-                file=sys.stderr,
-            )
+            reason = describe_player_lookup_failure(source, args.player)
+            print(f"Error: {reason}", file=sys.stderr)
             return 1
         print_clip_plan(source, player, types)
 

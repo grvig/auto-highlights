@@ -4,11 +4,25 @@ import pytest
 
 from highlights.cli import (
     build_parser,
+    describe_player_lookup_failure,
     main,
     parse_types,
     pov_recording_warning,
+    resolve_player,
 )
+from highlights.engine.demo_source import Player
 from highlights.engine.moments import HighlightType
+
+
+class FakeSource:
+    def __init__(self, names):
+        self._players = [
+            Player(steamid=str(i), name=name, starting_side="ct")
+            for i, name in enumerate(names, start=1)
+        ]
+
+    def players(self):
+        return self._players
 
 
 def test_demo_is_optional_at_parse_time_for_check():
@@ -103,6 +117,35 @@ def test_pov_warning_names_the_player():
     warning = pov_recording_warning(is_gotv=False, player_name="ORYX", live=True)
     assert "ORYX" in warning
     assert "POV demo" in warning
+
+
+def test_resolve_player_by_number_and_name():
+    source = FakeSource(["semi", "ORYX", "HUNTER"])
+    assert resolve_player(source, "2").name == "ORYX"
+    assert resolve_player(source, "semi").name == "semi"
+    assert resolve_player(source, "hunt").name == "HUNTER"  # case-insensitive
+
+
+def test_resolve_player_ambiguous_returns_none():
+    source = FakeSource(["player_one", "player_two"])
+    assert resolve_player(source, "player") is None
+
+
+def test_lookup_failure_distinguishes_absent_from_ambiguous():
+    source = FakeSource(["semi", "semiauto", "ORYX"])
+    # ambiguous: lists the matches
+    ambiguous = describe_player_lookup_failure(source, "semi")
+    assert "ambiguous" in ambiguous
+    assert "semi" in ambiguous and "semiauto" in ambiguous
+    # absent: says so
+    assert "no player matching" in describe_player_lookup_failure(source, "zzz")
+
+
+def test_lookup_failure_reports_out_of_range_number():
+    source = FakeSource(["semi", "ORYX"])
+    message = describe_player_lookup_failure(source, "9")
+    assert "out of range" in message
+    assert "1-2" in message
 
 
 def test_version_flag_prints_version_and_exits(capsys):
