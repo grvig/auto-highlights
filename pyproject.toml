@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auto-highlights"
+version = "0.1.0"
+description = "Turn a Counter-Strike 2 demo into a highlight reel for one player"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "awpy>=2.0.0",
+    "polars>=1.0.0",
+    "obsws-python>=1.6.0",
+    "customtkinter>=5.2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0"]
+
+[project.scripts]
+highlights = "highlights.cli:main"
+
+[tool.setuptools]
+packages = [
+    "highlights",
+    "highlights.engine",
+    "highlights.engine.detectors",
+    "highlights.recorder",
+    "highlights.stitcher",
+]
