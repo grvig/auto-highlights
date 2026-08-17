@@ -30,6 +30,9 @@ packages = [
     "highlights.stitcher",
 ]
 
+[tool.setuptools.package-data]
+highlights = ["py.typed"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
