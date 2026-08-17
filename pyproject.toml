@@ -29,3 +29,7 @@ packages = [
     "highlights.recorder",
     "highlights.stitcher",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
