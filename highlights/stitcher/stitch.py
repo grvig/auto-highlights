@@ -56,18 +56,22 @@ def stitch_paths(
     list_dir = work_dir or output_path.parent
     concat_list = write_concat_list(clip_paths, list_dir / "concat_list.txt")
 
-    copy_cmd = build_stream_copy(ffmpeg, concat_list, output_path)
     try:
-        return run_concat(copy_cmd, ffmpeg, runner=runner)
-    except StitchError as error:
-        if not allow_reencode:
-            raise
-        logger.warning(
-            "Stream copy failed (%s); retrying with a re-encode", error
-        )
+        copy_cmd = build_stream_copy(ffmpeg, concat_list, output_path)
+        try:
+            return run_concat(copy_cmd, ffmpeg, runner=runner)
+        except StitchError as error:
+            if not allow_reencode:
+                raise
+            logger.warning(
+                "Stream copy failed (%s); retrying with a re-encode", error
+            )
 
-    reencode_cmd = build_reencode(ffmpeg, concat_list, output_path)
-    return run_concat(reencode_cmd, ffmpeg, runner=runner)
+        reencode_cmd = build_reencode(ffmpeg, concat_list, output_path)
+        return run_concat(reencode_cmd, ffmpeg, runner=runner)
+    finally:
+        # The concat list is a throwaway ffmpeg needs only during the run.
+        concat_list.unlink(missing_ok=True)
 
 
 def stitch_clips(

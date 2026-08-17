@@ -104,10 +104,21 @@ def test_stitch_with_no_usable_clips_raises(tmp_path):
         stitch_clips([failed], tmp_path / "reel.mkv", runner=FakeRunner())
 
 
-def test_stitch_paths_writes_concat_list(tmp_path):
+def test_stitch_paths_removes_the_concat_list_afterwards(tmp_path):
     clips = [existing_clip(tmp_path, 1).output_path]
     stitch_paths(clips, tmp_path / "reel.mkv", runner=FakeRunner())
-    assert (tmp_path / "concat_list.txt").exists()
+    # The concat list is a throwaway and must not be left behind.
+    assert not (tmp_path / "concat_list.txt").exists()
+
+
+def test_stitch_paths_cleans_up_even_on_failure(tmp_path):
+    clips = [existing_clip(tmp_path, 1).output_path]
+    runner = FakeRunner(fail_stream_copy=True)
+    with pytest.raises(StitchError):
+        stitch_paths(
+            clips, tmp_path / "reel.mkv", runner=runner, allow_reencode=False
+        )
+    assert not (tmp_path / "concat_list.txt").exists()
 
 
 def test_stitch_paths_empty_raises(tmp_path):
