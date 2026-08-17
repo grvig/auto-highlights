@@ -75,8 +75,18 @@ class DemoSource:
 
     def __init__(self, path: Path | str, tickrate: int = DEFAULT_TICKRATE) -> None:
         self.path = Path(path)
+        if self.path.is_dir():
+            raise DemoError(
+                f"{self.path} is a folder, not a demo file. Point at a .dem file "
+                "inside it (demos live under <cs2>/game/csgo/replays)."
+            )
         if not self.path.is_file():
             raise DemoError(f"No demo file at {self.path}")
+        if self.path.suffix.lower() != ".dem":
+            raise DemoError(
+                f"{self.path.name} is not a .dem file (got '{self.path.suffix}'). "
+                "This tool reads Counter-Strike 2 demo files."
+            )
 
         self.tickrate = tickrate
         logger.info("Parsing %s (tickrate=%d)", self.path.name, tickrate)

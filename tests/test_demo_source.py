@@ -34,6 +34,18 @@ def test_missing_demo_file_raises_demo_error(tmp_path):
         DemoSource(tmp_path / "nope.dem")
 
 
+def test_directory_path_reports_a_folder(tmp_path):
+    with pytest.raises(DemoError, match="is a folder"):
+        DemoSource(tmp_path)
+
+
+def test_non_dem_file_is_rejected(tmp_path):
+    wrong = tmp_path / "clip.mp4"
+    wrong.write_text("not a demo")
+    with pytest.raises(DemoError, match="not a .dem file"):
+        DemoSource(wrong)
+
+
 def test_player_str_shows_name_and_side():
     player = Player(steamid="76561198000000000", name="semi", starting_side="t")
     assert str(player) == "semi (t)"
