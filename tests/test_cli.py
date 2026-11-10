@@ -29,7 +29,7 @@ def test_demo_is_optional_at_parse_time_for_check():
     # demo is optional so --check can run without one; it is required at
     # runtime otherwise (see test_missing_demo_argument_exits_nonzero).
     args = build_parser().parse_args([])
-    assert args.demo is None
+    assert args.demos == []
 
 
 def test_missing_demo_argument_exits_nonzero(capsys):
@@ -40,8 +40,14 @@ def test_missing_demo_argument_exits_nonzero(capsys):
 
 def test_parser_reads_demo_and_verbose_flag():
     args = build_parser().parse_args(["match.dem", "--verbose"])
-    assert args.demo.name == "match.dem"
+    assert [d.name for d in args.demos] == ["match.dem"]
     assert args.verbose
+
+
+def test_parser_accepts_several_demos_and_me():
+    args = build_parser().parse_args(["a.dem", "b.dem", "c.dem", "--me"])
+    assert [d.name for d in args.demos] == ["a.dem", "b.dem", "c.dem"]
+    assert args.me
 
 
 def test_verbose_defaults_off():

@@ -10,18 +10,27 @@ from __future__ import annotations
 
 import argparse
 import sys
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
 
 from highlights import __version__
 from highlights.config import Config, ConfigError, load_config
 from highlights.logging_setup import LEVELS, configure_logging
 from highlights.preflight import all_passed, run_preflight
 from highlights.engine.cache import DemoCache
-from highlights.engine.clip_plan import build_clip_plan
+from highlights.engine.clip_plan import ClipPlan
 from highlights.engine.demo_source import DemoError, DemoSource, Player
-from highlights.engine.detection import DetectionContext
 from highlights.engine.models import deaths_of_player, kills_by_player
 from highlights.engine.moments import HighlightType
+from highlights.engine.multi import (
+    Match,
+    build_multi_plan,
+    match_from_source,
+    players_across,
+)
+from highlights.steam.account import signed_in_account
+from highlights.steam.locate import find_steam_root
 from highlights.recorder.base import RecordedClip
 from highlights.recorder.cs2_controller import Cs2Controller, Cs2Error
 from highlights.recorder.dry_run import DryRunRecorder
@@ -49,7 +58,15 @@ def build_parser() -> argparse.ArgumentParser:
         description="Parse a CS2 demo and report its players, stats, and highlights.",
     )
     parser.add_argument(
-        "demo", type=Path, nargs="?", help="path to a .dem file"
+        "demos",
+        type=Path,
+        nargs="*",
+        help="one or more .dem files; several are pooled into one plan",
+    )
+    parser.add_argument(
+        "--me",
+        action="store_true",
+        help="plan for the Steam account signed in on this PC",
     )
     parser.add_argument(
         "--version", action="version", version=f"%(prog)s {__version__}"
@@ -128,7 +145,58 @@ def parse_types(spec: str) -> list[HighlightType]:
     return result
 
 
-def resolve_player(source: DemoSource, selector: str) -> Player | None:
+class HasPlayers(Protocol):
+    """A single demo, or the combined roster of several."""
+
+    def players(self) -> list[Player]: ...
+
+
+@dataclass(frozen=True)
+class Roster:
+    """Players pooled across several demos, numbered for --player."""
+
+    entries: list[Player]
+
+    def players(self) -> list[Player]:
+        return self.entries
+
+
+def print_matches(sources: list[DemoSource], matches: list[Match]) -> Roster:
+    """Summarise several demos and the players across them."""
+    print(f"\nMatches ({len(sources)}):")
+    for index, source in enumerate(sources, start=1):
+        info = source.info
+        kind = "GOTV" if info.is_gotv else "POV"
+        rounds = len(source.round_list())
+        print(f"  {index}. {info.map_name:<12} {kind:<4} {rounds:>2} rounds  {source.path.name}")
+
+    pooled = players_across(matches)
+    print(f"\nPlayers across all matches ({len(pooled)}):")
+    for index, (player, count) in enumerate(pooled, start=1):
+        print(f"  {index:<3} {player.name:<24} in {count} of {len(matches)}")
+    return Roster([player for player, _ in pooled])
+
+
+def choose_player(
+    roster: HasPlayers, selector: str | None, me: bool
+) -> tuple[Player | None, str]:
+    """Resolve --me or --player to a player, or explain why it failed."""
+    if me:
+        steam_root = find_steam_root()
+        account = signed_in_account(steam_root) if steam_root else None
+        if account is None:
+            return None, "no signed-in Steam account found; use --player instead"
+        player = next((p for p in roster.players() if p.steamid == account.steamid), None)
+        if player is None:
+            return None, "the signed-in Steam account is not in these demos"
+        return player, ""
+    player = resolve_player(roster, selector or "")
+    if player is None:
+        return None, describe_player_lookup_failure(roster, selector or "")
+    return player, ""
+
+
+def resolve_player(source: HasPlayers, selector: str) -> Player | None:
     """Find a player by 1-based roster number or case-insensitive name match."""
     players = source.players()
     if selector.isdigit():
@@ -139,7 +207,7 @@ def resolve_player(source: DemoSource, selector: str) -> Player | None:
     return matches[0] if len(matches) == 1 else None
 
 
-def describe_player_lookup_failure(source: DemoSource, selector: str) -> str:
+def describe_player_lookup_failure(source: HasPlayers, selector: str) -> str:
     """Explain why resolve_player returned nothing: absent, out of range, or
 
     ambiguous — and for ambiguity, list the names that matched so the user can
@@ -192,14 +260,10 @@ def print_players(source: DemoSource) -> None:
         )
 
 
-def print_clip_plan(
-    source: DemoSource, player: Player, types: list[HighlightType]
-) -> None:
-    ctx = DetectionContext.from_source(source)
-    plan = build_clip_plan(ctx, player.steamid, types)
+def print_clip_plan(plan: ClipPlan, player_name: str) -> None:
     selected = ", ".join(str(t) for t in plan.selected_types)
 
-    print(f"\nHighlight plan for {player.name}")
+    print(f"\nHighlight plan for {player_name}")
     print(f"Types      : {selected}")
     print(f"Moments    : {len(plan)}  ({plan.total_seconds:.0f}s of footage)")
     breakdown = ", ".join(
@@ -233,19 +297,19 @@ def pov_recording_warning(is_gotv: bool, player_name: str, live: bool) -> str | 
 
 
 def run_recording(
-    source: DemoSource,
-    player: Player,
-    types: list[HighlightType],
+    plan: ClipPlan,
+    player_name: str,
+    *,
+    fallback_demo: Path,
+    pov_demos: list[str],
     live: bool,
     stitch: bool = False,
 ) -> int:
-    """Record the player's plan, dry by default. Returns an exit code."""
-    warning = pov_recording_warning(source.info.is_gotv, player.name, live)
+    """Record a plan, dry by default. Returns an exit code."""
+    warning = pov_recording_warning(not pov_demos, player_name, live)
     if warning:
-        print(warning, file=sys.stderr)
+        print(f"{warning} POV demos here: {', '.join(pov_demos)}", file=sys.stderr)
 
-    ctx = DetectionContext.from_source(source)
-    plan = build_clip_plan(ctx, player.steamid, types)
     if not plan.moments:
         print("\nNothing to record: the plan is empty.")
         return 0
@@ -253,8 +317,8 @@ def run_recording(
     config = load_config()
     requests = build_clip_requests(
         plan=plan,
-        demo_path=source.path,
-        player_name=player.name,
+        demo_path=fallback_demo,
+        player_name=player_name,
         output_dir=config.clips_dir,
     )
 
@@ -285,18 +349,16 @@ def run_recording(
         print(f"  #{clip.index:03d} {clip.error}", file=sys.stderr)
 
     if stitch:
-        stitch_code = stitch_recorded(clips, player, config)
+        stitch_code = stitch_recorded(clips, player_name, config)
         if stitch_code != 0:
             return stitch_code
 
     return 1 if failed else 0
 
 
-def stitch_recorded(
-    clips: list[RecordedClip], player: Player, config: Config
-) -> int:
+def stitch_recorded(clips: list[RecordedClip], player_name: str, config: Config) -> int:
     """Stitch recorded clips into a final reel. Returns an exit code."""
-    reel_name = f"{sanitise_part(player.name)}_highlights.mkv"
+    reel_name = f"{sanitise_part(player_name)}_highlights.mkv"
     reel_path = config.output_dir / reel_name
     print(f"\nStitching {len(clips)} clip(s) into {reel_name}")
     try:
@@ -363,45 +425,56 @@ def main(argv: list[str] | None = None) -> int:
     if args.check:
         return run_check()
 
-    if args.demo is None:
+    if not args.demos:
         print("Error: a demo path is required (or use --check)", file=sys.stderr)
         return 1
 
+    cache = None if args.no_cache else open_cache()
     try:
-        source = DemoSource(args.demo, cache=None if args.no_cache else open_cache())
+        sources = [DemoSource(path, cache=cache) for path in args.demos]
     except DemoError as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
 
-    print_match_summary(source)
-    print_players(source)
+    matches = [match_from_source(source) for source in sources]
+    if len(sources) == 1:
+        print_match_summary(sources[0])
+        print_players(sources[0])
+        roster = sources[0]
+    else:
+        roster = print_matches(sources, matches)
 
-    if args.player:
+    if not (args.player or args.me):
+        return 0
+    try:
+        types = parse_types(args.types)
+    except ValueError as error:
+        print(f"Error: unknown highlight type ({error})", file=sys.stderr)
+        return 1
+    player, reason = choose_player(roster, args.player, args.me)
+    if player is None:
+        print(f"Error: {reason}", file=sys.stderr)
+        return 1
+
+    multi = build_multi_plan(matches, player.steamid, types)
+    for label in multi.missing_from:
+        print(f"Note: {player.name} is not in {label}", file=sys.stderr)
+    print_clip_plan(multi.plan, player.name)
+
+    if args.dry_run or args.record:
+        pov = [s.path.name for s in sources if not s.info.is_gotv]
         try:
-            types = parse_types(args.types)
-        except ValueError as error:
-            print(f"Error: unknown highlight type ({error})", file=sys.stderr)
+            return run_recording(
+                multi.plan,
+                player.name,
+                fallback_demo=sources[0].path,
+                pov_demos=pov,
+                live=args.record,
+                stitch=args.stitch and args.record,
+            )
+        except ConfigError as error:
+            print(f"Error: {error}", file=sys.stderr)
             return 1
-        player = resolve_player(source, args.player)
-        if player is None:
-            reason = describe_player_lookup_failure(source, args.player)
-            print(f"Error: {reason}", file=sys.stderr)
-            return 1
-        print_clip_plan(source, player, types)
-
-        if args.dry_run or args.record:
-            try:
-                return run_recording(
-                    source,
-                    player,
-                    types,
-                    live=args.record,
-                    stitch=args.stitch and args.record,
-                )
-            except ConfigError as error:
-                print(f"Error: {error}", file=sys.stderr)
-                return 1
-
     return 0
 
 
