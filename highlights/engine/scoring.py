@@ -90,3 +90,52 @@ def clutch_score(moment: Moment) -> tuple[float, tuple[str, ...]]:
         return 0.0, ()
     points = CLUTCH_POINTS.get(moment.opponents, CLUTCH_POINTS[5])
     return points, (f"1v{moment.opponents}",)
+
+
+# Round win chance from alive counts: own^k / (own^k + enemy^k). With k = 2.2
+# this lands near commonly reported CS man-advantage rates (1v1 50%, 1v2 ~18%,
+# 1v3 ~8%, 2v1 ~82%). A heuristic, not a trained model; bomb state is not yet
+# included.
+WIN_PROBABILITY_EXPONENT = 2.2
+# Points for swinging a round from certain loss to certain win.
+IMPACT_POINTS = 10.0
+# Total swing at or above which a moment is called out as round-deciding.
+SWING_TAG_THRESHOLD = 0.4
+
+
+def win_probability(own_alive: int, enemy_alive: int) -> float:
+    """Chance a side wins the round given how many are alive on each side."""
+    if own_alive <= 0:
+        return 0.0
+    if enemy_alive <= 0:
+        return 1.0
+    own = own_alive**WIN_PROBABILITY_EXPONENT
+    enemy = enemy_alive**WIN_PROBABILITY_EXPONENT
+    return own / (own + enemy)
+
+
+def alive_before(
+    kill: Kill, round_kills: list[Kill], roster: dict[str, str]
+) -> tuple[int, int]:
+    """Players alive on the killer's side and the enemy side just before a kill."""
+    side = roster.get(kill.attacker_steamid, kill.attacker_side)
+    own = {sid for sid, s in roster.items() if s == side}
+    enemy = {sid for sid, s in roster.items() if s != side}
+    for earlier in round_kills:
+        if earlier.tick >= kill.tick:
+            continue
+        own.discard(earlier.victim_steamid)
+        enemy.discard(earlier.victim_steamid)
+    return len(own), len(enemy)
+
+
+def impact_score(
+    moment_kills: list[Kill], round_kills: list[Kill], roster: dict[str, str]
+) -> tuple[float, tuple[str, ...]]:
+    """Points for how much the player's kills moved their side's win chance."""
+    swing = 0.0
+    for kill in moment_kills:
+        own, enemy = alive_before(kill, round_kills, roster)
+        swing += win_probability(own, enemy - 1) - win_probability(own, enemy)
+    tags = ("swung the round",) if swing >= SWING_TAG_THRESHOLD else ()
+    return swing * IMPACT_POINTS, tags

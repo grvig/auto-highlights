@@ -90,3 +90,55 @@ def test_clutch_detector_records_opponents():
     from tests.test_detector_clutch import context
 
     assert ClutchDetector().detect(context(), "P")[0].opponents == 2
+
+
+ROSTER = {"P": "ct", "T1": "ct", "E1": "t", "E2": "t", "E3": "t"}
+
+
+def test_win_probability_matches_known_shapes():
+    from highlights.engine.scoring import win_probability
+
+    assert win_probability(1, 1) == 0.5
+    assert win_probability(5, 5) == 0.5
+    assert win_probability(1, 3) < 0.1
+    assert win_probability(2, 1) > 0.8
+    assert win_probability(0, 2) == 0.0
+    assert win_probability(3, 0) == 1.0
+
+
+def test_alive_counts_ignore_kills_after_this_one():
+    from highlights.engine.scoring import alive_before
+
+    kills = [make_kill(100, "E1", "T1"), make_kill(200, "P", "E1"), make_kill(300, "P", "E2")]
+    assert alive_before(kills[1], kills, ROSTER) == (1, 3)  # T1 already down
+    assert alive_before(kills[2], kills, ROSTER) == (1, 2)
+
+
+def test_a_whole_clutch_dwarfs_a_cleanup_kill():
+    from highlights.engine.scoring import impact_score
+
+    # P alone wins a 1v3: from ~8% to a won round.
+    clutch = [
+        make_kill(100, "E1", "T1"),
+        make_kill(200, "P", "E1"),
+        make_kill(300, "P", "E2"),
+        make_kill(400, "P", "E3"),
+    ]
+    clutch_points, _ = impact_score(clutch[1:], clutch, ROSTER)
+
+    # Five alive against one: the round was already won.
+    roster_5v1 = {"P": "ct", "A": "ct", "B": "ct", "C": "ct", "D": "ct", "E1": "t"}
+    cleanup = [make_kill(200, "P", "E1")]
+    cleanup_points, _ = impact_score(cleanup, cleanup, roster_5v1)
+
+    assert clutch_points > 9.0
+    assert cleanup_points < 0.5
+
+
+def test_big_swings_are_tagged():
+    from highlights.engine.scoring import impact_score
+
+    roster = {"P": "ct", "E1": "t", "E2": "t"}
+    kills = [make_kill(100, "P", "E1"), make_kill(200, "P", "E2")]  # 1v2 to win
+    _, tags = impact_score(kills, kills, roster)
+    assert tags == ("swung the round",)
