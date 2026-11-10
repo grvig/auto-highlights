@@ -38,6 +38,9 @@ DEFAULT_TICKRATE = CS2_TICKRATE
 # recording player's name instead, and only have that one perspective.
 GOTV_CLIENT_NAME = "SourceTV Demo"
 
+# Events outside awpy's default set that detectors need, parsed together.
+EXTRA_EVENTS = ("player_blind", "smokegrenade_detonate")
+
 
 class DemoError(Exception):
     """Raised when a demo cannot be read or does not look like we expect."""
@@ -92,6 +95,7 @@ class DemoSource:
         logger.info("Parsing %s (tickrate=%d)", self.path.name, tickrate)
         self._demo = Demo(self.path, tickrate=tickrate)
         self._demo.parse()
+        self._extra_events: dict[str, pl.DataFrame] | None = None
         logger.info("Parsed %s", self.path.name)
 
     @property
@@ -164,33 +168,32 @@ class DemoSource:
         """The match's kills as internal models, world deaths excluded."""
         return extract_kills(self.kills)
 
-    def blind_list(self) -> list[Blind]:
-        """Flash events as Blind models.
+    def extra_event(self, name: str) -> pl.DataFrame | None:
+        """One of the events awpy does not parse by default.
 
-        player_blind is not in awpy's default event set, so it is parsed on
-        demand here. Returns an empty list if the demo carries no flash events.
+        All of them are read in a single pass the first time any is asked for,
+        rather than one trip through the demo per event type.
         """
-        parsed = self._demo.parse_events(["player_blind"])
-        frame = parsed.get("player_blind")
+        if self._extra_events is None:
+            self._extra_events = self._demo.parse_events(list(EXTRA_EVENTS))
+        frame = self._extra_events.get(name)
         if frame is None or frame.height == 0:
-            return []
-        return extract_blinds(frame)
+            return None
+        return frame
+
+    def blind_list(self) -> list[Blind]:
+        """Flash events as Blind models, empty if the demo has none."""
+        frame = self.extra_event("player_blind")
+        return extract_blinds(frame) if frame is not None else []
 
     def damage_list(self) -> list[Damage]:
         """Damage events as Damage models, world damage excluded."""
         return extract_damages(self.damages)
 
     def smoke_list(self) -> list[Smoke]:
-        """Smoke detonations as Smoke models.
-
-        smokegrenade_detonate is not in awpy's default event set, so it is
-        parsed on demand. Returns an empty list if the demo has no smokes.
-        """
-        parsed = self._demo.parse_events(["smokegrenade_detonate"])
-        frame = parsed.get("smokegrenade_detonate")
-        if frame is None or frame.height == 0:
-            return []
-        return extract_smokes(frame)
+        """Smoke detonations as Smoke models, empty if the demo has none."""
+        frame = self.extra_event("smokegrenade_detonate")
+        return extract_smokes(frame) if frame is not None else []
 
     @property
     def rounds(self) -> pl.DataFrame:
