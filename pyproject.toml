@@ -27,6 +27,7 @@ packages = [
     "highlights.engine",
     "highlights.engine.detectors",
     "highlights.recorder",
+    "highlights.steam",
     "highlights.stitcher",
 ]
 
