@@ -16,6 +16,7 @@ from highlights import __version__
 from highlights.config import Config, ConfigError, load_config
 from highlights.logging_setup import LEVELS, configure_logging
 from highlights.preflight import all_passed, run_preflight
+from highlights.engine.cache import DemoCache
 from highlights.engine.clip_plan import build_clip_plan
 from highlights.engine.demo_source import DemoError, DemoSource, Player
 from highlights.engine.detection import DetectionContext
@@ -58,6 +59,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="report environment readiness (config, CS2, ffmpeg, folders) and "
         "exit; needs no demo and launches nothing",
+    )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="parse the demo from scratch instead of using the parse cache",
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="show progress (INFO logs)"
@@ -336,6 +342,17 @@ def use_utf8_output() -> None:
             stream.reconfigure(encoding="utf-8", errors="replace")
 
 
+def open_cache() -> DemoCache | None:
+    """The parse cache from config, or None when there is no usable config.
+
+    Parsing still works without a config file; it just is not cached.
+    """
+    try:
+        return DemoCache(load_config().resolved_cache_dir)
+    except ConfigError:
+        return None
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     use_utf8_output()
@@ -351,7 +368,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
-        source = DemoSource(args.demo)
+        source = DemoSource(args.demo, cache=None if args.no_cache else open_cache())
     except DemoError as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1

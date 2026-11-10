@@ -14,6 +14,7 @@ from pathlib import Path
 import polars as pl
 from awpy import Demo
 
+from highlights.engine.cache import DemoCache
 from highlights.engine.models import (
     Blind,
     Damage,
@@ -74,9 +75,18 @@ class DemoInfo:
 
 
 class DemoSource:
-    """A parsed demo, exposing awpy's dataframes under stable names."""
+    """A parsed demo, exposing its tables under stable names.
 
-    def __init__(self, path: Path | str, tickrate: int = DEFAULT_TICKRATE) -> None:
+    Given a DemoCache, a demo parsed once is reopened from disk in a fraction of
+    the parse time; a fresh parse is stored for next time.
+    """
+
+    def __init__(
+        self,
+        path: Path | str,
+        tickrate: int = DEFAULT_TICKRATE,
+        cache: DemoCache | None = None,
+    ) -> None:
         self.path = Path(path)
         if self.path.is_dir():
             raise DemoError(
@@ -92,15 +102,34 @@ class DemoSource:
             )
 
         self.tickrate = tickrate
-        logger.info("Parsing %s (tickrate=%d)", self.path.name, tickrate)
-        self._demo = Demo(self.path, tickrate=tickrate)
-        self._demo.parse()
-        self._extra_events: dict[str, pl.DataFrame] | None = None
+        cached = cache.load(self.path) if cache else None
+        if cached is not None:
+            self._header, self._frames = cached.header, cached.frames
+        else:
+            self._header, self._frames = self._parse()
+            if cache is not None:
+                cache.store(self.path, self._header, self._frames)
+
+    def _parse(self) -> tuple[dict, dict[str, pl.DataFrame | None]]:
+        """Run awpy over the demo and collect every table the engine reads."""
+        logger.info("Parsing %s (tickrate=%d)", self.path.name, self.tickrate)
+        demo = Demo(self.path, tickrate=self.tickrate)
+        demo.parse()
+        # Events outside awpy's default set, read together in one extra pass.
+        extras = demo.parse_events(list(EXTRA_EVENTS))
         logger.info("Parsed %s", self.path.name)
+        frames: dict[str, pl.DataFrame | None] = {
+            "rounds": demo.rounds,
+            "kills": demo.kills,
+            "damages": demo.damages,
+            "ticks": demo.ticks,
+        }
+        frames.update({name: extras.get(name) for name in EXTRA_EVENTS})
+        return dict(demo.header), frames
 
     @property
     def info(self) -> DemoInfo:
-        header = self._demo.header
+        header = self._header
         return DemoInfo(
             map_name=header.get("map_name", "unknown"),
             server_name=header.get("server_name", "unknown"),
@@ -169,14 +198,8 @@ class DemoSource:
         return extract_kills(self.kills)
 
     def extra_event(self, name: str) -> pl.DataFrame | None:
-        """One of the events awpy does not parse by default.
-
-        All of them are read in a single pass the first time any is asked for,
-        rather than one trip through the demo per event type.
-        """
-        if self._extra_events is None:
-            self._extra_events = self._demo.parse_events(list(EXTRA_EVENTS))
-        frame = self._extra_events.get(name)
+        """One of the events awpy does not parse by default, or None if absent."""
+        frame = self._frames.get(name)
         if frame is None or frame.height == 0:
             return None
         return frame
@@ -197,20 +220,16 @@ class DemoSource:
 
     @property
     def rounds(self) -> pl.DataFrame:
-        return self._demo.rounds
+        return self._frames["rounds"]
 
     @property
     def kills(self) -> pl.DataFrame:
-        return self._demo.kills
+        return self._frames["kills"]
 
     @property
     def damages(self) -> pl.DataFrame:
-        return self._demo.damages
-
-    @property
-    def grenades(self) -> pl.DataFrame:
-        return self._demo.grenades
+        return self._frames["damages"]
 
     @property
     def ticks(self) -> pl.DataFrame:
-        return self._demo.ticks
+        return self._frames["ticks"]

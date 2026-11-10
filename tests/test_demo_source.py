@@ -49,3 +49,33 @@ def test_non_dem_file_is_rejected(tmp_path):
 def test_player_str_shows_name_and_side():
     player = Player(steamid="76561198000000000", name="semi", starting_side="t")
     assert str(player) == "semi (t)"
+
+
+def test_cache_hit_skips_parsing(tmp_path, monkeypatch):
+    import polars as pl
+
+    from highlights.engine.cache import DemoCache
+
+    demo = tmp_path / "match.dem"
+    demo.write_bytes(b"not really a demo")
+    cache = DemoCache(tmp_path / "cache")
+    cache.store(
+        demo,
+        {"map_name": "de_nuke", "client_name": GOTV_CLIENT_NAME},
+        {
+            "rounds": pl.DataFrame({"round_num": [1]}),
+            "kills": pl.DataFrame({"tick": [100]}),
+            "damages": pl.DataFrame({"tick": [90]}),
+            "ticks": pl.DataFrame({"tick": [1, 2]}),
+        },
+    )
+
+    def no_parsing(*args, **kwargs):
+        raise AssertionError("a cache hit must not parse the demo")
+
+    monkeypatch.setattr("highlights.engine.demo_source.Demo", no_parsing)
+    source = DemoSource(demo, cache=cache)
+    assert source.info.map_name == "de_nuke"
+    assert source.info.is_gotv
+    assert source.kills.height == 1
+    assert source.extra_event("player_blind") is None
