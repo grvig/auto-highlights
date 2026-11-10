@@ -77,6 +77,9 @@ class Moment:
     segments: tuple[Segment, ...] = ()
     # The demo this moment comes from, so a reel can mix several matches.
     source_demo: Path | None = None
+    # How good the moment is (filled in by scoring) and what made it so.
+    score: float = 0.0
+    tags: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.start_tick > self.end_tick:
