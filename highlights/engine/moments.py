@@ -80,6 +80,8 @@ class Moment:
     # How good the moment is (filled in by scoring) and what made it so.
     score: float = 0.0
     tags: tuple[str, ...] = ()
+    # For a clutch: how many enemies the player faced alone (the N in 1vN).
+    opponents: int = 0
 
     def __post_init__(self) -> None:
         if self.start_tick > self.end_tick:

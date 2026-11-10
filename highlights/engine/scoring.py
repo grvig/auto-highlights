@@ -57,3 +57,36 @@ def style_score(moment_kills: list[Kill]) -> tuple[float, tuple[str, ...]]:
             if tag != "headshot" and tag not in tags:
                 tags.append(tag)
     return points, tuple(tags)
+
+
+# A multi-kill whose kills average this far apart (seconds) earns no tempo
+# points; faster sequences earn up to TEMPO_POINTS per extra kill.
+TEMPO_WINDOW_SECONDS = 10.0
+TEMPO_POINTS = 2.0
+# Average gap at or under which a multi-kill is called out as fast.
+FAST_GAP_SECONDS = 4.0
+
+# Points for winning a clutch against N enemies alone.
+CLUTCH_POINTS = {1: 2.0, 2: 4.0, 3: 6.5, 4: 9.0, 5: 12.0}
+
+
+def tempo_score(
+    moment_kills: list[Kill], tickrate: int = 64
+) -> tuple[float, tuple[str, ...]]:
+    """Points for kills strung together quickly, tagged like "3 kills in 3.7s"."""
+    if len(moment_kills) < 2:
+        return 0.0, ()
+    span = (moment_kills[-1].tick - moment_kills[0].tick) / tickrate
+    average_gap = span / (len(moment_kills) - 1)
+    speed = max(0.0, 1.0 - average_gap / TEMPO_WINDOW_SECONDS)
+    points = TEMPO_POINTS * (len(moment_kills) - 1) * speed
+    tags = (f"{len(moment_kills)} kills in {span:.1f}s",) if average_gap <= FAST_GAP_SECONDS else ()
+    return points, tags
+
+
+def clutch_score(moment: Moment) -> tuple[float, tuple[str, ...]]:
+    """Points for the size of a won clutch, tagged like "1v3"."""
+    if moment.opponents <= 0:
+        return 0.0, ()
+    points = CLUTCH_POINTS.get(moment.opponents, CLUTCH_POINTS[5])
+    return points, (f"1v{moment.opponents}",)

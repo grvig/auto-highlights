@@ -76,6 +76,7 @@ class ClutchDetector:
                     end_tick=segments[-1].end_tick,
                     description=sit.label,
                     segments=segments,
+                    opponents=sit.enemies_at_start,
                 )
             )
         return sorted(moments, key=lambda m: m.core_tick)
