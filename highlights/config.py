@@ -53,6 +53,13 @@ class Config:
     ffmpeg_path: str = "ffmpeg"
     # True when cs2_root came from auto-detection rather than config.toml.
     cs2_root_detected: bool = False
+    # Parsed-demo cache. Defaults to a sibling of clips_dir so it lands on the
+    # same drive the user picked for media rather than the system drive.
+    cache_dir: Path | None = None
+
+    @property
+    def resolved_cache_dir(self) -> Path:
+        return self.cache_dir or self.clips_dir.parent / "cache"
 
     @property
     def cs2_executable(self) -> Path | None:
@@ -151,6 +158,7 @@ def load_config(
         ),
         ffmpeg_path=str(paths.get("ffmpeg", "ffmpeg")),
         cs2_root_detected=not configured_cs2 and cs2_root is not None,
+        cache_dir=_resolve(base, str(paths["cache_dir"])) if paths.get("cache_dir") else None,
     )
 
 

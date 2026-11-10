@@ -124,3 +124,17 @@ def test_undetectable_cs2_fails_only_when_recording_needs_it(tmp_path):
     assert config.cs2_root is None
     with pytest.raises(ConfigError, match="Could not find CS2"):
         config.verify_cs2_install()
+
+
+def test_cache_dir_defaults_next_to_clips(tmp_path):
+    path = tmp_path / "config.toml"
+    path.write_text(NO_CS2_ROOT.replace('output_dir = "./output"', 'clips_dir = "media/clips"'))
+    config = load_config(path, locate_cs2=lambda: None)
+    assert config.resolved_cache_dir == (tmp_path / "media" / "cache").resolve()
+
+
+def test_cache_dir_can_be_configured(tmp_path):
+    path = tmp_path / "config.toml"
+    path.write_text(NO_CS2_ROOT.replace('output_dir = "./output"', 'cache_dir = "elsewhere"'))
+    config = load_config(path, locate_cs2=lambda: None)
+    assert config.resolved_cache_dir == (tmp_path / "elsewhere").resolve()

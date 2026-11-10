@@ -65,6 +65,9 @@ def run_preflight(config: Config) -> list[Check]:
     output_ok, output_detail = _writable(config.output_dir)
     checks.append(Check("output dir writable", output_ok, output_detail))
 
+    cache_ok, cache_detail = _writable(config.resolved_cache_dir)
+    checks.append(Check("cache dir writable", cache_ok, cache_detail))
+
     return checks
 
 
