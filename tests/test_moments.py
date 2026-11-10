@@ -144,3 +144,49 @@ def test_segments_must_be_ordered_and_disjoint():
 def test_segment_rejects_inverted_window():
     with pytest.raises(ValueError, match="after"):
         Segment(500, 100)
+
+
+def segs(ticks, **kwargs):
+    from highlights.engine.moments import build_segments
+
+    base = dict(
+        pre_roll_seconds=3.0,
+        post_roll_seconds=2.0,
+        first_tick=0,
+        last_tick=1_000_000,
+    )
+    base.update(kwargs)
+    return build_segments(ticks, **base)
+
+
+def test_close_kills_merge_into_one_segment():
+    # 2s apart: padded windows overlap, so one continuous shot
+    result = segs([10_000, 10_128])
+    assert result == (Segment(10_000 - 192, 10_128 + 128),)
+
+
+def test_distant_kills_stay_separate():
+    result = segs([10_000, 10_000 + 60 * 64])
+    assert len(result) == 2
+    assert result[0] == Segment(10_000 - 192, 10_000 + 128)
+
+
+def test_gap_threshold_controls_merging():
+    # windows end/start 3s apart: merged at a 4s gap, separate at a 2s gap
+    ticks = [10_000, 10_000 + 8 * 64]
+    assert len(segs(ticks, merge_gap_seconds=4.0)) == 1
+    assert len(segs(ticks, merge_gap_seconds=2.0)) == 2
+
+
+def test_segments_clamp_to_demo_bounds():
+    result = segs([50], first_tick=10, last_tick=100)
+    assert result == (Segment(10, 100),)
+
+
+def test_unsorted_events_are_handled():
+    assert segs([20_000, 10_000]) == segs([10_000, 20_000])
+
+
+def test_no_events_is_rejected():
+    with pytest.raises(ValueError, match="zero events"):
+        segs([])

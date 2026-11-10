@@ -13,7 +13,13 @@ from typing import Protocol, runtime_checkable
 
 from highlights.engine.demo_source import DemoSource
 from highlights.engine.models import Blind, Damage, Kill, Round, Smoke
-from highlights.engine.moments import HighlightType, Moment, pad_window
+from highlights.engine.moments import (
+    HighlightType,
+    Moment,
+    Segment,
+    build_segments,
+    pad_window,
+)
 
 
 @dataclass(frozen=True)
@@ -99,6 +105,17 @@ class DetectionContext:
             span_start_tick=span_start_tick,
             span_end_tick=span_end_tick,
             max_span_seconds=self.max_span_seconds if cap_span else None,
+            tickrate=self.tickrate,
+        )
+
+    def segments(self, event_ticks: list[int]) -> tuple[Segment, ...]:
+        """Kill-by-kill windows around events, with this context's padding."""
+        return build_segments(
+            event_ticks,
+            self.pre_roll_seconds,
+            self.post_roll_seconds,
+            first_tick=self.first_tick,
+            last_tick=self.last_tick,
             tickrate=self.tickrate,
         )
 

@@ -81,3 +81,10 @@ class _StubDetector:
 
 def test_detector_protocol_is_satisfied_structurally():
     assert isinstance(_StubDetector(), Detector)
+
+
+def test_context_segments_use_its_padding_and_bounds():
+    from highlights.engine.moments import Segment
+
+    ctx = make_context(first_tick=0, last_tick=100_000)
+    assert ctx.segments([10_000]) == (Segment(10_000 - 192, 10_000 + 128),)

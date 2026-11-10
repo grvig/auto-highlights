@@ -155,3 +155,43 @@ def pad_window(
     start = max(start, first_tick)
     end = min(end, last_tick)
     return start, end
+
+
+# Windows closer than this are joined into one continuous segment, so a quick
+# multi-kill plays as a single uninterrupted shot rather than jump cuts.
+DEFAULT_MERGE_GAP_SECONDS = 2.0
+
+
+def build_segments(
+    event_ticks: list[int],
+    pre_roll_seconds: float,
+    post_roll_seconds: float,
+    *,
+    first_tick: int,
+    last_tick: int,
+    merge_gap_seconds: float = DEFAULT_MERGE_GAP_SECONDS,
+    tickrate: int = CS2_TICKRATE,
+) -> tuple[Segment, ...]:
+    """Pad a window around each event and merge windows that nearly touch.
+
+    Kills seconds apart become one segment; kills a minute apart become
+    separate segments with the dead time between them dropped.
+    """
+    if not event_ticks:
+        raise ValueError("Cannot build segments from zero events")
+
+    pre = seconds_to_ticks(pre_roll_seconds, tickrate)
+    post = seconds_to_ticks(post_roll_seconds, tickrate)
+    gap = seconds_to_ticks(merge_gap_seconds, tickrate)
+
+    windows = sorted(
+        (max(tick - pre, first_tick), min(tick + post, last_tick))
+        for tick in event_ticks
+    )
+    merged: list[tuple[int, int]] = []
+    for start, end in windows:
+        if merged and start - merged[-1][1] <= gap:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+    return tuple(Segment(start, end) for start, end in merged)
