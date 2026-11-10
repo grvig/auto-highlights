@@ -9,6 +9,7 @@ and are trivial to test with hand-built data.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from highlights.engine.demo_source import DemoSource
@@ -38,6 +39,8 @@ class DetectionContext:
     blinds: list[Blind] = field(default_factory=list)
     damages: list[Damage] = field(default_factory=list)
     smokes: list[Smoke] = field(default_factory=list)
+    # The demo these tables came from; moments built from it carry it along.
+    demo_path: Path | None = None
 
     @classmethod
     def from_source(
@@ -61,6 +64,7 @@ class DetectionContext:
             blinds=source.blind_list(),
             damages=source.damage_list(),
             smokes=source.smoke_list(),
+            demo_path=source.path,
         )
 
     def round_by_number(self, number: int) -> Round | None:

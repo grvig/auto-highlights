@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 
 from highlights.engine.timing import (
     CS2_TICKRATE,
@@ -74,6 +75,8 @@ class Moment:
     end_tick: int
     description: str
     segments: tuple[Segment, ...] = ()
+    # The demo this moment comes from, so a reel can mix several matches.
+    source_demo: Path | None = None
 
     def __post_init__(self) -> None:
         if self.start_tick > self.end_tick:

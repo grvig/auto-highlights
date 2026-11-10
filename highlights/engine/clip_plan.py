@@ -8,7 +8,7 @@ recorder consumes: a chronological list of padded moments to capture.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from highlights.engine.detection import DetectionContext, Detector
 from highlights.engine.detectors.clutch import ClutchDetector
@@ -107,6 +107,8 @@ def build_clip_plan(
         for detector in DETECTOR_REGISTRY.get(highlight_type, []):
             moments.extend(detector.detect(ctx, player_steamid))
 
+    if ctx.demo_path is not None:
+        moments = [replace(m, source_demo=ctx.demo_path) for m in moments]
     moments.sort(key=lambda m: (m.core_tick, m.highlight_type))
     if merge:
         moments = merge_overlaps(moments)

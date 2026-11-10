@@ -74,3 +74,18 @@ def test_counts_by_type_omits_absent_types():
 def test_counts_by_type_empty_plan():
     plan = build_clip_plan(make_context([]), "P", [HighlightType.KILL])
     assert plan.counts_by_type() == {}
+
+
+def test_moments_are_tagged_with_their_demo():
+    from dataclasses import replace
+    from pathlib import Path
+
+    kills = [make_kill(1000, "P", "E1")]
+    ctx = replace(make_context(kills), demo_path=Path("match_one.dem"))
+    plan = build_clip_plan(ctx, "P", [HighlightType.KILL])
+    assert plan.moments[0].source_demo == Path("match_one.dem")
+
+
+def test_moments_without_a_demo_stay_untagged():
+    plan = build_clip_plan(make_context([make_kill(1000, "P", "E1")]), "P", [HighlightType.KILL])
+    assert plan.moments[0].source_demo is None

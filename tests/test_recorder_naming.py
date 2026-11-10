@@ -110,3 +110,13 @@ def test_build_requests_numbers_and_places_clips():
     assert [r.index for r in requests] == [1, 2]
     assert requests[0].output_path == Path("out/001_r01_kill_semi.mkv")
     assert requests[1].output_path.parent == Path("out")
+
+
+def test_requests_use_each_moments_own_demo():
+    from dataclasses import replace
+
+    first = replace(make_moment(1), source_demo=Path("nuke.dem"))
+    second = make_moment(2)  # no demo of its own: falls back to the plan's
+    plan = ClipPlan(player_steamid="P", selected_types=(HighlightType.KILL,), moments=[first, second])
+    requests = build_clip_requests(plan, Path("fallback.dem"), "semi", Path("out"))
+    assert [r.demo_path for r in requests] == [Path("nuke.dem"), Path("fallback.dem")]

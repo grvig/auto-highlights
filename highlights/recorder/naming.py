@@ -90,7 +90,8 @@ def build_clip_requests(
                 ClipRequest(
                     index=index,
                     moment=moment,
-                    demo_path=Path(demo_path),
+                    # A moment from a multi-demo plan names its own demo.
+                    demo_path=Path(moment.source_demo or demo_path),
                     player_name=player_name,
                     output_path=Path(output_dir) / filename,
                     segment=window,
