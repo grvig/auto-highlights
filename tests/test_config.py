@@ -90,3 +90,37 @@ def test_validate_reports_all_problems_at_once(tmp_path):
     assert "obs.port" in message
     assert "post_roll_seconds" in message
 
+
+NO_CS2_ROOT = """
+[paths]
+output_dir = "./output"
+
+[obs]
+password = "pw"
+"""
+
+
+def test_missing_cs2_root_is_auto_detected(tmp_path):
+    path = tmp_path / "config.toml"
+    path.write_text(NO_CS2_ROOT)
+    found = tmp_path / "cs2"
+    config = load_config(path, locate_cs2=lambda: found)
+    assert config.cs2_root == found
+    assert config.cs2_root_detected
+
+
+def test_configured_cs2_root_wins_over_detection(tmp_path):
+    path = tmp_path / "config.toml"
+    path.write_text(BASE_CONFIG.format(ffmpeg_line=""))
+    config = load_config(path, locate_cs2=lambda: tmp_path / "elsewhere")
+    assert str(config.cs2_root).replace("\\", "/") == "C:/games/cs2"
+    assert not config.cs2_root_detected
+
+
+def test_undetectable_cs2_fails_only_when_recording_needs_it(tmp_path):
+    path = tmp_path / "config.toml"
+    path.write_text(NO_CS2_ROOT)
+    config = load_config(path, locate_cs2=lambda: None)  # loading still works
+    assert config.cs2_root is None
+    with pytest.raises(ConfigError, match="Could not find CS2"):
+        config.verify_cs2_install()

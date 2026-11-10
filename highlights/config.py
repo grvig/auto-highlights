@@ -8,8 +8,11 @@ dragging in the recorder stack.
 from __future__ import annotations
 
 import tomllib
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+
+from highlights.steam.locate import find_cs2_root
 
 CONFIG_FILENAME = "config.toml"
 TEMPLATE_FILENAME = "config.template.toml"
@@ -38,7 +41,8 @@ class ClipConfig:
 
 @dataclass(frozen=True)
 class Config:
-    cs2_root: Path
+    # None when it was neither configured nor found automatically.
+    cs2_root: Path | None
     output_dir: Path
     clips_dir: Path
     obs: ObsConfig
@@ -47,16 +51,23 @@ class Config:
     # executable. Kept as a string, not a resolved Path, so a bare command is
     # not accidentally rewritten relative to the config file.
     ffmpeg_path: str = "ffmpeg"
+    # True when cs2_root came from auto-detection rather than config.toml.
+    cs2_root_detected: bool = False
 
     @property
-    def cs2_executable(self) -> Path:
-        return self.cs2_root / CS2_EXE_RELATIVE
+    def cs2_executable(self) -> Path | None:
+        return None if self.cs2_root is None else self.cs2_root / CS2_EXE_RELATIVE
 
     def verify_cs2_install(self) -> None:
         """Check cs2_root actually holds the game. Recording-only concern.
 
         The engine never calls this — parsing works with no game installed.
         """
+        if self.cs2_executable is None:
+            raise ConfigError(
+                "Could not find CS2 automatically. Set cs2_root in [paths] of "
+                f"{CONFIG_FILENAME} to the folder containing game/bin/win64/cs2.exe."
+            )
         if not self.cs2_executable.is_file():
             raise ConfigError(
                 f"No cs2.exe under cs2_root: {self.cs2_root}\n"
@@ -98,8 +109,15 @@ def _require(table: dict, key: str, section: str) -> object:
     return table[key]
 
 
-def load_config(path: Path | str | None = None) -> Config:
-    """Load and validate config, defaulting to config.toml at the repo root."""
+def load_config(
+    path: Path | str | None = None,
+    locate_cs2: Callable[[], Path | None] = find_cs2_root,
+) -> Config:
+    """Load and validate config, defaulting to config.toml at the repo root.
+
+    cs2_root is optional: when it is left out, the CS2 install is found through
+    Steam's library list instead.
+    """
     config_path = Path(path) if path else repo_root() / CONFIG_FILENAME
 
     if not config_path.is_file():
@@ -116,8 +134,10 @@ def load_config(path: Path | str | None = None) -> Config:
     clips = raw.get("clips", {})
 
     base = config_path.parent
+    configured_cs2 = paths.get("cs2_root")
+    cs2_root = Path(str(configured_cs2)) if configured_cs2 else locate_cs2()
     return Config(
-        cs2_root=Path(str(_require(paths, "cs2_root", "paths"))),
+        cs2_root=cs2_root,
         output_dir=_resolve(base, str(paths.get("output_dir", "./output"))),
         clips_dir=_resolve(base, str(paths.get("clips_dir", "./clips"))),
         obs=ObsConfig(
@@ -130,6 +150,7 @@ def load_config(path: Path | str | None = None) -> Config:
             post_roll_seconds=float(clips.get("post_roll_seconds", 2.0)),
         ),
         ffmpeg_path=str(paths.get("ffmpeg", "ffmpeg")),
+        cs2_root_detected=not configured_cs2 and cs2_root is not None,
     )
 
 

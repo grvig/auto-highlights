@@ -253,6 +253,7 @@ def run_recording(
     )
 
     if live:
+        config.verify_cs2_install()
         recorder = ObsRecorder(
             cs2=Cs2Controller(config.cs2_root),
             obs=ObsClient(

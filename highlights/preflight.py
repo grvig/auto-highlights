@@ -49,7 +49,11 @@ def run_preflight(config: Config) -> list[Check]:
         checks.append(Check("config values", False, first[-1].strip()))
 
     exe = config.cs2_executable
-    checks.append(Check("CS2 install", exe.is_file(), str(exe)))
+    if exe is None:
+        checks.append(Check("CS2 install", False, "not found - set cs2_root in config.toml"))
+    else:
+        source = " (auto-detected)" if config.cs2_root_detected else ""
+        checks.append(Check("CS2 install", exe.is_file(), f"{exe}{source}"))
 
     checks.append(
         Check("ffmpeg", ffmpeg_available(config.ffmpeg_path), config.ffmpeg_path)

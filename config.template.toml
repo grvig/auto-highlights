@@ -3,9 +3,9 @@
 
 [paths]
 # Root of the CS2 install (the folder containing game/bin/win64/cs2.exe).
-# Watch out: Steam can leave an empty stub folder of the same name in a
-# different library. Point at the one that actually has the executable.
-cs2_root = "D:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive"
+# Optional: leave it out and the install is found through Steam automatically.
+# Set it only if detection picks the wrong library.
+# cs2_root = "D:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive"
 
 # Where finished reels are written.
 output_dir = "./output"
