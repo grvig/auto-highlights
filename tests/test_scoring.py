@@ -142,3 +142,31 @@ def test_big_swings_are_tagged():
     kills = [make_kill(100, "P", "E1"), make_kill(200, "P", "E2")]  # 1v2 to win
     _, tags = impact_score(kills, kills, roster)
     assert tags == ("swung the round",)
+
+
+def test_scored_plan_ranks_a_fast_ace_above_a_lone_kill():
+    from highlights.engine.clip_plan import build_clip_plan
+    from tests.factories import make_context, make_round
+
+    roster = {"P": "ct", **{f"E{i}": "t" for i in range(1, 6)}}
+    ace = [make_kill(10_000 + i * 64, "P", f"E{i}", round_number=1) for i in range(1, 6)]
+    lone = [make_kill(50_000, "P", "E1", round_number=2)]
+    rosters = {1: roster, 2: {"P": "ct", "T1": "ct", "E1": "t", "E2": "t"}}
+    ctx = make_context(
+        ace + lone,
+        rounds=[make_round(1, 0, 40_000), make_round(2, 40_000, 90_000)],
+        round_rosters=rosters,
+    )
+    plan = build_clip_plan(ctx, "P", [HighlightType.KILL, HighlightType.ACE])
+    by_type = {m.highlight_type: m for m in plan.moments}
+    assert by_type[HighlightType.ACE].score > by_type[HighlightType.KILL].score
+    assert "5 kills in 4.0s" in by_type[HighlightType.ACE].tags
+    assert "swung the round" in by_type[HighlightType.ACE].tags
+
+
+def test_scoring_can_be_turned_off():
+    from highlights.engine.clip_plan import build_clip_plan
+    from tests.factories import make_context
+
+    plan = build_clip_plan(make_context([make_kill(1000, "P", "x")]), "P", [HighlightType.KILL], score=False)
+    assert plan.moments[0].score == 0.0

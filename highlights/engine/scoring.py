@@ -7,8 +7,11 @@ explain them, so the final ranking is easy to inspect and tune.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
+from highlights.engine.detection import DetectionContext
 from highlights.engine.models import Kill
-from highlights.engine.moments import Moment
+from highlights.engine.moments import HighlightType, Moment
 
 # Points per style detail on a kill. Rare, hard plays are worth the most.
 STYLE_POINTS = {
@@ -139,3 +142,37 @@ def impact_score(
         swing += win_probability(own, enemy - 1) - win_probability(own, enemy)
     tags = ("swung the round",) if swing >= SWING_TAG_THRESHOLD else ()
     return swing * IMPACT_POINTS, tags
+
+
+# Starting points by highlight type, before the signals above are added.
+BASE_POINTS = {
+    HighlightType.ACE: 8.0,
+    HighlightType.CLUTCH: 3.0,
+    HighlightType.MULTI_KILL: 3.0,
+    HighlightType.UTILITY: 1.5,
+    HighlightType.KILL: 1.0,
+    HighlightType.DEATH: 0.0,
+}
+
+
+def score_moment(moment: Moment, ctx: DetectionContext) -> Moment:
+    """The moment with its score and the tags that explain it filled in."""
+    kills = moment_kills(moment, ctx.kills)
+    round_kills = sorted(
+        (k for k in ctx.kills if k.round_number == moment.round_number),
+        key=lambda k: k.tick,
+    )
+    roster = ctx.round_rosters.get(moment.round_number, {})
+    parts = (
+        clutch_score(moment),
+        tempo_score(kills, ctx.tickrate),
+        style_score(kills),
+        impact_score(kills, round_kills, roster),
+    )
+    score = BASE_POINTS.get(moment.highlight_type, 0.0) + sum(p for p, _ in parts)
+    tags = tuple(dict.fromkeys(tag for _, part_tags in parts for tag in part_tags))
+    return replace(moment, score=round(score, 2), tags=tags)
+
+
+def score_moments(moments: list[Moment], ctx: DetectionContext) -> list[Moment]:
+    return [score_moment(moment, ctx) for moment in moments]

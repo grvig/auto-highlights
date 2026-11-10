@@ -19,6 +19,7 @@ from highlights.engine.detectors.utility_damage import UtilityDamageDetector
 from highlights.engine.detectors.utility_flash import FlashUtilityDetector
 from highlights.engine.detectors.utility_smoke import SmokeUtilityDetector
 from highlights.engine.moments import HighlightType, Moment
+from highlights.engine.scoring import score_moments
 
 # One HighlightType can map to several detectors — utility covers both flashes
 # and grenade damage.
@@ -94,12 +95,14 @@ def build_clip_plan(
     selected_types: Iterable[HighlightType],
     *,
     merge: bool = True,
+    score: bool = True,
 ) -> ClipPlan:
     """Run the detectors for the selected types and order the result by time.
 
     With merge on (the default), single kills already shown inside a
     multi-kill, ace, or clutch are dropped so the same footage is not
-    recorded twice.
+    recorded twice. With score on, every moment is rated so plans from
+    different matches can be ranked against each other.
     """
     types = tuple(dict.fromkeys(selected_types))  # de-dupe, preserve order
     moments: list[Moment] = []
@@ -112,6 +115,8 @@ def build_clip_plan(
     moments.sort(key=lambda m: (m.core_tick, m.highlight_type))
     if merge:
         moments = merge_overlaps(moments)
+    if score:
+        moments = score_moments(moments, ctx)
     return ClipPlan(
         player_steamid=player_steamid,
         selected_types=types,
