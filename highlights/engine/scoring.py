@@ -144,6 +144,13 @@ def impact_score(
     return swing * IMPACT_POINTS, tags
 
 
+# Moment types that are about the player's own frags. Only these earn
+# kill-based points; a death or utility clip that happens to contain a
+# kill must not re-score a frag that already has its own clip.
+KILL_TYPES = frozenset(
+    {HighlightType.KILL, HighlightType.MULTI_KILL, HighlightType.ACE, HighlightType.CLUTCH}
+)
+
 # Starting points by highlight type, before the signals above are added.
 BASE_POINTS = {
     HighlightType.ACE: 8.0,
@@ -157,7 +164,7 @@ BASE_POINTS = {
 
 def score_moment(moment: Moment, ctx: DetectionContext) -> Moment:
     """The moment with its score and the tags that explain it filled in."""
-    kills = moment_kills(moment, ctx.kills)
+    kills = moment_kills(moment, ctx.kills) if moment.highlight_type in KILL_TYPES else []
     round_kills = sorted(
         (k for k in ctx.kills if k.round_number == moment.round_number),
         key=lambda k: k.tick,

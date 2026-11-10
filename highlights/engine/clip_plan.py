@@ -59,7 +59,38 @@ def merge_overlaps(moments: list[Moment]) -> list[Moment]:
         ):
             continue
         kept.append(moment)
-    return kept
+    return _join_close_kills(kept)
+
+
+def _join_close_kills(moments: list[Moment]) -> list[Moment]:
+    """Fold single kills whose windows overlap into one moment.
+
+    Two kills a second apart would otherwise be two clips of the same few
+    seconds of footage, and the reel would show the double kill twice.
+    """
+    kills = sorted(
+        (m for m in moments if m.highlight_type is HighlightType.KILL),
+        key=lambda m: m.start_tick,
+    )
+    joined: list[Moment] = []
+    for kill in kills:
+        previous = joined[-1] if joined else None
+        if (
+            previous is not None
+            and previous.round_number == kill.round_number
+            and previous.overlaps(kill)
+        ):
+            joined[-1] = replace(
+                previous,
+                core_tick=max(previous.core_tick, kill.core_tick),
+                start_tick=min(previous.start_tick, kill.start_tick),
+                end_tick=max(previous.end_tick, kill.end_tick),
+                description=f"{previous.description} + {kill.description}",
+            )
+        else:
+            joined.append(kill)
+    others = [m for m in moments if m.highlight_type is not HighlightType.KILL]
+    return sorted(others + joined, key=lambda m: (m.core_tick, m.highlight_type))
 
 
 @dataclass(frozen=True)

@@ -170,3 +170,20 @@ def test_scoring_can_be_turned_off():
 
     plan = build_clip_plan(make_context([make_kill(1000, "P", "x")]), "P", [HighlightType.KILL], score=False)
     assert plan.moments[0].score == 0.0
+
+
+def test_a_death_clip_does_not_score_the_players_own_kills():
+    from highlights.engine.clip_plan import build_clip_plan
+    from tests.factories import make_context
+
+    # P gets a quick double, then dies a second later: the death clip's window
+    # contains the double, but those frags belong to the kill clip.
+    kills = [
+        make_kill(1000, "P", "E1"),
+        make_kill(1040, "P", "E2"),
+        make_kill(1100, "E3", "P"),
+    ]
+    plan = build_clip_plan(make_context(kills), "P", [HighlightType.KILL, HighlightType.DEATH])
+    death = next(m for m in plan.moments if m.highlight_type is HighlightType.DEATH)
+    assert death.score == 0.0
+    assert death.tags == ()
