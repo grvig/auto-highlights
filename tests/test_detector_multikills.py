@@ -52,15 +52,33 @@ def test_multikill_spans_first_to_last_kill():
     assert moment.core_tick == 6000
 
 
-def test_long_multikill_span_is_capped():
-    # Three kills strung across 40s; the span must trim to 25s before the last.
+def test_spread_out_multikill_keeps_every_kill_and_cuts_dead_time():
+    # Three kills strung across 40s: each kill gets its own window.
     last_tick = 10_000 + 40 * 64
-    kills = round_with_kills("A", [10_000, 11_000, last_tick])
+    kill_ticks = [10_000, 11_000, last_tick]
+    kills = round_with_kills("A", kill_ticks)
     ctx = make_context(kills, rounds=[make_round(1, 0, 100_000)])
     moment = MultiKillDetector().detect(ctx, "A")[0]
+
+    for tick in kill_ticks:
+        assert any(s.start_tick <= tick <= s.end_tick for s in moment.segments)
+    # three 5s windows of footage, not 45s of mostly walking
+    assert moment.duration_seconds == 15.0
     assert moment.core_tick == last_tick
-    assert moment.start_tick == (last_tick - 25 * 64) - 3 * 64
-    assert moment.end_tick == last_tick + 2 * 64
+
+
+def test_ninety_second_ace_shows_all_five_kills():
+    # The real-demo bug: a 96s ace capped to 30s showed only some kills.
+    kill_ticks = [10_000 + i * 20 * 64 for i in range(5)]  # one every 20s
+    kills = round_with_kills("A", kill_ticks)
+    ctx = make_context(kills, rounds=[make_round(1, 0, 100_000)])
+    ace = AceDetector().detect(ctx, "A")[0]
+    covered = [
+        t for t in kill_ticks
+        if any(s.start_tick <= t <= s.end_tick for s in ace.segments)
+    ]
+    assert covered == kill_ticks
+    assert ace.duration_seconds == 25.0
 
 
 def test_multikills_across_two_rounds():

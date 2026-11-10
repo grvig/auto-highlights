@@ -37,20 +37,18 @@ def _round_moment(
     description: str,
 ) -> Moment:
     first, last = round_kills[0], round_kills[-1]
-    start, end = ctx.pad(
-        last.tick,
-        span_start_tick=first.tick,
-        span_end_tick=last.tick,
-        cap_span=True,
-    )
+    # One window per kill, joined when close: every frag the label promises
+    # is on screen, and the walking between them is cut.
+    segments = ctx.segments([kill.tick for kill in round_kills])
     return Moment(
         round_number=first.round_number,
         highlight_type=highlight_type,
         player_steamid=player_steamid,
         core_tick=last.tick,
-        start_tick=start,
-        end_tick=end,
+        start_tick=segments[0].start_tick,
+        end_tick=segments[-1].end_tick,
         description=description,
+        segments=segments,
     )
 
 
