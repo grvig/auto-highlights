@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Protocol
 
@@ -29,6 +29,7 @@ from highlights.engine.multi import (
     match_from_source,
     players_across,
 )
+from highlights.engine.selection import ORDERS, arrange, select_best
 from highlights.steam.account import signed_in_account
 from highlights.steam.locate import find_steam_root
 from highlights.recorder.base import RecordedClip
@@ -67,6 +68,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--me",
         action="store_true",
         help="plan for the Steam account signed in on this PC",
+    )
+    parser.add_argument(
+        "--best",
+        type=float,
+        metavar="SECONDS",
+        help="keep only the strongest moments, filling about this many seconds",
+    )
+    parser.add_argument(
+        "--order",
+        choices=ORDERS,
+        default="montage",
+        help="with --best: montage (hook, build, best last) or chronological",
     )
     parser.add_argument(
         "--version", action="version", version=f"%(prog)s {__version__}"
@@ -271,13 +284,14 @@ def print_clip_plan(plan: ClipPlan, player_name: str) -> None:
     )
     if breakdown:
         print(f"Breakdown  : {breakdown}")
-    print(f"  {'#':<3} {'RND':>3} {'TIME':>6} {'LEN':>5} {'TYPE':<11} DESCRIPTION")
-    print(f"  {'-' * 66}")
+    print(f"  {'#':<3} {'SCORE':>5} {'RND':>3} {'TIME':>6} {'LEN':>5} {'TYPE':<11} DESCRIPTION")
+    print(f"  {'-' * 72}")
     for index, moment in enumerate(plan.moments, start=1):
         length = f"{moment.duration_seconds:.0f}s"
+        tags = f"  [{', '.join(moment.tags)}]" if moment.tags else ""
         print(
-            f"  {index:<3} {moment.round_number:>3} {moment.timestamp:>6} "
-            f"{length:>5} {str(moment.highlight_type):<11} {moment.description}"
+            f"  {index:<3} {moment.score:>5.1f} {moment.round_number:>3} {moment.timestamp:>6} "
+            f"{length:>5} {str(moment.highlight_type):<11} {moment.description}{tags}"
         )
 
 
@@ -459,13 +473,18 @@ def main(argv: list[str] | None = None) -> int:
     multi = build_multi_plan(matches, player.steamid, types)
     for label in multi.missing_from:
         print(f"Note: {player.name} is not in {label}", file=sys.stderr)
-    print_clip_plan(multi.plan, player.name)
+    plan = multi.plan
+    if args.best:
+        chosen = select_best(plan.moments, args.best)
+        plan = replace(plan, moments=arrange(chosen, plan.moments, args.order))
+        print(f"\nBest {args.best:g}s, {args.order} order")
+    print_clip_plan(plan, player.name)
 
     if args.dry_run or args.record:
         pov = [s.path.name for s in sources if not s.info.is_gotv]
         try:
             return run_recording(
-                multi.plan,
+                plan,
                 player.name,
                 fallback_demo=sources[0].path,
                 pov_demos=pov,

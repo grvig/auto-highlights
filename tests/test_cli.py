@@ -161,3 +161,15 @@ def test_version_flag_prints_version_and_exits(capsys):
         build_parser().parse_args(["--version"])
     assert info.value.code == 0
     assert __version__ in capsys.readouterr().out
+
+
+def test_parser_reads_best_and_order():
+    args = build_parser().parse_args(["m.dem", "--me", "--best", "60", "--order", "chronological"])
+    assert args.best == 60.0
+    assert args.order == "chronological"
+
+
+def test_order_defaults_to_montage_and_rejects_unknown():
+    assert build_parser().parse_args(["m.dem"]).order == "montage"
+    with pytest.raises(SystemExit):
+        build_parser().parse_args(["m.dem", "--order", "shuffle"])
