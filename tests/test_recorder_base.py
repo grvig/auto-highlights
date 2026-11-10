@@ -38,6 +38,24 @@ def test_request_exposes_moment_fields():
     assert request.duration_seconds == (10_128 - 9_808) / 64
 
 
+def test_request_uses_its_segment_window():
+    from highlights.engine.moments import Segment
+
+    request = ClipRequest(
+        index=1,
+        moment=make_moment(),
+        demo_path=Path("match.dem"),
+        player_name="semi",
+        output_path=Path("clips/001-02.mkv"),
+        segment=Segment(9_900, 10_028),
+        part=2,
+        parts=3,
+    )
+    assert (request.start_tick, request.end_tick) == (9_900, 10_028)
+    assert request.duration_seconds == 2.0
+    assert request.label == "#001.2/3"
+
+
 def test_request_str_is_loggable():
     text = str(make_request(7))
     assert "#007" in text

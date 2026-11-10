@@ -64,6 +64,42 @@ def make_moment(index: int) -> Moment:
     )
 
 
+def test_segmented_moment_becomes_numbered_parts():
+    from highlights.engine.moments import Segment
+
+    moment = Moment(
+        round_number=5,
+        highlight_type=HighlightType.ACE,
+        player_steamid="P",
+        core_tick=9000,
+        start_tick=1000,
+        end_tick=9500,
+        description="ace",
+        segments=(Segment(1000, 1300), Segment(5000, 5300), Segment(9000, 9500)),
+    )
+    plan = ClipPlan(player_steamid="P", selected_types=(HighlightType.ACE,), moments=[moment])
+    requests = build_clip_requests(plan, Path("m.dem"), "semi", Path("out"))
+
+    assert [r.output_path.name for r in requests] == [
+        "001-01_r05_ace_semi.mkv",
+        "001-02_r05_ace_semi.mkv",
+        "001-03_r05_ace_semi.mkv",
+    ]
+    assert [(r.start_tick, r.end_tick) for r in requests] == [
+        (1000, 1300), (5000, 5300), (9000, 9500),
+    ]
+    assert requests[1].label == "#001.2/3"
+
+
+def test_parts_sort_before_the_next_moment():
+    names = [
+        clip_filename(2, 6, "kill", "semi"),
+        clip_filename(1, 5, "ace", "semi", part=2),
+        clip_filename(1, 5, "ace", "semi", part=1),
+    ]
+    assert sorted(names) == [names[2], names[1], names[0]]
+
+
 def test_build_requests_numbers_and_places_clips():
     plan = ClipPlan(
         player_steamid="P",

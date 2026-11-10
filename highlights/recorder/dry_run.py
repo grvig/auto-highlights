@@ -48,9 +48,9 @@ class DryRunRecorder:
     def record_clip(self, request: ClipRequest) -> RecordedClip:
         moment = request.moment
         logger.info(
-            "[%s] would record #%03d | R%02d %s | ticks %d-%d (%.1fs) | %s | -> %s",
+            "[%s] would record %s | R%02d %s | ticks %d-%d (%.1fs) | %s | -> %s",
             self.name,
-            request.index,
+            request.label,
             moment.round_number,
             moment.highlight_type,
             request.start_tick,

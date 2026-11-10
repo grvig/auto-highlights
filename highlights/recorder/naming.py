@@ -52,15 +52,18 @@ def clip_filename(
     highlight_type: str,
     player_name: str,
     extension: str = DEFAULT_EXTENSION,
+    part: int | None = None,
 ) -> str:
     """Build one clip's filename.
 
     Index-first so clips sort in plan order on disk, which is exactly the order
-    the stitcher needs.
+    the stitcher needs. Parts of a segmented moment carry a -NN suffix on the
+    index (001-01, 001-02), which still sorts before 002.
     """
     player = sanitise_part(player_name)
     kind = sanitise_part(str(highlight_type), fallback="clip")
-    return f"{index:03d}_r{round_number:02d}_{kind}_{player}.{extension}"
+    number = f"{index:03d}" if part is None else f"{index:03d}-{part:02d}"
+    return f"{number}_r{round_number:02d}_{kind}_{player}.{extension}"
 
 
 def build_clip_requests(
@@ -70,23 +73,29 @@ def build_clip_requests(
     output_dir: Path,
     extension: str = DEFAULT_EXTENSION,
 ) -> list[ClipRequest]:
-    """Turn a ClipPlan into numbered, named recording requests."""
+    """Turn a ClipPlan into numbered, named requests, one per recorded window."""
     requests: list[ClipRequest] = []
     for index, moment in enumerate(plan.moments, start=1):
-        filename = clip_filename(
-            index=index,
-            round_number=moment.round_number,
-            highlight_type=str(moment.highlight_type),
-            player_name=player_name,
-            extension=extension,
-        )
-        requests.append(
-            ClipRequest(
+        windows = moment.windows
+        for part, window in enumerate(windows, start=1):
+            filename = clip_filename(
                 index=index,
-                moment=moment,
-                demo_path=Path(demo_path),
+                round_number=moment.round_number,
+                highlight_type=str(moment.highlight_type),
                 player_name=player_name,
-                output_path=Path(output_dir) / filename,
+                extension=extension,
+                part=part if len(windows) > 1 else None,
             )
-        )
+            requests.append(
+                ClipRequest(
+                    index=index,
+                    moment=moment,
+                    demo_path=Path(demo_path),
+                    player_name=player_name,
+                    output_path=Path(output_dir) / filename,
+                    segment=window,
+                    part=part,
+                    parts=len(windows),
+                )
+            )
     return requests

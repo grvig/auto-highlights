@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from highlights.engine.moments import Moment
+from highlights.engine.moments import Moment, Segment
 
 
 class RecorderError(Exception):
@@ -24,7 +24,11 @@ class RecorderError(Exception):
 
 @dataclass(frozen=True)
 class ClipRequest:
-    """One moment resolved into concrete recording parameters."""
+    """One recorded window of a moment, resolved into recording parameters.
+
+    A moment with several segments becomes several requests sharing an index,
+    numbered by part, so each window is captured as its own sub-clip.
+    """
 
     # Position in the plan, 1-based. Drives clip ordering and filenames.
     index: int
@@ -32,26 +36,41 @@ class ClipRequest:
     demo_path: Path
     player_name: str
     output_path: Path
+    # The window this request records; None means the moment's whole window.
+    segment: Segment | None = None
+    part: int = 1
+    parts: int = 1
 
     @property
     def player_steamid(self) -> str:
         return self.moment.player_steamid
 
     @property
+    def window(self) -> Segment:
+        return self.segment or Segment(self.moment.start_tick, self.moment.end_tick)
+
+    @property
     def start_tick(self) -> int:
-        return self.moment.start_tick
+        return self.window.start_tick
 
     @property
     def end_tick(self) -> int:
-        return self.moment.end_tick
+        return self.window.end_tick
 
     @property
     def duration_seconds(self) -> float:
-        return self.moment.duration_seconds
+        return self.window.duration_seconds
+
+    @property
+    def label(self) -> str:
+        """#007, or #007.2/3 for the second of three parts."""
+        if self.parts > 1:
+            return f"#{self.index:03d}.{self.part}/{self.parts}"
+        return f"#{self.index:03d}"
 
     def __str__(self) -> str:
         return (
-            f"#{self.index:03d} {self.moment.highlight_type} "
+            f"{self.label} {self.moment.highlight_type} "
             f"R{self.moment.round_number} ticks {self.start_tick}-{self.end_tick} "
             f"({self.duration_seconds:.1f}s) -> {self.output_path.name}"
         )
