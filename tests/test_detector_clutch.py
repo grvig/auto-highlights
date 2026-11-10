@@ -67,27 +67,30 @@ def test_no_clutch_for_player_not_in_situation():
 
 def test_clutch_moment_spans_to_round_end():
     moment = ClutchDetector().detect(context(), "P")[0]
-    # short clutch (under the cap): padded from the clutch start to round end
+    # a quick clutch merges into one continuous shot from start to finish
     assert moment.start_tick == 1600 - 3 * 64
     assert moment.end_tick == 2000 + 2 * 64
 
 
-def test_long_clutch_is_capped_to_keep_the_finish():
-    # A clutch that begins 40s before the round ends must trim to the last 25s.
-    round_end = 60_000
-    clutch_start = round_end - 40 * 64
+def test_slow_clutch_keeps_start_kills_and_finish_but_cuts_standoffs():
+    # Left alone at 0s, kills at +20s and +40s, round ends at +60s.
+    t0 = 20_000
     kills = [
-        make_kill(clutch_start - 300, "E1", "T1", round_number=1),
-        make_kill(clutch_start - 200, "E1", "T2", round_number=1),
-        make_kill(clutch_start - 100, "E1", "T3", round_number=1),
-        make_kill(clutch_start, "E1", "T4", round_number=1),  # 1v5 begins
+        make_kill(t0 - 300, "E1", "T1", round_number=1),
+        make_kill(t0 - 200, "E1", "T2", round_number=1),
+        make_kill(t0 - 100, "E1", "T3", round_number=1),
+        make_kill(t0, "E1", "T4", round_number=1),  # 1v5 begins
+        make_kill(t0 + 20 * 64, "P", "E1", round_number=1),
+        make_kill(t0 + 40 * 64, "P", "E2", round_number=1),
     ]
+    round_end = t0 + 60 * 64
     ctx = make_context(
         kills,
-        rounds=[make_round(1, start=clutch_start - 1000, end=round_end, winner="ct")],
+        rounds=[make_round(1, start=t0 - 2000, end=round_end, winner="ct")],
         round_rosters={1: ROSTER},
     )
     moment = ClutchDetector().detect(ctx, "P")[0]
-    # window trimmed to 25s before round end, still ending at round end + post-roll
-    assert moment.start_tick == (round_end - 25 * 64) - 3 * 64
-    assert moment.end_tick == round_end + 2 * 64
+    assert len(moment.segments) == 4  # start, two kills, finish
+    for tick in (t0, t0 + 20 * 64, t0 + 40 * 64, round_end):
+        assert any(s.start_tick <= tick <= s.end_tick for s in moment.segments)
+    assert moment.duration_seconds == 20.0  # not 65s of standoff

@@ -65,22 +65,35 @@ class ClutchDetector:
             sit = self._situation(ctx, player_steamid, rnd.number)
             if sit is None or (self.won_only and not sit.won):
                 continue
-            span_end = max(rnd.end_tick, sit.start_tick)
-            start, end = ctx.pad(
-                sit.start_tick,
-                span_start_tick=sit.start_tick,
-                span_end_tick=span_end,
-                cap_span=True,
-            )
+            segments = ctx.segments(self._beats(ctx, player_steamid, rnd, sit))
             moments.append(
                 Moment(
                     round_number=rnd.number,
                     highlight_type=self.highlight_type,
                     player_steamid=player_steamid,
                     core_tick=sit.start_tick,
-                    start_tick=start,
-                    end_tick=end,
+                    start_tick=segments[0].start_tick,
+                    end_tick=segments[-1].end_tick,
                     description=sit.label,
+                    segments=segments,
                 )
             )
         return sorted(moments, key=lambda m: m.core_tick)
+
+    @staticmethod
+    def _beats(
+        ctx: DetectionContext, player_steamid: str, rnd, sit: ClutchSituation
+    ) -> list[int]:
+        """The instants a clutch clip must show.
+
+        When the player is left alone, each frag they make from there, and the
+        finish. The standoffs in between are cut, so a slow 1v3 stays tense
+        rather than turning into a minute of crouch-walking.
+        """
+        clutch_kills = [
+            kill.tick
+            for kill in _round_kills(ctx.kills, rnd.number)
+            if kill.attacker_steamid == player_steamid and kill.tick >= sit.start_tick
+        ]
+        finish = max(rnd.end_tick, sit.start_tick)
+        return [sit.start_tick, *clutch_kills, finish]
