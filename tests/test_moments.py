@@ -80,37 +80,6 @@ def test_pad_window_spans_multi_event_range():
     assert end == 8000 + 64
 
 
-def test_pad_window_caps_a_long_span():
-    # A span from tick 0 to 64000 is 1000s; cap to 25s before the end.
-    start, end = pad_window(
-        core_tick=64_000,
-        pre_roll_seconds=0.0,
-        post_roll_seconds=0.0,
-        first_tick=0,
-        last_tick=1_000_000,
-        span_start_tick=0,
-        span_end_tick=64_000,
-        max_span_seconds=25.0,
-    )
-    assert start == 64_000 - 25 * 64
-    assert end == 64_000
-
-
-def test_pad_window_cap_does_not_extend_a_short_span():
-    # A span already under the cap is left alone.
-    start, end = pad_window(
-        core_tick=10_000,
-        pre_roll_seconds=0.0,
-        post_roll_seconds=0.0,
-        first_tick=0,
-        last_tick=1_000_000,
-        span_start_tick=9_680,  # 5s span
-        span_end_tick=10_000,
-        max_span_seconds=25.0,
-    )
-    assert start == 9_680
-
-
 def test_moment_without_segments_is_one_window():
     moment = make_moment(start=1000, end=1640)
     assert moment.windows == (Segment(1000, 1640),)

@@ -124,7 +124,6 @@ def pad_window(
     last_tick: int,
     span_start_tick: int | None = None,
     span_end_tick: int | None = None,
-    max_span_seconds: float | None = None,
     tickrate: int = CS2_TICKRATE,
 ) -> tuple[int, int]:
     """Build a padded (start_tick, end_tick) window around a moment.
@@ -137,17 +136,9 @@ def pad_window(
     spanning several frags) pad around the whole span rather than one instant;
     they default to core_tick for single-instant moments.
 
-    max_span_seconds caps how far back the span may reach from its end: an ace
-    strung across a whole round would otherwise produce a minute-plus clip, so
-    the window is trimmed to keep the payoff and its lead-up while dropping the
-    dead time. The span end (the finishing frag) is always kept.
     """
     span_start = span_start_tick if span_start_tick is not None else core_tick
     span_end = span_end_tick if span_end_tick is not None else core_tick
-
-    if max_span_seconds is not None:
-        earliest = span_end - seconds_to_ticks(max_span_seconds, tickrate)
-        span_start = max(span_start, earliest)
 
     start = span_start - seconds_to_ticks(pre_roll_seconds, tickrate)
     end = span_end + seconds_to_ticks(post_roll_seconds, tickrate)

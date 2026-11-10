@@ -33,9 +33,6 @@ class DetectionContext:
     pre_roll_seconds: float
     post_roll_seconds: float
     tickrate: int
-    # Longest a span moment (multi-kill, ace, clutch) may run before its end,
-    # so a round-spanning ace does not become a minute-plus clip.
-    max_span_seconds: float = 25.0
     # steamid -> side, per round number. Handles the halftime side swap.
     round_rosters: dict[int, dict[str, str]] = field(default_factory=dict)
     blinds: list[Blind] = field(default_factory=list)
@@ -89,13 +86,8 @@ class DetectionContext:
         *,
         span_start_tick: int | None = None,
         span_end_tick: int | None = None,
-        cap_span: bool = False,
     ) -> tuple[int, int]:
-        """Pad a moment window using this context's roll settings and bounds.
-
-        Set cap_span for span moments (multi-kill, ace, clutch) so the window
-        is trimmed to max_span_seconds; single-instant moments leave it off.
-        """
+        """Pad a moment window using this context's roll settings and bounds."""
         return pad_window(
             core_tick,
             self.pre_roll_seconds,
@@ -104,7 +96,6 @@ class DetectionContext:
             last_tick=self.last_tick,
             span_start_tick=span_start_tick,
             span_end_tick=span_end_tick,
-            max_span_seconds=self.max_span_seconds if cap_span else None,
             tickrate=self.tickrate,
         )
 
