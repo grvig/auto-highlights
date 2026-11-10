@@ -35,6 +35,10 @@ class Round:
         return self.start_tick <= tick <= self.official_end_tick
 
 
+# A kill from at least this far (in metres) counts as long range.
+LONG_RANGE_METRES = 30.0
+
+
 @dataclass(frozen=True)
 class Kill:
     """A single kill event."""
@@ -53,10 +57,32 @@ class Kill:
     # tests need not supply them; used to correlate kills with nearby utility.
     victim_x: float = 0.0
     victim_y: float = 0.0
+    # How the kill happened — the details that make a frag worth showing.
+    wallbang: bool = False
+    through_smoke: bool = False
+    noscope: bool = False
+    attacker_blind: bool = False
+    attacker_airborne: bool = False
+    # Distance to the victim in metres, as the game reports it.
+    distance: float = 0.0
 
     @property
     def timestamp(self) -> str:
         return format_timestamp(self.tick)
+
+    @property
+    def style_tags(self) -> tuple[str, ...]:
+        """Short labels for what made this kill special, most striking first."""
+        flags = (
+            (self.noscope, "noscope"),
+            (self.wallbang, "wallbang"),
+            (self.through_smoke, "through smoke"),
+            (self.attacker_airborne, "airborne"),
+            (self.attacker_blind, "while flashed"),
+            (self.distance >= LONG_RANGE_METRES, "long range"),
+            (self.headshot, "headshot"),
+        )
+        return tuple(label for active, label in flags if active)
 
     def __str__(self) -> str:
         how = " (hs)" if self.headshot else ""
@@ -156,6 +182,13 @@ def extract_kills(kills: pl.DataFrame) -> list[Kill]:
             headshot=bool(row["headshot"]),
             victim_x=_as_float(row.get("victim_X")),
             victim_y=_as_float(row.get("victim_Y")),
+            # penetrated counts the surfaces the bullet went through.
+            wallbang=_as_int(row.get("penetrated")) > 0,
+            through_smoke=bool(row.get("thrusmoke")),
+            noscope=bool(row.get("noscope")),
+            attacker_blind=bool(row.get("attackerblind")),
+            attacker_airborne=bool(row.get("attackerinair")),
+            distance=_as_float(row.get("distance")),
         )
         for row in kills.iter_rows(named=True)
         if row["attacker_steamid"] is not None

@@ -87,3 +87,49 @@ def test_extract_kills_without_position_columns_defaults_to_zero():
     kill = extract_kills(frame)[0]
     assert kill.victim_x == 0.0
     assert kill.victim_y == 0.0
+
+
+def test_extract_kills_reads_style_details():
+    frame = pl.DataFrame(
+        [
+            {
+                "round_num": 1,
+                "tick": 1000,
+                "attacker_steamid": "A",
+                "attacker_name": "att",
+                "attacker_side": "ct",
+                "victim_steamid": "B",
+                "victim_name": "vic",
+                "victim_side": "t",
+                "weapon": "awp",
+                "headshot": True,
+                "penetrated": 1,
+                "thrusmoke": True,
+                "noscope": True,
+                "attackerblind": False,
+                "attackerinair": True,
+                "distance": 42.5,
+            }
+        ]
+    )
+    kill = extract_kills(frame)[0]
+    assert kill.wallbang and kill.through_smoke and kill.noscope and kill.attacker_airborne
+    assert not kill.attacker_blind
+    assert kill.distance == 42.5
+    assert kill.style_tags == (
+        "noscope", "wallbang", "through smoke", "airborne", "long range", "headshot",
+    )
+
+
+def test_plain_kill_has_no_style_tags():
+    frame = pl.DataFrame(
+        [
+            {
+                "round_num": 1, "tick": 1000, "attacker_steamid": "A",
+                "attacker_name": "att", "attacker_side": "ct", "victim_steamid": "B",
+                "victim_name": "vic", "victim_side": "t", "weapon": "ak47",
+                "headshot": False, "penetrated": 0, "distance": 8.0,
+            }
+        ]
+    )
+    assert extract_kills(frame)[0].style_tags == ()
