@@ -159,3 +159,25 @@ def test_unsorted_events_are_handled():
 def test_no_events_is_rejected():
     with pytest.raises(ValueError, match="zero events"):
         segs([])
+
+
+def test_slow_motion_segment_runs_longer():
+    assert Segment(0, 640, speed=0.5).duration_seconds == 20.0
+
+
+def test_segment_rejects_non_positive_speed():
+    with pytest.raises(ValueError, match="speed"):
+        Segment(0, 10, speed=0)
+
+
+def test_replays_play_after_the_main_footage_and_may_revisit_ticks():
+    main = (Segment(1000, 1640),)
+    replay = Segment(1100, 1300, pov_steamid="VICTIM")
+    moment = make_moment(start=900, end=2000, segments=main, replays=(replay,))
+    assert moment.playlist == main + (replay,)
+    assert moment.duration_seconds == 10.0 + 200 / 64
+
+
+def test_replays_must_stay_inside_the_outer_window():
+    with pytest.raises(ValueError, match="Replay"):
+        make_moment(start=1000, end=2000, replays=(Segment(500, 900),))

@@ -31,7 +31,7 @@ class FakeCs2:
     def seek_to(self, tick):
         self.calls.append(f"seek:{tick}")
 
-    def play_window(self, start, end):
+    def play_window(self, start, end, timescale=1.0):
         self.calls.append(f"play:{start}-{end}")
         if self.fail_on_play:
             raise Cs2Error("playback died")
@@ -177,3 +177,30 @@ def test_close_tolerates_both_sides_failing(tmp_path):
 
     recorder = ObsRecorder(Exploding(), Exploding(), tmp_path)
     recorder.close()  # must not raise
+
+
+def test_replay_segment_spectates_its_own_camera_at_its_speed(tmp_path):
+    from highlights.engine.moments import Segment
+
+    calls = []
+
+    class SpeedCs2(FakeCs2):
+        def play_window(self, start, end, timescale=1.0):
+            calls.append(timescale)
+            return super().play_window(start, end)
+
+    cs2 = SpeedCs2()
+    request = make_request(tmp_path)
+    replay = ClipRequest(
+        index=1,
+        moment=request.moment,
+        demo_path=request.demo_path,
+        player_name="semi",
+        output_path=tmp_path / "001-02.mkv",
+        segment=Segment(9_900, 10_000, pov_steamid="VICTIM", speed=0.5),
+        part=2,
+        parts=2,
+    )
+    ObsRecorder(cs2, FakeObs(), tmp_path).record_clip(replay)
+    assert "spec:VICTIM" in cs2.calls
+    assert calls == [0.5]

@@ -76,7 +76,7 @@ def build_clip_requests(
     """Turn a ClipPlan into numbered, named requests, one per recorded window."""
     requests: list[ClipRequest] = []
     for index, moment in enumerate(plan.moments, start=1):
-        windows = moment.windows
+        windows = moment.playlist
         for part, window in enumerate(windows, start=1):
             filename = clip_filename(
                 index=index,

@@ -94,12 +94,14 @@ class ObsRecorder:
         logger.info("[%s] recording %s", self.name, request)
         try:
             self._ensure_demo_loaded(request.demo_path)
-            self._ensure_spectating(request.player_steamid)
+            self._ensure_spectating(request.spectate_steamid)
             self.cs2.seek_to(request.start_tick)
 
             self.obs.start_recording()
             try:
-                self.cs2.play_window(request.start_tick, request.end_tick)
+                self.cs2.play_window(
+                    request.start_tick, request.end_tick, timescale=request.speed
+                )
             finally:
                 # Always stop the recording, even if playback threw, so OBS is
                 # not left rolling into the next clip.

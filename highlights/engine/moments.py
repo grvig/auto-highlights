@@ -39,10 +39,14 @@ class HighlightType(str, Enum):
 
 @dataclass(frozen=True)
 class Segment:
-    """One continuous tick window to record."""
+    """One continuous tick window to record, from one camera, at one speed."""
 
     start_tick: int
     end_tick: int
+    # Whose eyes to watch through; None means the moment's own player.
+    pov_steamid: str | None = None
+    # Playback speed: 1.0 is real time, 0.5 is half-speed slow motion.
+    speed: float = 1.0
 
     def __post_init__(self) -> None:
         if self.start_tick > self.end_tick:
@@ -50,10 +54,13 @@ class Segment:
                 f"Segment start_tick {self.start_tick} is after "
                 f"end_tick {self.end_tick}"
             )
+        if self.speed <= 0:
+            raise ValueError(f"Segment speed must be positive, got {self.speed}")
 
     @property
     def duration_seconds(self) -> float:
-        return tick_span_seconds(self.start_tick, self.end_tick)
+        """Length of the footage once played back, so slow motion runs longer."""
+        return tick_span_seconds(self.start_tick, self.end_tick) / self.speed
 
 
 @dataclass(frozen=True)
@@ -82,6 +89,9 @@ class Moment:
     tags: tuple[str, ...] = ()
     # For a clutch: how many enemies the player faced alone (the N in 1vN).
     opponents: int = 0
+    # Shown after the main footage: e.g. each victim's view of being killed.
+    # Unlike segments these may revisit the same ticks from another camera.
+    replays: tuple[Segment, ...] = ()
 
     def __post_init__(self) -> None:
         if self.start_tick > self.end_tick:
@@ -91,21 +101,31 @@ class Moment:
             )
         previous_end: int | None = None
         for segment in self.segments:
-            if segment.start_tick < self.start_tick or segment.end_tick > self.end_tick:
+            if not self._inside(segment):
                 raise ValueError("Segment lies outside the moment's outer window")
             if previous_end is not None and segment.start_tick <= previous_end:
                 raise ValueError("Segments must be ordered and must not overlap")
             previous_end = segment.end_tick
+        if not all(self._inside(replay) for replay in self.replays):
+            raise ValueError("Replay lies outside the moment's outer window")
+
+    def _inside(self, segment: Segment) -> bool:
+        return self.start_tick <= segment.start_tick and segment.end_tick <= self.end_tick
 
     @property
     def windows(self) -> tuple[Segment, ...]:
-        """The windows to record: the segments, or the whole outer window."""
+        """The main windows: the segments, or the whole outer window."""
         return self.segments or (Segment(self.start_tick, self.end_tick),)
+
+    @property
+    def playlist(self) -> tuple[Segment, ...]:
+        """Everything to record, in playback order: main footage then replays."""
+        return self.windows + self.replays
 
     @property
     def duration_seconds(self) -> float:
         """Footage length, which excludes any dead time cut between segments."""
-        return sum(window.duration_seconds for window in self.windows)
+        return sum(window.duration_seconds for window in self.playlist)
 
     @property
     def timestamp(self) -> str:

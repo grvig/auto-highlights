@@ -46,6 +46,15 @@ class ClipRequest:
         return self.moment.player_steamid
 
     @property
+    def spectate_steamid(self) -> str:
+        """Whose view to record: the segment's camera, else the player's."""
+        return self.window.pov_steamid or self.moment.player_steamid
+
+    @property
+    def speed(self) -> float:
+        return self.window.speed
+
+    @property
     def window(self) -> Segment:
         return self.segment or Segment(self.moment.start_tick, self.moment.end_tick)
 
@@ -69,10 +78,12 @@ class ClipRequest:
         return f"#{self.index:03d}"
 
     def __str__(self) -> str:
+        camera = "" if self.spectate_steamid == self.player_steamid else f" pov={self.spectate_steamid}"
+        speed = "" if self.speed == 1.0 else f" x{self.speed:g}"
         return (
             f"{self.label} {self.moment.highlight_type} "
-            f"R{self.moment.round_number} ticks {self.start_tick}-{self.end_tick} "
-            f"({self.duration_seconds:.1f}s) -> {self.output_path.name}"
+            f"R{self.moment.round_number} ticks {self.start_tick}-{self.end_tick}"
+            f"{camera}{speed} ({self.duration_seconds:.1f}s) -> {self.output_path.name}"
         )
 
 
