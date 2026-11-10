@@ -2,7 +2,7 @@
 
 import pytest
 
-from highlights.engine.moments import HighlightType, Moment, pad_window
+from highlights.engine.moments import HighlightType, Moment, Segment, pad_window
 
 
 def make_moment(start=1000, end=1500, core=1200, **kwargs) -> Moment:
@@ -109,3 +109,38 @@ def test_pad_window_cap_does_not_extend_a_short_span():
         max_span_seconds=25.0,
     )
     assert start == 9_680
+
+
+def test_moment_without_segments_is_one_window():
+    moment = make_moment(start=1000, end=1640)
+    assert moment.windows == (Segment(1000, 1640),)
+    assert moment.duration_seconds == 10.0
+
+
+def test_duration_excludes_dead_time_between_segments():
+    moment = make_moment(
+        start=0,
+        end=10_000,
+        segments=(Segment(0, 320), Segment(9_680, 10_000)),
+    )
+    # two 5s windows, the ~140s gap between them is cut
+    assert moment.duration_seconds == 10.0
+
+
+def test_segments_must_stay_inside_the_outer_window():
+    with pytest.raises(ValueError, match="outside"):
+        make_moment(start=1000, end=2000, segments=(Segment(900, 1500),))
+
+
+def test_segments_must_be_ordered_and_disjoint():
+    with pytest.raises(ValueError, match="overlap"):
+        make_moment(
+            start=0,
+            end=5000,
+            segments=(Segment(1000, 2000), Segment(1500, 3000)),
+        )
+
+
+def test_segment_rejects_inverted_window():
+    with pytest.raises(ValueError, match="after"):
+        Segment(500, 100)

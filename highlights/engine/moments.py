@@ -37,12 +37,33 @@ class HighlightType(str, Enum):
 
 
 @dataclass(frozen=True)
+class Segment:
+    """One continuous tick window to record."""
+
+    start_tick: int
+    end_tick: int
+
+    def __post_init__(self) -> None:
+        if self.start_tick > self.end_tick:
+            raise ValueError(
+                f"Segment start_tick {self.start_tick} is after "
+                f"end_tick {self.end_tick}"
+            )
+
+    @property
+    def duration_seconds(self) -> float:
+        return tick_span_seconds(self.start_tick, self.end_tick)
+
+
+@dataclass(frozen=True)
 class Moment:
     """A single highlight to record for one player.
 
-    start_tick/end_tick already include pre- and post-roll padding, so the
-    recorder plays exactly this window. core_tick marks the key instant (the
-    kill, the clutch-winning frag) for ordering and description.
+    start_tick/end_tick are the padded outer bounds of the moment. A moment is
+    recorded as one or more segments: a single kill is one window, while a
+    multi-kill spread across a round is several short windows with the dead
+    time between them cut. When segments is empty the whole outer window is the
+    one segment. core_tick marks the key instant for ordering and description.
     """
 
     round_number: int
@@ -52,6 +73,7 @@ class Moment:
     start_tick: int
     end_tick: int
     description: str
+    segments: tuple[Segment, ...] = ()
 
     def __post_init__(self) -> None:
         if self.start_tick > self.end_tick:
@@ -59,10 +81,23 @@ class Moment:
                 f"Moment start_tick {self.start_tick} is after "
                 f"end_tick {self.end_tick}"
             )
+        previous_end: int | None = None
+        for segment in self.segments:
+            if segment.start_tick < self.start_tick or segment.end_tick > self.end_tick:
+                raise ValueError("Segment lies outside the moment's outer window")
+            if previous_end is not None and segment.start_tick <= previous_end:
+                raise ValueError("Segments must be ordered and must not overlap")
+            previous_end = segment.end_tick
+
+    @property
+    def windows(self) -> tuple[Segment, ...]:
+        """The windows to record: the segments, or the whole outer window."""
+        return self.segments or (Segment(self.start_tick, self.end_tick),)
 
     @property
     def duration_seconds(self) -> float:
-        return tick_span_seconds(self.start_tick, self.end_tick)
+        """Footage length, which excludes any dead time cut between segments."""
+        return sum(window.duration_seconds for window in self.windows)
 
     @property
     def timestamp(self) -> str:
