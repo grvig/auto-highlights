@@ -50,20 +50,20 @@ def controller(tmp_path):
 
 def test_load_demo_sends_playdemo_and_waits(controller):
     controller.load_demo("D:/demos/match one.dem", settle_seconds=4.0)
-    assert controller.test_console.sent == ['playdemo "D:/demos/match one.dem"']
+    assert controller.test_console.sent == ["playdemo replays/match one"]
     assert controller.test_sleeper.waits == [4.0]
 
 
 def test_spectate_locks_pov_in_first_person(controller):
-    controller.spectate("76561199266315708")
+    controller.spectate("semi")
     assert controller.test_console.sent == [
-        "spec_player_by_accountid 1306049980",
+        'spec_player "semi"',
         "spec_mode 4",
     ]
 
 
 def test_spectate_can_use_third_person(controller):
-    controller.spectate("76561199266315708", first_person=False)
+    controller.spectate("semi", first_person=False)
     assert controller.test_console.sent[-1] == "spec_mode 5"
 
 

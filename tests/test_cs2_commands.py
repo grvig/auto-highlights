@@ -23,10 +23,14 @@ def test_account_id_rejects_nonsense():
         cmd.account_id_from_steamid64(123)  # below the base
 
 
-def test_play_demo_quotes_paths_with_spaces():
-    built = cmd.play_demo("D:/SteamLibrary/Counter-Strike Global Offensive/m.dem")
-    assert built.startswith("playdemo ")
-    assert '"D:/SteamLibrary/Counter-Strike Global Offensive/m.dem"' in built
+def test_play_demo_reads_from_the_replays_folder():
+    assert cmd.play_demo("semi_nuke.dem") == "playdemo replays/semi_nuke"
+    assert cmd.play_demo("semi_nuke") == "playdemo replays/semi_nuke"
+
+
+def test_play_demo_rejects_paths():
+    with pytest.raises(cmd.CommandError, match="bare file name"):
+        cmd.play_demo("D:/demos/m.dem")
 
 
 def test_play_demo_rejects_empty_path():
@@ -53,10 +57,27 @@ def test_timescale_rejects_zero_or_negative():
         cmd.set_timescale(0)
 
 
-def test_spectate_player_uses_account_id():
-    assert cmd.spectate_player("76561199266315708") == (
-        "spec_player_by_accountid 1306049980"
-    )
+def test_spectate_player_quotes_the_name():
+    assert cmd.spectate_player("semi") == 'spec_player "semi"'
+    assert cmd.spectate_player("臻咘 踔") == 'spec_player "臻咘 踔"'
+    assert cmd.spectate_player('a"b') == 'spec_player "ab"'
+
+
+def test_spectate_player_rejects_empty_name():
+    with pytest.raises(cmd.CommandError):
+        cmd.spectate_player("  ")
+
+
+def test_step_ticks():
+    assert cmd.step_ticks(320) == "demo_step_tick 320"
+    with pytest.raises(cmd.CommandError):
+        cmd.step_ticks(0)
+
+
+def test_movie_setup_cleans_the_hud_and_keeps_sound():
+    assert "cl_draw_only_deathnotices 1" in cmd.MOVIE_SETUP
+    assert "snd_mute_losefocus 0" in cmd.MOVIE_SETUP
+    assert cmd.MOVIE_SETUP[0] == "sv_cheats 1"
 
 
 def test_simple_commands():
@@ -64,5 +85,6 @@ def test_simple_commands():
     assert cmd.resume() == "demo_resume"
     assert cmd.disconnect() == "disconnect"
     assert cmd.spectator_mode() == "spec_mode 4"
+    assert cmd.toggle_demo_ui() == "demoui"
     assert cmd.hide_hud(True).endswith(" 1")
     assert cmd.hide_hud(False).endswith(" 0")

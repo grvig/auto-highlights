@@ -5,9 +5,9 @@ breaks recording — and it will — this is the first and usually only file to
 change. Nothing here performs I/O; these are pure builders so they can be
 asserted on in tests without the game running.
 
-Verification status: these follow Source/CS2 demo-playback conventions but
-have not been confirmed against a live CS2 build. The console transport logs
-every command it sends, so a rejected command shows up plainly in the log.
+Verified against a live CS2 build on 2026-11-11. Commands CS2 does not know
+print nothing at all, so a silently ignored command shows up in the log as a
+missing confirmation rather than an error.
 """
 
 from __future__ import annotations
@@ -37,15 +37,36 @@ def account_id_from_steamid64(steamid: str | int) -> int:
     return value - STEAM_ID64_BASE
 
 
-def play_demo(demo_path: str) -> str:
-    """Load and start playing a demo.
+# Folder under game/csgo that playdemo reads from. Absolute paths are not
+# reliable, so demos are staged here first.
+REPLAYS_FOLDER = "replays"
 
-    The path is quoted because demos routinely sit under paths with spaces,
-    such as "Counter-Strike Global Offensive".
-    """
-    if not str(demo_path).strip():
-        raise CommandError("Demo path is empty")
-    return f'playdemo "{demo_path}"'
+# Console settings for clean footage: no build stamp, telemetry, x-ray or
+# target names, only the kill feed, and sound kept while unfocused.
+MOVIE_SETUP = (
+    "sv_cheats 1",
+    "cl_draw_only_deathnotices 1",
+    "r_show_build_info 0",
+    "cl_hud_telemetry_frametime_show 0",
+    "cl_hud_telemetry_ping_show 0",
+    "cl_hud_telemetry_net_misdelivery_show 0",
+    "cl_trueview_show_status 0",
+    "spec_show_xray 0",
+    "hud_showtargetid 0",
+    "snd_mute_losefocus 0",
+)
+
+
+def play_demo(demo_name: str) -> str:
+    """Load and start playing a demo staged in the replays folder."""
+    stem = str(demo_name).strip()
+    if stem.lower().endswith(".dem"):
+        stem = stem[:-4]
+    if not stem:
+        raise CommandError("Demo name is empty")
+    if any(c in stem for c in '"/\\;'):
+        raise CommandError(f"Demo name must be a bare file name: {demo_name!r}")
+    return f"playdemo {REPLAYS_FOLDER}/{stem}"
 
 
 def goto_tick(tick: int) -> str:
@@ -70,9 +91,31 @@ def set_timescale(scale: float) -> str:
     return f"demo_timescale {scale:g}"
 
 
-def spectate_player(steamid: str | int) -> str:
-    """Lock the camera to one player by SteamID64."""
-    return f"spec_player_by_accountid {account_id_from_steamid64(steamid)}"
+def step_ticks(ticks: int) -> str:
+    """Play exactly this many ticks in real time, then pause.
+
+    CS2 answers with "Demo paused at engine time E, demo tick T" when done.
+    """
+    if ticks <= 0:
+        raise CommandError(f"Tick count must be positive: {ticks}")
+    return f"demo_step_tick {int(ticks)}"
+
+
+def spectate_player(name: str) -> str:
+    """Lock the camera to one player by in-game name.
+
+    CS2 has no spectate-by-account command, so names are used, quoted so
+    spaces and non-Latin names survive.
+    """
+    clean = str(name).replace('"', "").strip()
+    if not clean:
+        raise CommandError("Player name is empty")
+    return f'spec_player "{clean}"'
+
+
+def toggle_demo_ui() -> str:
+    """Show or hide the demo playback bar; it reappears on every load."""
+    return "demoui"
 
 
 def spectator_mode(mode: int = SPEC_MODE_FIRST_PERSON) -> str:

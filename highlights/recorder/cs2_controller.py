@@ -132,21 +132,21 @@ class Cs2Controller:
     # as a mismatch between the logged window and the footage.
 
     def load_demo(self, demo_path: Path | str, settle_seconds: float = 5.0) -> None:
-        """Start playing a demo and give it time to load."""
+        """Start playing a demo (already staged in the replays folder)."""
         logger.info("Loading demo %s", demo_path)
-        self.console.send(commands.play_demo(str(demo_path)))
+        self.console.send(commands.play_demo(Path(demo_path).name))
         self._sleep(settle_seconds)
 
-    def spectate(self, steamid: str | int, first_person: bool = True) -> None:
-        """Lock the camera to one player's point of view."""
+    def spectate(self, name: str, first_person: bool = True) -> None:
+        """Lock the camera to one player's point of view, by in-game name."""
         mode = (
             commands.SPEC_MODE_FIRST_PERSON
             if first_person
             else commands.SPEC_MODE_THIRD_PERSON
         )
-        logger.info("Spectating %s (mode=%s)", steamid, mode)
+        logger.info("Spectating %s (mode=%s)", name, mode)
         self.console.send_all(
-            [commands.spectate_player(steamid), commands.spectator_mode(mode)]
+            [commands.spectate_player(name), commands.spectator_mode(mode)]
         )
 
     def seek_to(self, tick: int, settle_seconds: float = SEEK_SETTLE_SECONDS) -> None:
