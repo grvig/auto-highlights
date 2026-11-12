@@ -118,3 +118,35 @@ def test_quit_terminates_and_is_idempotent(tmp_path):
     controller.quit()
     assert launcher.process.terminated
     controller.quit()  # must not raise
+
+
+def test_launch_can_run_a_custom_command(tmp_path):
+    launcher = FakeLauncher()
+    controller = Cs2Controller(make_install(tmp_path), launcher=launcher)
+    controller.launch(args=["HLAE.exe", "-noGui"])
+    assert launcher.called_with == ["HLAE.exe", "-noGui"]
+
+
+def test_attach_when_ready_retries_until_the_console_answers(tmp_path):
+    class SlowConsole(Cs2Console):
+        attempts = 0
+
+        def connect(self):
+            SlowConsole.attempts += 1
+            if SlowConsole.attempts < 3:
+                raise ConsoleError("not yet")
+
+    waits = []
+    controller = Cs2Controller(make_install(tmp_path), console=SlowConsole(), sleeper=waits.append)
+    controller.attach_when_ready(timeout=10, poll_seconds=2)
+    assert SlowConsole.attempts == 3 and waits == [2, 2]
+
+
+def test_attach_when_ready_gives_up(tmp_path):
+    class DeadConsole(Cs2Console):
+        def connect(self):
+            raise ConsoleError("refused")
+
+    controller = Cs2Controller(make_install(tmp_path), console=DeadConsole(), sleeper=lambda s: None)
+    with pytest.raises(Cs2Error, match="never opened"):
+        controller.attach_when_ready(timeout=4, poll_seconds=2)

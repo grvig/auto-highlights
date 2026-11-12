@@ -12,6 +12,8 @@ something a test suite should do.
 from __future__ import annotations
 
 import logging
+import re
+import shutil
 import subprocess
 import time
 from collections.abc import Callable, Sequence
@@ -25,6 +27,12 @@ logger = logging.getLogger(__name__)
 
 # Relative to the CS2 root — the same layout config validation checks.
 CS2_EXE_RELATIVE = Path("game/bin/win64/cs2.exe")
+# Where playdemo looks for demos named without a path.
+REPLAYS_RELATIVE = Path("game/csgo") / commands.REPLAYS_FOLDER
+
+# Printed once a demo has loaded far enough to seek in.
+DEMO_READY = r"received full update|Demo Skipping finished"
+DEMO_LOAD_TIMEOUT = 90.0
 
 # Seconds to let the game boot before the console is expected to answer.
 DEFAULT_STARTUP_TIMEOUT = 60.0
@@ -105,10 +113,13 @@ class Cs2Controller:
             args += ["-window"]
         return args
 
-    def launch(self, windowed: bool = True) -> None:
-        """Start CS2. Does not wait for the console to become reachable."""
+    def launch(self, windowed: bool = True, args: Sequence[str] | None = None) -> None:
+        """Start CS2, or run `args` (such as an HLAE launch) that starts it.
+
+        Does not wait for the console to become reachable.
+        """
         self.verify_install()
-        args = self.build_launch_args(windowed=windowed)
+        args = list(args) if args else self.build_launch_args(windowed=windowed)
         logger.info("Launching CS2: %s", " ".join(args))
         try:
             self._process = self._launcher(args)
@@ -129,6 +140,36 @@ class Cs2Controller:
         except ConsoleError as error:
             raise Cs2Error(str(error)) from error
 
+    def attach_when_ready(
+        self, timeout: float = DEFAULT_STARTUP_TIMEOUT, poll_seconds: float = 2.0
+    ) -> None:
+        """Keep trying the console until a freshly launched game answers."""
+        waited = 0.0
+        while True:
+            try:
+                self.console.connect()
+                return
+            except ConsoleError as error:
+                if waited >= timeout:
+                    raise Cs2Error(f"CS2 never opened its console: {error}") from error
+            self._sleep(poll_seconds)
+            waited += poll_seconds
+
+    def stage_demo(self, demo_path: Path | str) -> str:
+        """Copy a demo where playdemo can reach it. Returns the name to play.
+
+        Names are reduced to safe characters, because the console splits
+        playdemo's argument on spaces.
+        """
+        source = Path(demo_path)
+        name = re.sub(r"[^A-Za-z0-9_.-]", "_", source.stem) or "demo"
+        target = self.cs2_root / REPLAYS_RELATIVE / f"{name}.dem"
+        if not (target.is_file() and target.stat().st_size == source.stat().st_size):
+            target.parent.mkdir(parents=True, exist_ok=True)
+            logger.info("Staging %s as %s", source, target)
+            shutil.copy2(source, target)
+        return name
+
     # --- Playback -------------------------------------------------------
     #
     # Every step that can be confirmed is confirmed from the game's own log:
@@ -136,11 +177,20 @@ class Cs2Controller:
     # "Demo paused at engine time E, demo tick T". CS2 occasionally drops a
     # seek, so seeks are retried rather than trusted.
 
-    def load_demo(self, demo_path: Path | str, settle_seconds: float = 5.0) -> None:
-        """Start playing a demo (already staged in the replays folder)."""
-        logger.info("Loading demo %s", demo_path)
-        self.console.send(commands.play_demo(Path(demo_path).name))
+    def load_demo(self, demo_name: str, settle_seconds: float = 3.0) -> None:
+        """Play a staged demo, wait until it is seekable, and clean up the view.
+
+        The playback bar returns on every load, so it is toggled off each
+        time, and the footage settings are reapplied with it.
+        """
+        logger.info("Loading demo %s", demo_name)
+        self.console.drain()
+        self.console.send(commands.play_demo(demo_name))
+        if not self.console.wait_for(DEMO_READY, DEMO_LOAD_TIMEOUT):
+            raise Cs2Error(f"Demo {demo_name} never finished loading")
         self._sleep(settle_seconds)
+        self.console.send(commands.toggle_demo_ui())
+        self.console.send_all(list(commands.MOVIE_SETUP))
 
     def spectate(self, name: str, first_person: bool = True) -> None:
         """Lock the camera to one player's point of view, by in-game name."""

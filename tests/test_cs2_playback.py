@@ -61,10 +61,28 @@ def controller(tmp_path):
     return ctrl
 
 
-def test_load_demo_sends_playdemo_and_waits(controller):
-    controller.load_demo("D:/demos/match one.dem", settle_seconds=4.0)
-    assert controller.test_console.sent == ["playdemo replays/match one"]
+def test_load_demo_waits_for_the_game_then_cleans_the_view(controller):
+    controller.test_console.output = ["CL:  CL_ProcessPacketEntities: received full update"]
+    controller.load_demo("match_one", settle_seconds=4.0)
+    sent = controller.test_console.sent
+    assert sent[:2] == ["playdemo replays/match_one", "demoui"]
+    assert "cl_draw_only_deathnotices 1" in sent
     assert controller.test_sleeper.waits == [4.0]
+
+
+def test_load_demo_fails_when_the_demo_never_loads(controller):
+    with pytest.raises(Cs2Error, match="never finished loading"):
+        controller.load_demo("match_one")
+
+
+def test_stage_demo_copies_into_replays_with_a_safe_name(controller, tmp_path):
+    demo = tmp_path / "my match (1).dem"
+    demo.write_bytes(b"demo")
+    name = controller.stage_demo(demo)
+    assert name == "my_match__1_"
+    staged = controller.cs2_root / "game" / "csgo" / "replays" / "my_match__1_.dem"
+    assert staged.read_bytes() == b"demo"
+    assert controller.stage_demo(demo) == name  # already there: no recopy
 
 
 def test_spectate_locks_pov_in_first_person(controller):
