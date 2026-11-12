@@ -1,9 +1,9 @@
 """Dry-run recorder backend.
 
-Logs exactly what would be recorded and touches nothing else — no CS2, no OBS,
-no files. This is the backend to reach for when checking that a plan looks
+Logs exactly what would be recorded and touches nothing else — no CS2, no
+files. This is the backend to reach for when checking that a plan looks
 sane, and the one that keeps the whole pipeline testable on a machine with
-neither the game nor OBS installed.
+neither the game nor HLAE installed.
 """
 
 from __future__ import annotations

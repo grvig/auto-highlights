@@ -1,6 +1,6 @@
 """Logging configuration for the CLI.
 
-The recorder logs every command it sends to CS2 and OBS, which is exactly what
+The recorder logs every command it sends to CS2, which is exactly what
 you want to keep when a live capture misbehaves. This centralises how those
 logs are levelled and, optionally, written to a file so the console exchange
 survives after the run.

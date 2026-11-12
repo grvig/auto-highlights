@@ -8,9 +8,6 @@ BASE_CONFIG = """
 [paths]
 cs2_root = "C:/games/cs2"
 {ffmpeg_line}
-
-[obs]
-password = "pw"
 """
 
 
@@ -37,20 +34,15 @@ def test_bare_ffmpeg_command_is_not_resolved_to_a_path(tmp_path):
     assert "\\" not in config.ffmpeg_path
 
 
-def test_missing_password_still_raises(tmp_path):
+def test_an_old_obs_section_is_ignored(tmp_path):
     path = tmp_path / "config.toml"
-    path.write_text('[paths]\ncs2_root = "C:/games/cs2"\n[obs]\n')
-    with pytest.raises(ConfigError, match="password"):
-        load_config(path)
+    path.write_text('[paths]\ncs2_root = "C:/games/cs2"\n[obs]\npassword = "pw"\n')
+    load_config(path).validate()  # must not raise
 
 
 VALID = """
 [paths]
 cs2_root = "C:/games/cs2"
-
-[obs]
-port = 4455
-password = "pw"
 
 [clips]
 pre_roll_seconds = 3.0
@@ -64,10 +56,10 @@ def test_validate_accepts_a_good_config(tmp_path):
     load_config(path).validate()  # must not raise
 
 
-def test_validate_rejects_bad_port(tmp_path):
+def test_validate_rejects_a_tiny_render_size(tmp_path):
     path = tmp_path / "config.toml"
-    path.write_text(VALID.replace("port = 4455", "port = 70000"))
-    with pytest.raises(ConfigError, match="obs.port"):
+    path.write_text(VALID + "\n[recording]\nwidth = 100\n")
+    with pytest.raises(ConfigError, match="too small"):
         load_config(path).validate()
 
 
@@ -80,23 +72,19 @@ def test_validate_rejects_negative_roll(tmp_path):
 
 def test_validate_reports_all_problems_at_once(tmp_path):
     path = tmp_path / "config.toml"
-    bad = VALID.replace("port = 4455", "port = 0").replace(
-        "post_roll_seconds = 2.0", "post_roll_seconds = -2.0"
-    )
+    bad = VALID.replace("post_roll_seconds = 2.0", "post_roll_seconds = -2.0")
+    bad += "\n[recording]\nframerate = 1000\n"
     path.write_text(bad)
     with pytest.raises(ConfigError) as info:
         load_config(path).validate()
     message = str(info.value)
-    assert "obs.port" in message
+    assert "framerate" in message
     assert "post_roll_seconds" in message
 
 
 NO_CS2_ROOT = """
 [paths]
 output_dir = "./output"
-
-[obs]
-password = "pw"
 """
 
 

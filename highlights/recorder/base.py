@@ -2,7 +2,7 @@
 
 Layer 2 consumes what Layer 1 produced: a ClipPlan becomes a series of
 ClipRequests, and each recorded clip comes back as a RecordedClip. Backends
-(dry-run, OBS, or a future HLAE one) implement Recorder without the engine
+(dry-run, HLAE, window capture) implement Recorder without the engine
 knowing anything about them.
 
 The dependency only ever points this way — recorder imports engine, never the
@@ -19,7 +19,7 @@ from highlights.engine.moments import Moment, Segment
 
 
 class RecorderError(Exception):
-    """Raised when a backend cannot record — game not running, OBS down, etc."""
+    """Raised when a backend cannot record — game not running, HLAE missing, etc."""
 
 
 @dataclass(frozen=True)

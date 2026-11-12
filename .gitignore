@@ -1,4 +1,4 @@
-# Real config — contains OBS websocket password and machine-specific paths.
+# Real config — machine-specific paths.
 # Only config.template.toml is committed.
 config.toml
 

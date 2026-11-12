@@ -2,11 +2,11 @@
 
 from pathlib import Path
 
-from highlights.config import ClipConfig, Config, ObsConfig, RecordingConfig
+from highlights.config import ClipConfig, Config, RecordingConfig
 from highlights.preflight import Check, all_passed, run_preflight
 
 
-def make_config(tmp_path, *, ffmpeg="ffmpeg", make_exe=True, port=4455, hlae=True):
+def make_config(tmp_path, *, ffmpeg="ffmpeg", make_exe=True, framerate=60, hlae=True):
     hlae_dir = tmp_path / "hlae"
     if hlae:
         hlae_dir.mkdir()
@@ -20,10 +20,9 @@ def make_config(tmp_path, *, ffmpeg="ffmpeg", make_exe=True, port=4455, hlae=Tru
         cs2_root=cs2_root,
         output_dir=tmp_path / "output",
         clips_dir=tmp_path / "clips",
-        obs=ObsConfig(host="localhost", port=port, password="pw"),
         clips=ClipConfig(pre_roll_seconds=3.0, post_roll_seconds=2.0),
         ffmpeg_path=ffmpeg,
-        recording=RecordingConfig(hlae_path=hlae_dir),
+        recording=RecordingConfig(hlae_path=hlae_dir, framerate=framerate),
     )
 
 
@@ -54,7 +53,7 @@ def test_missing_ffmpeg_is_reported(tmp_path, monkeypatch):
 
 def test_invalid_config_value_is_reported(tmp_path, monkeypatch):
     monkeypatch.setattr("highlights.preflight.ffmpeg_available", lambda p: True)
-    checks = run_preflight(make_config(tmp_path, port=70000))
+    checks = run_preflight(make_config(tmp_path, framerate=1000))
     assert not find(checks, "config values").ok
 
 

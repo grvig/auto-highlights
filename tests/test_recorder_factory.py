@@ -4,7 +4,7 @@ from contextlib import nullcontext
 
 import pytest
 
-from highlights.config import ClipConfig, Config, ObsConfig, RecordingConfig
+from highlights.config import ClipConfig, Config, RecordingConfig
 from highlights.recorder import factory
 from highlights.recorder.cfg_guard import CfgGuard
 from highlights.recorder.hlae_backend import HlaeRecorder
@@ -24,7 +24,6 @@ def make_config(tmp_path, recorder="hlae", hlae=True):
         cs2_root=cs2,
         output_dir=tmp_path / "out",
         clips_dir=tmp_path / "media" / "clips",
-        obs=ObsConfig("localhost", 4455, "pw"),
         clips=ClipConfig(3.0, 2.0),
         recording=RecordingConfig(recorder=recorder, hlae_path=hlae_dir),
     )

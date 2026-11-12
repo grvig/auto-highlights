@@ -3,8 +3,8 @@
 A quick pre-run report: is the config sane, is CS2 where it should be, is
 ffmpeg reachable, can we write clips and reels. Deliberately local and
 non-destructive — it launches nothing and opens no network connections, so it
-is safe to run any time. OBS connectivity is not checked here because that
-means actually connecting; it is verified when a real recording starts.
+is safe to run any time. Whether the game answers on its console is not
+checked here, because that means launching it; recording verifies it.
 """
 
 from __future__ import annotations

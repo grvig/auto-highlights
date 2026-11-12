@@ -27,13 +27,6 @@ class ConfigError(Exception):
 
 
 @dataclass(frozen=True)
-class ObsConfig:
-    host: str
-    port: int
-    password: str
-
-
-@dataclass(frozen=True)
 class ClipConfig:
     pre_roll_seconds: float
     post_roll_seconds: float
@@ -64,7 +57,6 @@ class Config:
     cs2_root: Path | None
     output_dir: Path
     clips_dir: Path
-    obs: ObsConfig
     clips: ClipConfig
     # Either a bare command found on PATH ("ffmpeg") or an absolute path to the
     # executable. Kept as a string, not a resolved Path, so a bare command is
@@ -107,16 +99,12 @@ class Config:
         """Check the config values themselves make sense.
 
         Value-level only — it does not touch the filesystem or the network, so
-        it is safe to call before any game or OBS is running. Raises
+        it is safe to call before the game is running. Raises
         ConfigError listing every problem at once, rather than failing on the
         first one deep inside a run.
         """
         problems: list[str] = []
 
-        if not (1 <= self.obs.port <= 65535):
-            problems.append(f"obs.port {self.obs.port} is not in 1-65535")
-        if not self.obs.password:
-            problems.append("obs.password is empty")
         if self.clips.pre_roll_seconds < 0:
             problems.append("clips.pre_roll_seconds is negative")
         if self.clips.post_roll_seconds < 0:
@@ -164,7 +152,6 @@ def load_config(
         raw = tomllib.load(handle)
 
     paths = raw.get("paths", {})
-    obs = raw.get("obs", {})
     clips = raw.get("clips", {})
     recording = raw.get("recording", {})
 
@@ -175,11 +162,6 @@ def load_config(
         cs2_root=cs2_root,
         output_dir=_resolve(base, str(paths.get("output_dir", "./output"))),
         clips_dir=_resolve(base, str(paths.get("clips_dir", "./clips"))),
-        obs=ObsConfig(
-            host=str(obs.get("host", "localhost")),
-            port=int(obs.get("port", 4455)),
-            password=str(_require(obs, "password", "obs")),
-        ),
         clips=ClipConfig(
             pre_roll_seconds=float(clips.get("pre_roll_seconds", 3.0)),
             post_roll_seconds=float(clips.get("post_roll_seconds", 2.0)),

@@ -37,12 +37,6 @@ framerate = 60
 # "16:9" or "vertical".
 aspect = "stretched"
 
-[obs]
-host = "localhost"
-port = 4455
-# From OBS: Tools -> WebSocket Server Settings -> Show Connect Info.
-password = "your-obs-websocket-password"
-
 [clips]
 # Seconds of footage kept either side of a highlight moment.
 pre_roll_seconds = 3.0

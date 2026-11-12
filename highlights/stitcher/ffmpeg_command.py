@@ -3,8 +3,8 @@
 Two strategies, both using the concat demuxer:
 
 * stream copy (`-c copy`) — instant, no quality loss, but requires every clip
-  to share codec and parameters. OBS records all clips with one set of
-  settings, so this is the default and normally works.
+  to share codec and parameters. The recorder encodes every clip with one
+  set of settings, so this is the default and normally works.
 * re-encode — the fallback when clips do not match (mixed sources, a settings
   change mid-session). Slower and lossy but robust.
 
