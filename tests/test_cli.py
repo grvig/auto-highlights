@@ -90,6 +90,13 @@ def test_parser_reads_record_and_stitch_flags():
     assert args.record
     assert args.stitch
     assert not args.dry_run
+    assert args.aspect is None  # config decides, stretched by default
+
+
+def test_parser_reads_aspect():
+    assert build_parser().parse_args(["m.dem", "--aspect", "4:3"]).aspect == "4:3"
+    with pytest.raises(SystemExit):
+        build_parser().parse_args(["m.dem", "--aspect", "21:9"])
 
 
 def test_dry_run_and_record_are_mutually_exclusive():

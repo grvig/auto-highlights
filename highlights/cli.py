@@ -9,6 +9,7 @@ Parses a demo, reports players and a highlight plan, and optionally records
 from __future__ import annotations
 
 import argparse
+import contextlib
 import sys
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -33,13 +34,14 @@ from highlights.engine.selection import ORDERS, arrange, select_best
 from highlights.steam.account import signed_in_account
 from highlights.steam.locate import find_steam_root
 from highlights.recorder.base import RecordedClip
-from highlights.recorder.cs2_controller import Cs2Controller, Cs2Error
+from highlights.recorder.cs2_controller import Cs2Error
 from highlights.recorder.dry_run import DryRunRecorder
 from highlights.recorder.naming import build_clip_requests, sanitise_part
-from highlights.recorder.obs_backend import ObsRecorder
-from highlights.recorder.obs_client import ObsClient, ObsError
+from highlights.recorder.factory import build_live_recorder, settings_guard
+from highlights.recorder.hlae import HlaeError
 from highlights.recorder.session import record_requests
 from highlights.stitcher.runner import StitchError
+from highlights.stitcher.aspect import PROFILES, convert
 from highlights.stitcher.stitch import stitch_clips
 
 # CLI-friendly aliases on top of the HighlightType values.
@@ -106,7 +108,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--log-file",
         type=Path,
-        help="also write full DEBUG logs here — keeps the CS2/OBS command "
+        help="also write full DEBUG logs here — keeps the CS2 console "
         "exchange for diagnosing a failed capture",
     )
     parser.add_argument(
@@ -125,19 +127,25 @@ def build_parser() -> argparse.ArgumentParser:
     mode.add_argument(
         "--dry-run",
         action="store_true",
-        help="log what would be recorded without launching CS2 or OBS",
+        help="log what would be recorded without launching CS2",
     )
     mode.add_argument(
         "--record",
         action="store_true",
-        help="record the plan for real (needs CS2 running with -netconport "
-        "and OBS with its WebSocket server enabled)",
+        help="record the plan for real: launches CS2 through HLAE and renders "
+        "every clip (falls back to capturing an already running CS2 window)",
     )
     parser.add_argument(
         "--stitch",
         action="store_true",
         help="after recording, concatenate the clips into one reel (needs "
         "ffmpeg; has no effect on --dry-run, which writes no clips)",
+    )
+    parser.add_argument(
+        "--aspect",
+        choices=sorted(PROFILES),
+        help="shape of the stitched reel (default from config: stretched, "
+        "4:3 stretched to fill 16:9)",
     )
     return parser
 
@@ -318,6 +326,8 @@ def run_recording(
     pov_demos: list[str],
     live: bool,
     stitch: bool = False,
+    names: dict[str, str] | None = None,
+    aspect: str | None = None,
 ) -> int:
     """Record a plan, dry by default. Returns an exit code."""
     warning = pov_recording_warning(not pov_demos, player_name, live)
@@ -334,26 +344,21 @@ def run_recording(
         demo_path=fallback_demo,
         player_name=player_name,
         output_dir=config.clips_dir,
+        extension="mp4",
+        names=names,
     )
 
-    if live:
-        config.verify_cs2_install()
-        recorder = ObsRecorder(
-            cs2=Cs2Controller(config.cs2_root),
-            obs=ObsClient(
-                host=config.obs.host,
-                port=config.obs.port,
-                password=config.obs.password,
-            ),
-            output_dir=config.clips_dir,
-        )
-    else:
-        recorder = DryRunRecorder()
+    try:
+        recorder = build_live_recorder(config) if live else DryRunRecorder()
+    except HlaeError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
 
     print(f"\nRecording {len(requests)} clip(s) with the {recorder.name} backend")
     try:
-        clips = record_requests(recorder, requests)
-    except (Cs2Error, ObsError) as error:
+        with settings_guard(config) if live else contextlib.nullcontext():
+            clips = record_requests(recorder, requests)
+    except Cs2Error as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
 
@@ -363,26 +368,30 @@ def run_recording(
         print(f"  #{clip.index:03d} {clip.error}", file=sys.stderr)
 
     if stitch:
-        stitch_code = stitch_recorded(clips, player_name, config)
+        stitch_code = stitch_recorded(clips, player_name, config, aspect)
         if stitch_code != 0:
             return stitch_code
 
     return 1 if failed else 0
 
 
-def stitch_recorded(clips: list[RecordedClip], player_name: str, config: Config) -> int:
-    """Stitch recorded clips into a final reel. Returns an exit code."""
-    reel_name = f"{sanitise_part(player_name)}_highlights.mkv"
-    reel_path = config.output_dir / reel_name
+def stitch_recorded(
+    clips: list[RecordedClip], player_name: str, config: Config, aspect: str | None = None
+) -> int:
+    """Stitch recorded clips into a reel and export it in the chosen shape."""
+    profile = PROFILES.get(aspect or config.recording.aspect, PROFILES["stretched"])
+    reel_name = f"{sanitise_part(player_name)}_highlights.mp4"
+    reel_path = config.clips_dir / f"_joined_{reel_name}"
     print(f"\nStitching {len(clips)} clip(s) into {reel_name}")
     try:
         output = stitch_clips(
             clips, reel_path, config.ffmpeg_path, work_dir=config.clips_dir
         )
-    except StitchError as error:
+        final = convert(output, config.output_dir / reel_name, profile, config.ffmpeg_path)
+    except (StitchError, RuntimeError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
-    print(f"Reel written: {output}")
+    print(f"Reel written ({profile.name}): {final}")
     return 0
 
 
@@ -490,6 +499,8 @@ def main(argv: list[str] | None = None) -> int:
                 pov_demos=pov,
                 live=args.record,
                 stitch=args.stitch and args.record,
+                names={p.steamid: p.name for s in sources for p in s.players()},
+                aspect=args.aspect,
             )
         except ConfigError as error:
             print(f"Error: {error}", file=sys.stderr)
