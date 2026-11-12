@@ -29,9 +29,9 @@ CS2_EXE_RELATIVE = Path("game/bin/win64/cs2.exe")
 # Seconds to let the game boot before the console is expected to answer.
 DEFAULT_STARTUP_TIMEOUT = 60.0
 
-# Grace period after a seek before playback is trusted to be at the tick.
-# Seeking is not instant and the console gives no completion signal.
-SEEK_SETTLE_SECONDS = 1.5
+# How long to wait for CS2 to confirm a seek, and how often to try one.
+SEEK_TIMEOUT_SECONDS = 12.0
+SEEK_ATTEMPTS = 3
 
 # Extra seconds held after a window finishes, so the recorder is not cut off
 # by the pause landing a frame early.
@@ -125,11 +125,10 @@ class Cs2Controller:
 
     # --- Playback -------------------------------------------------------
     #
-    # CS2 gives no reliable completion signal for seeking or for reaching a
-    # tick, so these methods are time-based: seek, wait out a settle period,
-    # play for exactly the window's duration, pause. That is the pragmatic
-    # approach, and it is why every step is logged — a drifting clip shows up
-    # as a mismatch between the logged window and the footage.
+    # Every step that can be confirmed is confirmed from the game's own log:
+    # seeks by "Demo Skipping finished at tick T" and stepped playback by
+    # "Demo paused at engine time E, demo tick T". CS2 occasionally drops a
+    # seek, so seeks are retried rather than trusted.
 
     def load_demo(self, demo_path: Path | str, settle_seconds: float = 5.0) -> None:
         """Start playing a demo (already staged in the replays folder)."""
@@ -149,12 +148,25 @@ class Cs2Controller:
             [commands.spectate_player(name), commands.spectator_mode(mode)]
         )
 
-    def seek_to(self, tick: int, settle_seconds: float = SEEK_SETTLE_SECONDS) -> None:
-        """Seek to a tick and pause there, ready to play."""
-        logger.info("Seeking to tick %d", tick)
-        self.console.send(commands.goto_tick(tick))
-        self._sleep(settle_seconds)
-        self.console.send(commands.pause())
+    def seek_to(self, tick: int) -> bool:
+        """Seek to a tick and stay paused there. Returns whether CS2 confirmed it.
+
+        After demo_step_tick the demo sits in a stepped pause that ignores the
+        next seek, so each attempt first resumes and pauses to clear it.
+        """
+        confirmation = rf"Demo Skipping finished at tick {int(tick)}\b"
+        for attempt in range(1, SEEK_ATTEMPTS + 1):
+            logger.info("Seeking to tick %d (attempt %d)", tick, attempt)
+            self.console.send(commands.resume())
+            self._sleep(0.15)
+            self.console.send(commands.pause())
+            self._sleep(0.4)
+            self.console.drain()
+            self.console.send(commands.goto_tick(tick))
+            if self.console.wait_for(confirmation, SEEK_TIMEOUT_SECONDS):
+                return True
+            logger.warning("Seek to tick %d not confirmed", tick)
+        return False
 
     def play_window(
         self, start_tick: int, end_tick: int, timescale: float = 1.0

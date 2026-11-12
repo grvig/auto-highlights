@@ -4,6 +4,8 @@ Uses a recording console and a fake sleeper, so the sequence and timing of
 commands are asserted without the game running or the suite actually waiting.
 """
 
+import re
+
 import pytest
 
 from highlights.recorder.cs2_console import Cs2Console
@@ -16,6 +18,17 @@ class RecordingConsole(Cs2Console):
     def __init__(self) -> None:
         super().__init__(port=1)
         self.sent: list[str] = []
+        self.output: list[str] = []  # lines the "game" prints, oldest first
+
+    def drain(self) -> None:
+        return None
+
+    def wait_for(self, pattern, timeout):
+        while self.output:
+            match = re.search(pattern, self.output.pop(0))
+            if match:
+                return match
+        return None
 
     def connect(self) -> None:
         return None
@@ -67,10 +80,30 @@ def test_spectate_can_use_third_person(controller):
     assert controller.test_console.sent[-1] == "spec_mode 5"
 
 
-def test_seek_sends_goto_then_pauses(controller):
-    controller.seek_to(10_128)
-    assert controller.test_console.sent == ["demo_gototick 10128", "demo_pause"]
-    assert controller.test_sleeper.waits  # settled before pausing
+def test_seek_clears_a_stepped_pause_then_waits_for_confirmation(controller):
+    controller.test_console.output = ["Demo Skipping finished at tick 10128"]
+    assert controller.seek_to(10_128)
+    assert controller.test_console.sent == ["demo_resume", "demo_pause", "demo_gototick 10128"]
+
+
+def test_dropped_seek_is_retried(controller):
+    controller.test_console.output = ["noise", "Demo Skipping finished at tick 10128"]
+    controller.test_console.wait_for = _one_line_per_wait(controller.test_console)
+    assert controller.seek_to(10_128)
+    assert controller.test_console.sent.count("demo_gototick 10128") == 2
+
+
+def test_seek_to_a_different_tick_does_not_count(controller):
+    controller.test_console.output = ["Demo Skipping finished at tick 101280"] * 3
+    controller.test_console.wait_for = _one_line_per_wait(controller.test_console)
+    assert not controller.seek_to(10_128)
+    assert controller.test_console.sent.count("demo_gototick 10128") == 3
+
+
+def _one_line_per_wait(console):
+    def wait_for(pattern, timeout):
+        return re.search(pattern, console.output.pop(0)) if console.output else None
+    return wait_for
 
 
 def test_play_window_waits_the_tick_span(controller):
