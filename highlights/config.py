@@ -39,6 +39,25 @@ class ClipConfig:
     post_roll_seconds: float
 
 
+# Recording backends: HLAE renders frame-perfect footage with synced audio;
+# "window" captures the game window in real time when HLAE is unavailable.
+RECORDERS = ("hlae", "window")
+
+
+@dataclass(frozen=True)
+class RecordingConfig:
+    recorder: str = "hlae"
+    # HLAE install folder (holding HLAE.exe). None means the bundled copy.
+    hlae_path: Path | None = None
+    # Render size. 4:3 by default, stretched to 16:9 on export, the way
+    # stretched-res players see the game.
+    width: int = 1440
+    height: int = 1080
+    framerate: int = 60
+    # Export shape for finished reels; see highlights.stitcher.aspect.
+    aspect: str = "stretched"
+
+
 @dataclass(frozen=True)
 class Config:
     # None when it was neither configured nor found automatically.
@@ -56,6 +75,7 @@ class Config:
     # Parsed-demo cache. Defaults to a sibling of clips_dir so it lands on the
     # same drive the user picked for media rather than the system drive.
     cache_dir: Path | None = None
+    recording: RecordingConfig = RecordingConfig()
 
     @property
     def resolved_cache_dir(self) -> Path:
@@ -103,6 +123,13 @@ class Config:
             problems.append("clips.post_roll_seconds is negative")
         if not self.ffmpeg_path.strip():
             problems.append("paths.ffmpeg is empty")
+        rec = self.recording
+        if rec.recorder not in RECORDERS:
+            problems.append(f"recording.recorder must be one of {', '.join(RECORDERS)}")
+        if rec.width < 320 or rec.height < 240:
+            problems.append(f"recording size {rec.width}x{rec.height} is too small")
+        if not (24 <= rec.framerate <= 240):
+            problems.append(f"recording.framerate {rec.framerate} is not in 24-240")
 
         if problems:
             raise ConfigError(
@@ -139,6 +166,7 @@ def load_config(
     paths = raw.get("paths", {})
     obs = raw.get("obs", {})
     clips = raw.get("clips", {})
+    recording = raw.get("recording", {})
 
     base = config_path.parent
     configured_cs2 = paths.get("cs2_root")
@@ -159,6 +187,14 @@ def load_config(
         ffmpeg_path=str(paths.get("ffmpeg", "ffmpeg")),
         cs2_root_detected=not configured_cs2 and cs2_root is not None,
         cache_dir=_resolve(base, str(paths["cache_dir"])) if paths.get("cache_dir") else None,
+        recording=RecordingConfig(
+            recorder=str(recording.get("recorder", "hlae")),
+            hlae_path=_resolve(base, str(paths["hlae"])) if paths.get("hlae") else None,
+            width=int(recording.get("width", 1440)),
+            height=int(recording.get("height", 1080)),
+            framerate=int(recording.get("framerate", 60)),
+            aspect=str(recording.get("aspect", "stretched")),
+        ),
     )
 
 

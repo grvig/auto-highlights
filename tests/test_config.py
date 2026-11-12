@@ -138,3 +138,26 @@ def test_cache_dir_can_be_configured(tmp_path):
     path.write_text(NO_CS2_ROOT.replace('output_dir = "./output"', 'cache_dir = "elsewhere"'))
     config = load_config(path, locate_cs2=lambda: None)
     assert config.resolved_cache_dir == (tmp_path / "elsewhere").resolve()
+
+
+def test_recording_defaults_to_hlae_at_4x3_stretched(tmp_path):
+    rec = load_config(write_config(tmp_path)).recording
+    assert (rec.recorder, rec.width, rec.height, rec.framerate) == ("hlae", 1440, 1080, 60)
+    assert rec.aspect == "stretched"
+    assert rec.hlae_path is None
+
+
+def test_recording_section_and_hlae_path_are_read(tmp_path):
+    path = write_config(tmp_path, 'hlae = "D:/tools/hlae"')
+    path.write_text(path.read_text() + '\n[recording]\nrecorder = "window"\nwidth = 1280\nheight = 960\n')
+    config = load_config(path)
+    assert config.recording.recorder == "window"
+    assert (config.recording.width, config.recording.height) == (1280, 960)
+    assert config.recording.hlae_path.as_posix().endswith("D:/tools/hlae")
+
+
+def test_validate_rejects_unknown_recorder(tmp_path):
+    path = write_config(tmp_path)
+    path.write_text(path.read_text() + '\n[recording]\nrecorder = "obs"\n')
+    with pytest.raises(ConfigError, match="recording.recorder"):
+        load_config(path).validate()

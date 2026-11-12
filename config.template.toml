@@ -21,6 +21,22 @@ clips_dir = "./clips"
 # "ffmpeg" if it is on PATH, or give the full path to ffmpeg.exe.
 ffmpeg = "ffmpeg"
 
+# HLAE install folder (the one holding HLAE.exe). Optional: the copy that
+# ships with the app is used when this is left out.
+# hlae = "D:/auto-highlights/tools/hlae"
+
+[recording]
+# "hlae" renders every frame with synced game audio (recommended).
+# "window" captures the game window in real time, a fallback without HLAE.
+recorder = "hlae"
+# Render size. 1440x1080 is 4:3; reels are stretched to 16:9 on export.
+width = 1440
+height = 1080
+framerate = 60
+# Reel shape: "stretched" (4:3 stretched to 16:9), "4:3", "pillarbox",
+# "16:9" or "vertical".
+aspect = "stretched"
+
 [obs]
 host = "localhost"
 port = 4455
