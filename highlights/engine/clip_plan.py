@@ -18,7 +18,7 @@ from highlights.engine.detectors.multikills import AceDetector, MultiKillDetecto
 from highlights.engine.detectors.utility_damage import UtilityDamageDetector
 from highlights.engine.detectors.utility_flash import FlashUtilityDetector
 from highlights.engine.detectors.utility_smoke import SmokeUtilityDetector
-from highlights.engine.moments import HighlightType, Moment
+from highlights.engine.moments import HighlightType, Moment, Segment
 from highlights.engine.replays import add_victim_replays
 from highlights.engine.scoring import score_moments
 
@@ -52,6 +52,7 @@ def merge_overlaps(moments: list[Moment]) -> list[Moment]:
     moments — every other pairing (a death overlapping a kill, two utility
     moments) is a distinct highlight and kept.
     """
+    moments = _combine_round_clusters(moments)
     absorbers = [m for m in moments if m.highlight_type in _ABSORBING_TYPES]
     kept: list[Moment] = []
     for moment in moments:
@@ -61,6 +62,49 @@ def merge_overlaps(moments: list[Moment]) -> list[Moment]:
             continue
         kept.append(moment)
     return _join_close_kills(kept)
+
+
+# When a round holds more than one cluster moment, the strongest framing names
+# the combined clip: an ace that was also a clutch is an ace.
+_CLUSTER_RANK = {HighlightType.ACE: 3, HighlightType.CLUTCH: 2, HighlightType.MULTI_KILL: 1}
+
+
+def _combine_round_clusters(moments: list[Moment]) -> list[Moment]:
+    """Fold an ace, clutch and multi-kill from the same round into one moment.
+
+    A round where the player aced while clutching would otherwise produce two
+    clips of the same kills. The combined moment keeps every window of both,
+    the higher-ranked type, and both descriptions.
+    """
+    clusters: dict[tuple[int, object], Moment] = {}
+    others: list[Moment] = []
+    for moment in moments:
+        if moment.highlight_type not in _CLUSTER_RANK:
+            others.append(moment)
+            continue
+        key = (moment.round_number, moment.source_demo)
+        existing = clusters.get(key)
+        clusters[key] = moment if existing is None else _combine(existing, moment)
+    return sorted([*others, *clusters.values()], key=lambda m: (m.core_tick, m.highlight_type))
+
+
+def _combine(a: Moment, b: Moment) -> Moment:
+    lead, other = (a, b) if _CLUSTER_RANK[a.highlight_type] >= _CLUSTER_RANK[b.highlight_type] else (b, a)
+    windows: list[Segment] = []
+    for window in sorted([*a.windows, *b.windows], key=lambda w: w.start_tick):
+        if windows and window.start_tick <= windows[-1].end_tick:
+            windows[-1] = Segment(windows[-1].start_tick, max(windows[-1].end_tick, window.end_tick))
+        else:
+            windows.append(window)
+    return replace(
+        lead,
+        core_tick=max(a.core_tick, b.core_tick),
+        start_tick=windows[0].start_tick,
+        end_tick=windows[-1].end_tick,
+        segments=tuple(windows),
+        description=f"{lead.description} + {other.description}",
+        opponents=max(a.opponents, b.opponents),
+    )
 
 
 def _join_close_kills(moments: list[Moment]) -> list[Moment]:
