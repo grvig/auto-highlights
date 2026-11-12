@@ -2,11 +2,15 @@
 
 from pathlib import Path
 
-from highlights.config import ClipConfig, Config, ObsConfig
+from highlights.config import ClipConfig, Config, ObsConfig, RecordingConfig
 from highlights.preflight import Check, all_passed, run_preflight
 
 
-def make_config(tmp_path, *, ffmpeg="ffmpeg", make_exe=True, port=4455):
+def make_config(tmp_path, *, ffmpeg="ffmpeg", make_exe=True, port=4455, hlae=True):
+    hlae_dir = tmp_path / "hlae"
+    if hlae:
+        hlae_dir.mkdir()
+        (hlae_dir / "HLAE.exe").write_text("")
     cs2_root = tmp_path / "cs2"
     exe = cs2_root / "game" / "bin" / "win64" / "cs2.exe"
     if make_exe:
@@ -19,6 +23,7 @@ def make_config(tmp_path, *, ffmpeg="ffmpeg", make_exe=True, port=4455):
         obs=ObsConfig(host="localhost", port=port, password="pw"),
         clips=ClipConfig(pre_roll_seconds=3.0, post_roll_seconds=2.0),
         ffmpeg_path=ffmpeg,
+        recording=RecordingConfig(hlae_path=hlae_dir),
     )
 
 
@@ -64,3 +69,10 @@ def test_creates_and_reports_writable_dirs(tmp_path, monkeypatch):
 def test_all_passed_helper():
     assert all_passed([Check("a", True, ""), Check("b", True, "")])
     assert not all_passed([Check("a", True, ""), Check("b", False, "")])
+
+
+def test_missing_hlae_is_reported(tmp_path, monkeypatch):
+    monkeypatch.setattr("highlights.preflight.ffmpeg_available", lambda p: True)
+    monkeypatch.setattr("highlights.recorder.hlae.BUNDLED_DIR", tmp_path / "none")
+    checks = run_preflight(make_config(tmp_path, hlae=False))
+    assert not find(checks, "HLAE").ok

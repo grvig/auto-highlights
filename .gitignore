@@ -23,3 +23,6 @@ clips/
 .idea/
 Thumbs.db
 desktop.ini
+
+# Bundled third-party tools (HLAE), fetched by the installer
+/tools/

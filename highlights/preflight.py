@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from highlights.config import Config, ConfigError
+from highlights.recorder.hlae import find_hlae
 from highlights.stitcher.runner import ffmpeg_available
 
 
@@ -58,6 +59,11 @@ def run_preflight(config: Config) -> list[Check]:
     checks.append(
         Check("ffmpeg", ffmpeg_available(config.ffmpeg_path), config.ffmpeg_path)
     )
+
+    if config.recording.recorder == "hlae":
+        hlae_dir = find_hlae(config.recording.hlae_path)
+        detail = str(hlae_dir) if hlae_dir else "not found - set paths.hlae or reinstall"
+        checks.append(Check("HLAE", hlae_dir is not None, detail))
 
     clips_ok, clips_detail = _writable(config.clips_dir)
     checks.append(Check("clips dir writable", clips_ok, clips_detail))
