@@ -1,0 +1,131 @@
+"""Tests for the HLAE recorder backend, with the game and ffmpeg faked."""
+
+from pathlib import Path
+
+from highlights.engine.moments import HighlightType, Moment, Segment
+from highlights.recorder.base import ClipRequest
+from highlights.recorder.hlae_backend import LEAD_TICKS, HlaeRecorder
+
+
+class FakeConsole:
+    def __init__(self):
+        self.sent = []
+
+    def send_all(self, commands):
+        self.sent.extend(commands)
+
+
+class FakeCs2:
+    tickrate = 64
+
+    def __init__(self, landings=None, seek_ok=True):
+        self.console = FakeConsole()
+        self.landings = list(landings or [])
+        self.seek_ok = seek_ok
+        self.log = []
+
+    def launch(self, args):
+        self.log.append(("launch", args[0]))
+
+    def attach_when_ready(self):
+        self.log.append(("attach",))
+
+    def attach(self):
+        self.log.append(("attach",))
+
+    def stage_demo(self, path):
+        return Path(path).stem
+
+    def load_demo(self, name):
+        self.log.append(("load", name))
+
+    def seek_to(self, tick):
+        self.log.append(("seek", tick))
+        return self.seek_ok
+
+    def spectate(self, name):
+        self.log.append(("spectate", name))
+
+    def play_ticks(self, ticks):
+        self.log.append(("step", ticks))
+        return self.landings.pop(0) if self.landings else None
+
+    def quit(self):
+        self.log.append(("quit",))
+
+
+def make_request(tmp_path, pov=None, camera=None):
+    moment = Moment(
+        round_number=5, highlight_type=HighlightType.KILL, player_steamid="P",
+        core_tick=26300, start_tick=26207, end_tick=26527, description="kill",
+    )
+    return ClipRequest(
+        index=1, moment=moment, demo_path=Path("D:/demos/nuke.dem"), player_name="semi",
+        output_path=tmp_path / "001_r05_kill_semi.mp4",
+        segment=Segment(26207, 26527, pov_steamid=pov), camera_name=camera,
+    )
+
+
+def recorder(tmp_path, cs2, runs):
+    return HlaeRecorder(cs2, tmp_path, runner=runs.append, sleeper=lambda s: None)
+
+
+def test_records_one_take_seeking_before_the_window(tmp_path):
+    cs2, runs = FakeCs2(landings=[26528]), []
+    clip = recorder(tmp_path, cs2, runs).record_clip(make_request(tmp_path))
+    assert clip.succeeded
+    assert ("seek", 26207 - LEAD_TICKS) in cs2.log
+    assert ("step", 320 + LEAD_TICKS) in cs2.log
+    assert ("spectate", "semi") in cs2.log
+    assert "mirv_streams record start" in cs2.console.sent
+    assert cs2.console.sent[-1] == "host_framerate 0"
+    finish = runs[0]
+    assert finish[finish.index("-ss") + 1] == "0.500"  # 32 lead ticks
+    assert finish[-1].endswith("001_r05_kill_semi.mp4")
+
+
+def test_victim_cam_spectates_the_victim(tmp_path):
+    cs2, runs = FakeCs2(landings=[26527]), []
+    recorder(tmp_path, cs2, runs).record_clip(make_request(tmp_path, pov="V", camera="臻咘踔"))
+    assert ("spectate", "臻咘踔") in cs2.log
+
+
+def test_a_take_that_lands_wrong_is_recorded_again(tmp_path):
+    cs2, runs = FakeCs2(landings=[12000, 26526]), []
+    assert recorder(tmp_path, cs2, runs).record_clip(make_request(tmp_path)).succeeded
+    assert [entry for entry in cs2.log if entry[0] == "step"] == [("step", 352)] * 2
+
+
+def test_each_take_gets_a_fresh_folder(tmp_path):
+    cs2, runs = FakeCs2(landings=[1, 26527]), []
+    recorder(tmp_path, cs2, runs).record_clip(make_request(tmp_path))
+    takes = sorted(p.name for p in (tmp_path / "takes").iterdir())
+    assert takes == ["001_r05_kill_semi", "001_r05_kill_semi_2"]
+
+
+def test_the_demo_is_loaded_once_for_many_clips(tmp_path):
+    cs2, runs = FakeCs2(landings=[26527, 26527]), []
+    rec = recorder(tmp_path, cs2, runs)
+    rec.record_clip(make_request(tmp_path))
+    rec.record_clip(make_request(tmp_path))
+    assert [e for e in cs2.log if e[0] == "load"] == [("load", "nuke")]
+
+
+def test_failed_seek_becomes_a_failed_clip(tmp_path):
+    cs2, runs = FakeCs2(seek_ok=False), []
+    clip = recorder(tmp_path, cs2, runs).record_clip(make_request(tmp_path))
+    assert not clip.succeeded and "seek" in clip.error
+    assert runs == []
+
+
+def test_open_launches_through_hlae_when_asked(tmp_path):
+    cs2 = FakeCs2()
+    HlaeRecorder(cs2, tmp_path, launch_args=["HLAE.exe"], sleeper=lambda s: None).open()
+    assert cs2.log[:2] == [("launch", "HLAE.exe"), ("attach",)]
+
+
+def test_close_stops_streams_and_quits(tmp_path):
+    cs2 = FakeCs2()
+    HlaeRecorder(cs2, tmp_path).close()
+    assert "mirv_streams record end" in cs2.console.sent
+    assert cs2.log[-1] == ("quit",)
