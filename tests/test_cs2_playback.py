@@ -124,3 +124,32 @@ def test_play_window_scales_wait_with_timescale(controller):
 def test_play_window_rejects_inverted_window(controller):
     with pytest.raises(Cs2Error, match="ends before"):
         controller.play_window(2000, 1000)
+
+
+def test_play_ticks_steps_and_reports_where_it_stopped(controller):
+    controller.test_console.output = ["Demo paused at engine time 28376, demo tick 10322"]
+    assert controller.play_ticks(320) == 10322
+    assert controller.test_console.sent == ["demo_step_tick 320"]
+
+
+def test_play_ticks_returns_none_when_the_game_stays_silent(controller):
+    assert controller.play_ticks(320) is None
+
+
+def test_play_ticks_rejects_empty_spans(controller):
+    with pytest.raises(Cs2Error, match="Nothing to play"):
+        controller.play_ticks(0)
+
+
+def test_play_range_seeks_then_steps_the_span(controller):
+    controller.test_console.output = [
+        "Demo Skipping finished at tick 10000",
+        "Demo paused at engine time 28376, demo tick 10320",
+    ]
+    assert controller.play_range(10_000, 10_320) == 10_320
+    assert controller.test_console.sent[-2:] == ["demo_gototick 10000", "demo_step_tick 320"]
+
+
+def test_play_range_fails_loudly_when_the_seek_never_lands(controller):
+    with pytest.raises(Cs2Error, match="never confirmed"):
+        controller.play_range(10_000, 10_320)

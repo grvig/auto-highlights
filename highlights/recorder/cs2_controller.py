@@ -37,6 +37,12 @@ SEEK_ATTEMPTS = 3
 # by the pause landing a frame early.
 PLAY_TAIL_SECONDS = 0.3
 
+# Stepped playback can run slower than real time while a recorder renders
+# every frame, so its timeout is a multiple of the span plus some slack.
+STEP_SLOWDOWN_ALLOWANCE = 3.0
+STEP_SLACK_SECONDS = 15.0
+STEP_DONE = r"Demo paused at engine time \d+, demo tick (\d+)"
+
 ProcessLauncher = Callable[[Sequence[str]], "subprocess.Popen[bytes]"]
 Sleeper = Callable[[float], None]
 
@@ -167,6 +173,34 @@ class Cs2Controller:
                 return True
             logger.warning("Seek to tick %d not confirmed", tick)
         return False
+
+    def play_ticks(self, ticks: int) -> int | None:
+        """Play exactly `ticks` ticks from the paused position, then pause.
+
+        Returns the demo tick CS2 reports it stopped at (usually within two or
+        three ticks of the target), or None if it never reported stopping.
+        """
+        if ticks <= 0:
+            raise Cs2Error(f"Nothing to play: {ticks} ticks")
+        timeout = ticks / self.tickrate * STEP_SLOWDOWN_ALLOWANCE + STEP_SLACK_SECONDS
+        self.console.drain()
+        logger.info("Stepping %d ticks (%.1fs)", ticks, ticks / self.tickrate)
+        self.console.send(commands.step_ticks(ticks))
+        done = self.console.wait_for(STEP_DONE, timeout)
+        if done is None:
+            logger.warning("CS2 never reported the end of a %d-tick step", ticks)
+            return None
+        landed = int(done.group(1))
+        logger.info("Stepped playback stopped at demo tick %d", landed)
+        return landed
+
+    def play_range(self, start_tick: int, end_tick: int) -> int | None:
+        """Seek to start_tick and play through end_tick. Returns the landed tick."""
+        if end_tick <= start_tick:
+            raise Cs2Error(f"Window ends before it starts: {start_tick}-{end_tick}")
+        if not self.seek_to(start_tick):
+            raise Cs2Error(f"CS2 never confirmed the seek to tick {start_tick}")
+        return self.play_ticks(end_tick - start_tick)
 
     def play_window(
         self, start_tick: int, end_tick: int, timescale: float = 1.0
