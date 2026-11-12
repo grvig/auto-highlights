@@ -19,7 +19,7 @@ import time
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
-from highlights.engine.timing import CS2_TICKRATE, tick_span_seconds
+from highlights.engine.timing import CS2_TICKRATE
 from highlights.recorder import cs2_commands as commands
 from highlights.recorder.cs2_console import DEFAULT_PORT, ConsoleError, Cs2Console
 
@@ -40,10 +40,6 @@ DEFAULT_STARTUP_TIMEOUT = 60.0
 # How long to wait for CS2 to confirm a seek, and how often to try one.
 SEEK_TIMEOUT_SECONDS = 12.0
 SEEK_ATTEMPTS = 3
-
-# Extra seconds held after a window finishes, so the recorder is not cut off
-# by the pause landing a frame early.
-PLAY_TAIL_SECONDS = 0.3
 
 # Stepped playback can run slower than real time while a recorder renders
 # every frame, so its timeout is a multiple of the span plus some slack.
@@ -274,35 +270,6 @@ class Cs2Controller:
             self.spectate(spectate)
             self._sleep(0.5)
         return self.play_ticks(end_tick - start_tick)
-
-    def play_window(
-        self, start_tick: int, end_tick: int, timescale: float = 1.0
-    ) -> float:
-        """Play from start_tick to end_tick, then pause. Returns seconds played.
-
-        Playback length is derived from the tick span rather than watched for,
-        because the console reports no end-of-window event.
-        """
-        if end_tick < start_tick:
-            raise Cs2Error(f"Window ends before it starts: {start_tick}-{end_tick}")
-
-        span = tick_span_seconds(start_tick, end_tick, self.tickrate)
-        wait = span / timescale + PLAY_TAIL_SECONDS
-        logger.info(
-            "Playing ticks %d-%d (%.1fs at %gx, waiting %.1fs)",
-            start_tick,
-            end_tick,
-            span,
-            timescale,
-            wait,
-        )
-        if timescale != 1.0:
-            self.console.send(commands.set_timescale(timescale))
-        self.console.send(commands.resume())
-        self._sleep(wait)
-        self.console.send(commands.pause())
-        logger.info("Window finished at tick %d", end_tick)
-        return wait
 
     def game_running(self) -> bool:
         listing = self._run_command(["tasklist", "/FI", f"IMAGENAME eq {GAME_IMAGE}", "/NH"])

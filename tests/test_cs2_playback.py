@@ -124,26 +124,6 @@ def _one_line_per_wait(console):
     return wait_for
 
 
-def test_play_window_waits_the_tick_span(controller):
-    # 320 ticks at 64/s = 5 seconds, plus the tail.
-    played = controller.play_window(10_000, 10_320)
-    assert controller.test_console.sent == ["demo_resume", "demo_pause"]
-    assert played == pytest.approx(5.3, abs=0.01)
-    assert controller.test_sleeper.waits == [pytest.approx(5.3, abs=0.01)]
-
-
-def test_play_window_scales_wait_with_timescale(controller):
-    played = controller.play_window(10_000, 10_640, timescale=2.0)
-    # 640 ticks = 10s of footage, at 2x it takes 5s
-    assert played == pytest.approx(5.3, abs=0.01)
-    assert "demo_timescale 2" in controller.test_console.sent
-
-
-def test_play_window_rejects_inverted_window(controller):
-    with pytest.raises(Cs2Error, match="ends before"):
-        controller.play_window(2000, 1000)
-
-
 def test_play_ticks_steps_and_reports_where_it_stopped(controller):
     controller.test_console.output = ["Demo paused at engine time 28376, demo tick 10322"]
     assert controller.play_ticks(320) == 10322
