@@ -53,6 +53,12 @@ STEP_DONE = r"Demo paused at engine time \d+, demo tick (\d+)"
 
 ProcessLauncher = Callable[[Sequence[str]], "subprocess.Popen[bytes]"]
 Sleeper = Callable[[float], None]
+CommandRunner = Callable[[Sequence[str]], str]
+
+GAME_IMAGE = "cs2.exe"
+# Seconds CS2 gets to close its window (and write its settings) before it is
+# killed. The console's own quit command can hang the game, so it is not used.
+CLOSE_GRACE_SECONDS = 20.0
 
 
 class Cs2Error(Exception):
@@ -61,6 +67,11 @@ class Cs2Error(Exception):
 
 def _default_launcher(args: Sequence[str]) -> subprocess.Popen[bytes]:
     return subprocess.Popen(list(args))
+
+
+def _run_command(args: Sequence[str]) -> str:
+    result = subprocess.run(list(args), capture_output=True, text=True, errors="replace")
+    return result.stdout
 
 
 class Cs2Controller:
@@ -74,12 +85,14 @@ class Cs2Controller:
         launcher: ProcessLauncher | None = None,
         sleeper: Sleeper | None = None,
         tickrate: int = CS2_TICKRATE,
+        command_runner: CommandRunner | None = None,
     ) -> None:
         self.cs2_root = Path(cs2_root)
         self.console_port = console_port
         self.console = console or Cs2Console(port=console_port)
         self._launcher = launcher or _default_launcher
         self._sleep = sleeper or time.sleep
+        self._run_command = command_runner or _run_command
         self.tickrate = tickrate
         self._process: subprocess.Popen[bytes] | None = None
 
@@ -291,12 +304,36 @@ class Cs2Controller:
         logger.info("Window finished at tick %d", end_tick)
         return wait
 
+    def game_running(self) -> bool:
+        listing = self._run_command(["tasklist", "/FI", f"IMAGENAME eq {GAME_IMAGE}", "/NH"])
+        return GAME_IMAGE in listing.lower()
+
+    def close_game(self, grace_seconds: float = CLOSE_GRACE_SECONDS) -> None:
+        """Ask CS2's window to close, and kill it if it will not."""
+        if not self.game_running():
+            return
+        logger.info("Closing CS2")
+        self._run_command(["taskkill", "/IM", GAME_IMAGE])
+        waited = 0.0
+        while waited < grace_seconds:
+            self._sleep(1.0)
+            waited += 1.0
+            if not self.game_running():
+                return
+        logger.warning("CS2 did not close within %.0fs; killing it", grace_seconds)
+        self._run_command(["taskkill", "/F", "/IM", GAME_IMAGE])
+
     def quit(self) -> None:
-        """Close the console and stop the game if we started it."""
+        """Close the console, and the game too if this controller started it.
+
+        Under HLAE the launched process is the loader, not the game, so the
+        game is closed by name rather than through the process handle.
+        """
         self.console.close()
         if self._process is None:
             return
+        self.close_game()
         if self._process.poll() is None:
-            logger.info("Terminating CS2 (pid=%s)", self._process.pid)
+            logger.info("Terminating launcher (pid=%s)", self._process.pid)
             self._process.terminate()
         self._process = None

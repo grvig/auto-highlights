@@ -111,9 +111,57 @@ def test_attach_wraps_console_errors(tmp_path):
         controller.attach()
 
 
+class FakeTasks:
+    """tasklist/taskkill stand-in: the game closes after `closes_after` checks."""
+
+    def __init__(self, closes_after=1, running=True):
+        self.calls = []
+        self.running = running
+        self.closes_after = closes_after
+
+    def __call__(self, args):
+        self.calls.append(list(args))
+        if args[0] == "taskkill":
+            if "/F" in args:
+                self.running = False
+            return ""
+        if self.running and self.closes_after is not None:
+            checks = sum(1 for c in self.calls if c[0] == "tasklist")
+            if checks > self.closes_after + 1:
+                self.running = False
+        return "cs2.exe   1234 Console" if self.running else "INFO: No tasks are running"
+
+
+def test_quit_closes_the_game_window_politely(tmp_path):
+    tasks = FakeTasks(closes_after=1)
+    controller = Cs2Controller(make_install(tmp_path), launcher=FakeLauncher(),
+                               sleeper=lambda s: None, command_runner=tasks)
+    controller.launch()
+    controller.quit()
+    kills = [c for c in tasks.calls if c[0] == "taskkill"]
+    assert kills == [["taskkill", "/IM", "cs2.exe"]]
+
+
+def test_a_hung_game_is_killed_after_the_grace_period(tmp_path):
+    tasks = FakeTasks(closes_after=None)
+    controller = Cs2Controller(make_install(tmp_path), launcher=FakeLauncher(),
+                               sleeper=lambda s: None, command_runner=tasks)
+    controller.launch()
+    controller.quit()
+    assert tasks.calls[-1] == ["taskkill", "/F", "/IM", "cs2.exe"]
+
+
+def test_quit_leaves_a_game_it_did_not_start(tmp_path):
+    tasks = FakeTasks()
+    controller = Cs2Controller(make_install(tmp_path), command_runner=tasks)
+    controller.quit()
+    assert tasks.calls == []
+
+
 def test_quit_terminates_and_is_idempotent(tmp_path):
     launcher = FakeLauncher()
-    controller = Cs2Controller(make_install(tmp_path), launcher=launcher)
+    controller = Cs2Controller(make_install(tmp_path), launcher=launcher,
+                               command_runner=FakeTasks(running=False))
     controller.launch()
     controller.quit()
     assert launcher.process.terminated
