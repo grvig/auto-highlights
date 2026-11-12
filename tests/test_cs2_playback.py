@@ -153,3 +153,14 @@ def test_play_range_seeks_then_steps_the_span(controller):
 def test_play_range_fails_loudly_when_the_seek_never_lands(controller):
     with pytest.raises(Cs2Error, match="never confirmed"):
         controller.play_range(10_000, 10_320)
+
+
+def test_play_range_points_the_camera_after_the_seek(controller):
+    controller.test_console.output = [
+        "Demo Skipping finished at tick 10000",
+        "Demo paused at engine time 28376, demo tick 10320",
+    ]
+    controller.play_range(10_000, 10_320, spectate="臻咘踔")
+    sent = controller.test_console.sent
+    assert sent.index('spec_player "臻咘踔"') > sent.index("demo_gototick 10000")
+    assert sent[-1] == "demo_step_tick 320"

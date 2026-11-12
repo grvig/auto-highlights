@@ -7,6 +7,7 @@ that reaches the filesystem goes through here.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 from highlights.engine.clip_plan import ClipPlan
@@ -72,8 +73,14 @@ def build_clip_requests(
     player_name: str,
     output_dir: Path,
     extension: str = DEFAULT_EXTENSION,
+    names: Mapping[str, str] | None = None,
 ) -> list[ClipRequest]:
-    """Turn a ClipPlan into numbered, named requests, one per recorded window."""
+    """Turn a ClipPlan into numbered, named requests, one per recorded window.
+
+    `names` maps SteamID64 to in-game name, so windows filmed from another
+    player's eyes (victim cams) know whom to spectate.
+    """
+    names = names or {}
     requests: list[ClipRequest] = []
     for index, moment in enumerate(plan.moments, start=1):
         windows = moment.playlist
@@ -97,6 +104,7 @@ def build_clip_requests(
                     segment=window,
                     part=part,
                     parts=len(windows),
+                    camera_name=names.get(window.pov_steamid) if window.pov_steamid else None,
                 )
             )
     return requests

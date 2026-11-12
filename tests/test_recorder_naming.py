@@ -120,3 +120,19 @@ def test_requests_use_each_moments_own_demo():
     plan = ClipPlan(player_steamid="P", selected_types=(HighlightType.KILL,), moments=[first, second])
     requests = build_clip_requests(plan, Path("fallback.dem"), "semi", Path("out"))
     assert [r.demo_path for r in requests] == [Path("nuke.dem"), Path("fallback.dem")]
+
+
+def test_victim_cam_requests_carry_the_victims_name():
+    from dataclasses import replace
+
+    from highlights.engine.moments import Segment
+
+    moment = replace(
+        make_moment(1),
+        replays=(Segment(950, 1050, pov_steamid="V"),),
+    )
+    plan = ClipPlan(player_steamid="P", selected_types=(HighlightType.KILL,), moments=[moment])
+    requests = build_clip_requests(
+        plan, Path("m.dem"), "semi", Path("out"), names={"P": "semi", "V": "臻咘踔"}
+    )
+    assert [r.spectate_name for r in requests] == ["semi", "臻咘踔"]

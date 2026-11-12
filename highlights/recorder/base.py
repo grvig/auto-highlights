@@ -40,6 +40,9 @@ class ClipRequest:
     segment: Segment | None = None
     part: int = 1
     parts: int = 1
+    # In-game name of whoever the camera follows. CS2 can only spectate by
+    # name, so a victim cam needs the victim's name, not just their SteamID.
+    camera_name: str | None = None
 
     @property
     def player_steamid(self) -> str:
@@ -49,6 +52,11 @@ class ClipRequest:
     def spectate_steamid(self) -> str:
         """Whose view to record: the segment's camera, else the player's."""
         return self.window.pov_steamid or self.moment.player_steamid
+
+    @property
+    def spectate_name(self) -> str:
+        """The name to hand spec_player: the camera's, else the player's."""
+        return self.camera_name or self.player_name
 
     @property
     def speed(self) -> float:

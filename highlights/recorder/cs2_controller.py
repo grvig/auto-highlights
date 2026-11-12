@@ -194,12 +194,22 @@ class Cs2Controller:
         logger.info("Stepped playback stopped at demo tick %d", landed)
         return landed
 
-    def play_range(self, start_tick: int, end_tick: int) -> int | None:
-        """Seek to start_tick and play through end_tick. Returns the landed tick."""
+    def play_range(
+        self, start_tick: int, end_tick: int, spectate: str | None = None
+    ) -> int | None:
+        """Seek to start_tick and play through end_tick. Returns the landed tick.
+
+        The camera is pointed after the seek, not before: a seek respawns the
+        spectator and drops any earlier spec_player.
+        """
         if end_tick <= start_tick:
             raise Cs2Error(f"Window ends before it starts: {start_tick}-{end_tick}")
         if not self.seek_to(start_tick):
             raise Cs2Error(f"CS2 never confirmed the seek to tick {start_tick}")
+        if spectate:
+            self._sleep(0.4)
+            self.spectate(spectate)
+            self._sleep(0.5)
         return self.play_ticks(end_tick - start_tick)
 
     def play_window(
