@@ -129,3 +129,12 @@ def test_close_stops_streams_and_quits(tmp_path):
     HlaeRecorder(cs2, tmp_path).close()
     assert "mirv_streams record end" in cs2.console.sent
     assert cs2.log[-1] == ("quit",)
+
+
+def test_consecutive_clips_use_fresh_presets(tmp_path):
+    cs2, runs = FakeCs2(landings=[26527, 26527]), []
+    rec = recorder(tmp_path, cs2, runs)
+    rec.record_clip(make_request(tmp_path))
+    rec.record_clip(make_request(tmp_path))
+    presets = [c.split()[-1] for c in cs2.console.sent if c.startswith("mirv_streams record screen settings")]
+    assert presets == ["ahtake1", "ahtake2"]

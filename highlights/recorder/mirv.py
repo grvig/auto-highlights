@@ -13,7 +13,15 @@ from pathlib import Path
 
 VIDEO_NAME = "video.mp4"
 AUDIO_RELATIVE = Path("take0000") / "audio.wav"
-PRESET = "hlpreset"
+
+# HLAE refuses to delete a preset a stream has used ("has further
+# references") and to add one whose name exists, so a reused name silently
+# keeps the first take's output path. Every take gets a preset of its own.
+PRESET_PREFIX = "ahtake"
+
+
+def preset_name(take_number: int) -> str:
+    return f"{PRESET_PREFIX}{int(take_number)}"
 
 
 def _console_path(path: Path) -> str:
@@ -21,16 +29,22 @@ def _console_path(path: Path) -> str:
     return str(Path(path)).replace("\\", "\\\\")
 
 
-def start_commands(take_dir: Path, framerate: int = 60, crf: int = 16) -> list[str]:
-    """Commands that arm and start a take writing into take_dir."""
+def start_commands(
+    take_dir: Path, take_number: int = 1, framerate: int = 60, crf: int = 16
+) -> list[str]:
+    """Commands that arm and start a take writing into take_dir.
+
+    take_number must be unique within one game session (see PRESET_PREFIX).
+    """
     video = _console_path(Path(take_dir) / VIDEO_NAME)
     encoder = f"-c:v libx264 -preset veryfast -pix_fmt yuv420p -crf {int(crf)}"
+    preset = preset_name(take_number)
     return [
         f"host_framerate {int(framerate)}",
         f'mirv_streams record name "{Path(take_dir).as_posix()}"',
-        f'mirv_streams settings add ffmpeg {PRESET} "{encoder} {{QUOTE}}{video}{{QUOTE}}"',
+        f'mirv_streams settings add ffmpeg {preset} "{encoder} {{QUOTE}}{video}{{QUOTE}}"',
         "mirv_streams record screen enabled 1",
-        f"mirv_streams record screen settings {PRESET}",
+        f"mirv_streams record screen settings {preset}",
         "mirv_streams record startMovieWav 1",
         "mirv_streams record start",
     ]
@@ -40,7 +54,6 @@ def stop_commands() -> list[str]:
     """Commands that end a take and hand the frame rate back to the game."""
     return [
         "mirv_streams record end",
-        f"mirv_streams settings remove {PRESET}",
         "host_framerate 0",
     ]
 

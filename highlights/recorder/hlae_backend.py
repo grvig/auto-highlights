@@ -56,6 +56,8 @@ class HlaeRecorder:
         self._run = runner
         self._sleep = sleeper
         self._loaded: Path | None = None
+        # Takes started in this game session; numbers each take's preset.
+        self._takes = 0
 
     def open(self) -> None:
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -112,7 +114,8 @@ class HlaeRecorder:
         self._sleep(0.5)
         take_dir = self._take_dir(request)
         take_dir.mkdir(parents=True)
-        self.cs2.console.send_all(mirv.start_commands(take_dir, self.framerate))
+        self._takes += 1
+        self.cs2.console.send_all(mirv.start_commands(take_dir, self._takes, self.framerate))
         self._sleep(0.5)
         try:
             landed = self.cs2.play_ticks(request.end_tick - start)

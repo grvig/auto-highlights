@@ -8,7 +8,7 @@ from highlights.recorder import mirv
 
 
 def test_start_pins_the_framerate_and_pipes_to_ffmpeg():
-    commands = mirv.start_commands(Path("D:/clips/take_001"), framerate=60)
+    commands = mirv.start_commands(Path("D:/clips/take_001"), 1, framerate=60)
     assert commands[0] == "host_framerate 60"
     assert commands[-1] == "mirv_streams record start"
     preset = next(c for c in commands if c.startswith("mirv_streams settings add ffmpeg"))
@@ -52,3 +52,11 @@ def test_very_slow_motion_chains_atempo_stages():
 def test_finish_rejects_zero_speed():
     with pytest.raises(ValueError):
         mirv.finish_command(Path("t"), Path("o.mp4"), 0, 1, speed=0)
+
+
+def test_every_take_gets_its_own_preset():
+    first = mirv.start_commands(Path("t1"), take_number=1)
+    second = mirv.start_commands(Path("t2"), take_number=2)
+    assert "mirv_streams record screen settings ahtake1" in first
+    assert "mirv_streams record screen settings ahtake2" in second
+    assert not any("settings remove" in c for c in mirv.stop_commands())
