@@ -20,6 +20,8 @@ from highlights.engine.timing import seconds_to_ticks
 VICTIM_LEAD_SECONDS = 2.5
 # A beat after the shot so the death lands on screen.
 VICTIM_TAIL_SECONDS = 0.4
+# A later victim's replay starts this long after the previous victim died.
+AFTER_PREVIOUS_KILL_SECONDS = 0.15
 # Only sequences whose kills average this close together get victim cams;
 # kills spread across a round have no rapid sequence worth reliving.
 REPLAY_MAX_GAP_SECONDS = 4.0
@@ -41,15 +43,24 @@ def victim_replays(
 
     lead = seconds_to_ticks(VICTIM_LEAD_SECONDS, tickrate)
     tail = seconds_to_ticks(VICTIM_TAIL_SECONDS, tickrate)
-    return tuple(
-        Segment(
-            max(kill.tick - lead, moment.start_tick),
+    settle = seconds_to_ticks(AFTER_PREVIOUS_KILL_SECONDS, tickrate)
+    replays: list[Segment] = []
+    previous: Kill | None = None
+    for kill in kills:
+        start = max(kill.tick - lead, moment.start_tick)
+        if previous is not None:
+            # Never reach back past the previous victim's death: that kill has
+            # had its own replay, and from here it would look like a teammate
+            # watching someone else die.
+            start = max(start, previous.tick + settle)
+        replays.append(Segment(
+            min(start, kill.tick),
             min(kill.tick + tail, moment.end_tick),
             pov_steamid=kill.victim_steamid,
             speed=REPLAY_SPEED,
-        )
-        for kill in kills
-    )
+        ))
+        previous = kill
+    return tuple(replays)
 
 
 def add_victim_replays(moments: list[Moment], ctx: DetectionContext) -> list[Moment]:

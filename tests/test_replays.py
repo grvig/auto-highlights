@@ -62,3 +62,20 @@ def test_victim_cams_can_be_turned_off():
     ctx = make_context(kills, rounds=[make_round(1, 0, 100_000)])
     plan = build_clip_plan(ctx, "P", [HighlightType.MULTI_KILL], replays=False)
     assert plan.moments[0].replays == ()
+
+
+def test_later_victim_cams_do_not_replay_the_earlier_kill():
+    # Cache R1: two kills 57 ticks (0.9s) apart. The second victim's camera
+    # used to start 2.5s back and show the first kill all over again.
+    kills = [make_kill(2594, "P", "A"), make_kill(2651, "P", "B")]
+    first, second = victim_replays(multi(1_000, 3_000), kills)
+    assert first.start_tick == 2594 - 160
+    assert second.start_tick > 2594
+    assert second.start_tick <= 2651 < second.end_tick
+
+
+def test_every_victim_cam_still_contains_its_own_death():
+    ticks = (10_000, 10_004, 10_010)
+    kills = [make_kill(t, "P", v) for t, v in zip(ticks, "ABC")]
+    replays = victim_replays(multi(9_000, 11_000), kills)
+    assert all(r.start_tick <= t < r.end_tick for r, t in zip(replays, ticks))
