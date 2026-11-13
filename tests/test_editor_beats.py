@@ -47,3 +47,30 @@ def test_samples_are_decoded_as_mono_floats():
     samples = load_samples(Path("song.mp3"), decoder=decoder)
     assert list(samples) == [0.5, -0.5]
     assert "-ac" in captured["args"] and "f32le" in captured["args"]
+
+
+def test_cuts_are_pulled_back_onto_beats():
+    from highlights.editor.beats import snap_durations
+
+    beats = [i * 0.5 for i in range(40)]  # 120 BPM from zero
+    snapped = snap_durations([5.3, 4.2, 6.0], beats)
+    assert snapped == [5.0, 4.0, 6.0]  # last clip untouched
+
+
+def test_crossfade_midpoints_land_on_beats():
+    from highlights.editor.beats import snap_durations
+
+    beats = [i * 0.5 for i in range(40)]
+    d = snap_durations([5.3, 4.2, 6.0], beats, transition=0.3)
+    first_cut = d[0] - 0.15
+    second_cut = d[0] - 0.3 + d[1] - 0.15
+    assert first_cut % 0.5 == pytest.approx(0, abs=1e-6)
+    assert second_cut % 0.5 == pytest.approx(0, abs=1e-6)
+
+
+def test_clips_are_never_trimmed_past_their_limit():
+    from highlights.editor.beats import snap_durations
+
+    beats = [0.0, 4.0, 8.0]
+    assert snap_durations([5.0, 3.0], beats, trimmable=[0.2, 0.2]) == [5.0, 3.0]
+    assert snap_durations([5.0, 3.0], beats, trimmable=[1.0, 1.0]) == [4.0, 3.0]

@@ -105,6 +105,34 @@ def beat_times(samples: np.ndarray) -> list[float]:
     return [round(float(frame) / frame_rate, 3) for frame in beats]
 
 
+def snap_durations(
+    durations: list[float],
+    beats: list[float],
+    transition: float = 0.0,
+    trimmable: list[float] | None = None,
+    lead_in: float = 0.0,
+) -> list[float]:
+    """Shorten clip tails so every cut lands on a beat.
+
+    A cut is the middle of the crossfade between two clips. Clips only ever
+    get shorter, by at most their `trimmable` seconds (the post-roll after
+    the action), so no kill is ever cut off. The last clip is left alone.
+    lead_in is where the reel starts within the track.
+    """
+    limits = trimmable or [0.6] * len(durations)
+    result: list[float] = []
+    start = lead_in
+    for number, duration in enumerate(durations):
+        if number < len(durations) - 1:
+            cut = start + duration - transition / 2
+            earlier = [b for b in beats if cut - limits[number] <= b <= cut]
+            if earlier:
+                duration -= cut - earlier[-1]
+        result.append(round(duration, 3))
+        start += duration - transition
+    return result
+
+
 def tempo_of(beats: list[float]) -> float | None:
     """Beats per minute implied by detected beat times."""
     if len(beats) < 2:
