@@ -30,6 +30,21 @@ REPLAY_SPEED = 1.0
 
 VICTIM_CAM_TAG = "victim cam"
 
+# A victim cam shorter than this on screen is slowed down to fill it, so a
+# kill that came fractions of a second after the last one still reads.
+MIN_REPLAY_SCREEN_SECONDS = 1.2
+# Never slower than this; below it the game's animation looks choppy.
+SLOWEST_REPLAY_SPEED = 0.4
+
+
+def replay_speed(footage_seconds: float) -> float:
+    """Playback speed for a victim cam with this much footage."""
+    if footage_seconds <= 0:
+        return SLOWEST_REPLAY_SPEED
+    if footage_seconds / REPLAY_SPEED >= MIN_REPLAY_SCREEN_SECONDS:
+        return REPLAY_SPEED
+    return round(max(SLOWEST_REPLAY_SPEED, footage_seconds / MIN_REPLAY_SCREEN_SECONDS), 2)
+
 
 def victim_replays(
     moment: Moment, kills: list[Kill], tickrate: int = 64
@@ -53,11 +68,13 @@ def victim_replays(
             # had its own replay, and from here it would look like a teammate
             # watching someone else die.
             start = max(start, previous.tick + settle)
+        start = min(start, kill.tick)
+        end = min(kill.tick + tail, moment.end_tick)
         replays.append(Segment(
-            min(start, kill.tick),
-            min(kill.tick + tail, moment.end_tick),
+            start,
+            end,
             pov_steamid=kill.victim_steamid,
-            speed=REPLAY_SPEED,
+            speed=replay_speed((end - start) / tickrate),
         ))
         previous = kill
     return tuple(replays)

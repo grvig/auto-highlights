@@ -79,3 +79,19 @@ def test_every_victim_cam_still_contains_its_own_death():
     kills = [make_kill(t, "P", v) for t, v in zip(ticks, "ABC")]
     replays = victim_replays(multi(9_000, 11_000), kills)
     assert all(r.start_tick <= t < r.end_tick for r, t in zip(replays, ticks))
+
+
+def test_short_victim_cams_play_in_slow_motion():
+    from highlights.engine.replays import replay_speed
+
+    assert replay_speed(2.9) == 1.0
+    assert replay_speed(0.6) == 0.5
+    assert replay_speed(0.1) == 0.4  # capped, not a slideshow
+
+
+def test_cache_double_kill_second_cam_is_slowed_to_read():
+    kills = [make_kill(2594, "P", "A"), make_kill(2651, "P", "B")]
+    first, second = victim_replays(multi(1_000, 3_000), kills)
+    assert first.speed == 1.0
+    assert second.speed < 1.0
+    assert second.duration_seconds >= 1.1
