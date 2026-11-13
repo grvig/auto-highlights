@@ -88,3 +88,11 @@ def test_victim_cams_are_captioned_as_replays(tmp_path):
     builder(tmp_path, runs, cards=False).build([replace(clip, request=victim)], tmp_path / "reel.mp4")
     detail = (tmp_path / "work" / "captions_001" / "caption_detail.txt").read_text(encoding="utf-8")
     assert detail == "臻咘踔's view"
+
+
+def test_hard_cuts_join_without_crossfades(tmp_path):
+    runs = []
+    clips = [recorded(tmp_path, 1), recorded(tmp_path, 2)]
+    builder(tmp_path, runs, transition="cut").build(clips, tmp_path / "reel.mp4")
+    graph = runs[-1][runs[-1].index("-filter_complex") + 1]
+    assert "xfade" not in graph and "concat=n=2" in graph

@@ -180,3 +180,17 @@ def test_order_defaults_to_montage_and_rejects_unknown():
     assert build_parser().parse_args(["m.dem"]).order == "montage"
     with pytest.raises(SystemExit):
         build_parser().parse_args(["m.dem", "--order", "shuffle"])
+
+
+def test_parser_reads_edit_flags(tmp_path):
+    args = build_parser().parse_args(
+        ["m.dem", "--music", "song.mp3", "--no-captions", "--transition", "cut", "--plain"]
+    )
+    assert args.music.name == "song.mp3"
+    assert args.no_captions and args.plain and not args.no_cards
+    assert args.transition == "cut"
+
+
+def test_editing_is_on_by_default():
+    args = build_parser().parse_args(["m.dem"])
+    assert not args.plain and args.transition == "fade" and args.music is None

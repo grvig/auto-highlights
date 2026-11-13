@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import subprocess
 import sys
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -40,6 +41,9 @@ from highlights.recorder.naming import build_clip_requests, sanitise_part
 from highlights.recorder.factory import build_live_recorder, settings_guard
 from highlights.recorder.hlae import HlaeError
 from highlights.recorder.session import record_requests
+from highlights.editor.fonts import FontError
+from highlights.editor.probe import ProbeError
+from highlights.editor.reel import EditOptions, ReelBuilder
 from highlights.stitcher.runner import StitchError
 from highlights.stitcher.aspect import PROFILES, convert
 from highlights.stitcher.stitch import stitch_clips
@@ -53,6 +57,10 @@ _TYPE_ALIASES = {
     "aces": HighlightType.ACE,
     "util": HighlightType.UTILITY,
 }
+
+
+# xfade transitions offered on the command line, plus hard cuts.
+TRANSITIONS = ("fade", "cut", "fadeblack", "fadewhite", "smoothleft", "zoomin")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -147,6 +155,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="shape of the stitched reel (default from config: stretched, "
         "4:3 stretched to fill 16:9)",
     )
+    edit = parser.add_argument_group("editing (with --stitch)")
+    edit.add_argument("--music", type=Path, help="your own music track to cut the reel to")
+    edit.add_argument("--no-captions", action="store_true", help="leave out highlight captions")
+    edit.add_argument("--no-cards", action="store_true", help="leave out the title and outro cards")
+    edit.add_argument(
+        "--transition",
+        default="fade",
+        choices=TRANSITIONS,
+        help="how clips join (default: fade; cut for hard cuts)",
+    )
+    edit.add_argument("--plain", action="store_true", help="just join the clips, no editing")
     return parser
 
 
@@ -328,6 +347,7 @@ def run_recording(
     stitch: bool = False,
     names: dict[str, str] | None = None,
     aspect: str | None = None,
+    edit: EditOptions | None = None,
 ) -> int:
     """Record a plan, dry by default. Returns an exit code."""
     warning = pov_recording_warning(not pov_demos, player_name, live)
@@ -368,7 +388,7 @@ def run_recording(
         print(f"  #{clip.index:03d} {clip.error}", file=sys.stderr)
 
     if stitch:
-        stitch_code = stitch_recorded(clips, player_name, config, aspect)
+        stitch_code = stitch_recorded(clips, player_name, config, aspect, edit)
         if stitch_code != 0:
             return stitch_code
 
@@ -376,19 +396,26 @@ def run_recording(
 
 
 def stitch_recorded(
-    clips: list[RecordedClip], player_name: str, config: Config, aspect: str | None = None
+    clips: list[RecordedClip],
+    player_name: str,
+    config: Config,
+    aspect: str | None = None,
+    edit: EditOptions | None = None,
 ) -> int:
-    """Stitch recorded clips into a reel and export it in the chosen shape."""
+    """Edit (or just join) recorded clips into a reel in the chosen shape."""
     profile = PROFILES.get(aspect or config.recording.aspect, PROFILES["stretched"])
     reel_name = f"{sanitise_part(player_name)}_highlights.mp4"
     reel_path = config.clips_dir / f"_joined_{reel_name}"
-    print(f"\nStitching {len(clips)} clip(s) into {reel_name}")
+    print(f"\n{'Editing' if edit else 'Stitching'} {len(clips)} clip(s) into {reel_name}")
     try:
-        output = stitch_clips(
-            clips, reel_path, config.ffmpeg_path, work_dir=config.clips_dir
-        )
+        if edit:
+            builder = ReelBuilder(edit, config.clips_dir / "edit", config.ffmpeg_path)
+            output = builder.build(clips, reel_path)
+        else:
+            output = stitch_clips(clips, reel_path, config.ffmpeg_path, work_dir=config.clips_dir)
         final = convert(output, config.output_dir / reel_name, profile, config.ffmpeg_path)
-    except (StitchError, RuntimeError) as error:
+    except (StitchError, RuntimeError, ValueError, OSError,
+            subprocess.CalledProcessError, FontError, ProbeError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
     print(f"Reel written ({profile.name}): {final}")
@@ -501,6 +528,14 @@ def main(argv: list[str] | None = None) -> int:
                 stitch=args.stitch and args.record,
                 names={p.steamid: p.name for s in sources for p in s.players()},
                 aspect=args.aspect,
+                edit=None if args.plain else EditOptions(
+                    player_name=player.name,
+                    captions=not args.no_captions,
+                    cards=not args.no_cards,
+                    transition=args.transition,
+                    music=args.music,
+                    maps={s.path: s.info.map_name for s in sources},
+                ),
             )
         except ConfigError as error:
             print(f"Error: {error}", file=sys.stderr)

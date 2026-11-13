@@ -97,7 +97,7 @@ class ReelBuilder:
 
         joined = self.work_dir / "joined.mp4" if self.options.music else output
         self._run(join_command(parts, durations, joined, width, height, fps,
-                               self.options.transition if fade else "fade", self.ffmpeg))
+                               self.options.transition if fade else "fade", self.ffmpeg, fade))
         if self.options.music:
             total = sum(durations) - fade * (len(durations) - 1)
             self._run(music_command(joined, self.options.music, output, total, ffmpeg=self.ffmpeg))

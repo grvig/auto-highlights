@@ -72,9 +72,10 @@ def join_command(
     fps: int = 60,
     transition: str = DEFAULT_TRANSITION,
     ffmpeg: str = "ffmpeg",
+    seconds: float = DEFAULT_SECONDS,
 ) -> list[str]:
-    """ffmpeg arguments that join clips with crossfades into one file."""
-    graph, video, audio = join_filter(durations, width, height, fps, transition)
+    """ffmpeg arguments that join clips with crossfades (or cuts, at 0s) into one file."""
+    graph, video, audio = join_filter(durations, width, height, fps, transition, seconds)
     inputs = [arg for clip in clips for arg in ("-i", str(clip))]
     return [
         ffmpeg, "-y", "-loglevel", "error", *inputs,
