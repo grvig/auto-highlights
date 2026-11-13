@@ -12,6 +12,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from highlights.editor.cards import pretty_map
 from highlights.editor.fonts import filter_path, find_font
 from highlights.engine.moments import Moment
 
@@ -38,9 +39,14 @@ def headline_for(moment: Moment) -> str:
 def caption_for(moment: Moment, player_name: str, map_name: str | None = None) -> Caption:
     detail = [player_name]
     if map_name:
-        detail.append(map_name)
+        detail.append(pretty_map(map_name))
     detail.append(f"Round {moment.round_number}")
     return Caption(headline_for(moment), "  ·  ".join(detail))
+
+
+def replay_caption(camera_name: str) -> Caption:
+    """Marks a victim cam, so it is not mistaken for the player's own view."""
+    return Caption("REPLAY", f"{camera_name}'s view")
 
 
 def _alpha(start: float, end: float) -> str:

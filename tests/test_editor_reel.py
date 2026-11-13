@@ -77,3 +77,14 @@ def test_music_trims_cuts_onto_beats_and_mixes_last(tmp_path):
 def test_nothing_to_edit_raises(tmp_path):
     with pytest.raises(ValueError, match="No recorded clips"):
         builder(tmp_path, []).build([recorded(tmp_path, 1, ok=False)], tmp_path / "reel.mp4")
+
+
+def test_victim_cams_are_captioned_as_replays(tmp_path):
+    from dataclasses import replace
+
+    runs = []
+    clip = recorded(tmp_path, 1, 2)
+    victim = replace(clip.request, segment=Segment(0, 320, pov_steamid="V"), camera_name="臻咘踔")
+    builder(tmp_path, runs, cards=False).build([replace(clip, request=victim)], tmp_path / "reel.mp4")
+    detail = (tmp_path / "work" / "captions_001" / "caption_detail.txt").read_text(encoding="utf-8")
+    assert detail == "臻咘踔's view"

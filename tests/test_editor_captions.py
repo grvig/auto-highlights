@@ -28,7 +28,7 @@ def test_headline_drops_the_detail_in_brackets():
 
 def test_caption_names_player_map_and_round():
     cap = caption_for(moment("ACE (5 kills)"), "semi", "de_nuke")
-    assert cap.detail == "semi  ·  de_nuke  ·  Round 5"
+    assert cap.detail == "semi  ·  Nuke  ·  Round 5"
 
 
 def test_caption_without_a_map():
@@ -48,3 +48,13 @@ def test_caption_fades_in_and_out():
     alpha = captions._alpha(0.3, 2.9)
     assert alpha.startswith("if(lt(t,0.3),0")
     assert "(2.9-t)/0.25" in alpha
+
+
+def test_caption_uses_the_clean_map_name():
+    assert caption_for(moment("x"), "semi", "de_nuke").detail == "semi  ·  Nuke  ·  Round 5"
+
+
+def test_replay_caption_names_whose_eyes_we_see():
+    from highlights.editor.captions import replay_caption
+
+    assert replay_caption("臻咘踔") == Caption("REPLAY", "臻咘踔's view")

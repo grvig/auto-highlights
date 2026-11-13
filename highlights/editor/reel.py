@@ -16,7 +16,7 @@ from pathlib import Path
 
 from highlights.editor import beats as beat_tools
 from highlights.editor.cards import card_command, outro_lines, title_lines
-from highlights.editor.captions import caption_filter, caption_for
+from highlights.editor.captions import caption_filter, caption_for, replay_caption
 from highlights.editor.music import check_music, music_command
 from highlights.editor.probe import MediaInfo, probe
 from highlights.editor.transitions import DEFAULT_TRANSITION, join_command, transition_seconds
@@ -108,9 +108,13 @@ class ReelBuilder:
         """Caption the first window of each moment and apply its beat trim."""
         request = clip.request
         filters = []
-        if self.options.captions and request.part == 1:
+        caption = None
+        if self.options.captions and request.camera_name and request.window.pov_steamid:
+            caption = replay_caption(request.camera_name)
+        elif self.options.captions and request.part == 1:
             caption = caption_for(request.moment, self.options.player_name,
                                   self.options.maps.get(Path(request.demo_path)))
+        if caption:
             filters.append(caption_filter(caption, self.work_dir / f"captions_{number:03d}"))
         prepared = self.work_dir / f"part_{number:03d}.mp4"
         args = [self.ffmpeg, "-y", "-loglevel", "error", "-i", str(clip.output_path),
