@@ -108,6 +108,26 @@ The reel is written to `output_dir` as `<player>_highlights.mp4`.
 `--aspect` picks the reel's shape: `stretched` (default, 4:3 filling 16:9),
 `4:3`, `pillarbox`, `16:9`, or `vertical`.
 
+### Editing
+
+`--stitch` edits the clips into a finished movie rather than just joining
+them:
+
+- a title card (player, maps, number of highlights) and a "GG" outro card;
+- a caption on each highlight ("ACE + 1V3 CLUTCH", player, map, round), and
+  "REPLAY · <name>'s view" on victim cams;
+- crossfades between clips (`--transition cut|fade|fadeblack|...`);
+- with `--music song.mp3`, your own track under the reel, ducking whenever
+  the game is loud, with every cut pulled onto a beat of the song.
+
+```powershell
+python -m highlights.cli "match.dem" --me --best 60 --record --stitch --music "D:\music\track.mp3"
+```
+
+`--no-captions`, `--no-cards` and `--plain` (join only) turn parts off.
+Captions use a font that can draw the player's name, so Chinese, Korean and
+Cyrillic names render properly.
+
 ## Status
 
 - **Engine**: complete and verified against real matchmaking demos — kills,
@@ -117,5 +137,7 @@ The reel is written to `output_dir` as `<player>_highlights.mp4`.
   tick-exact stepped playback, spectating by name) and HLAE rendering were
   proven against a live CS2 with standalone scripts; the backends in this repo
   are their port and are unit-tested.
+- **Editor**: captions, title/outro cards, crossfades, music with ducking and
+  beat-synced cuts, all rendered with ffmpeg and checked on real footage.
 - **Stitcher**: joins clips and exports every aspect profile with ffmpeg.
 - **App**: not started.
