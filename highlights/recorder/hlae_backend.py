@@ -116,7 +116,10 @@ class HlaeRecorder:
         take_dir.mkdir(parents=True)
         self._takes += 1
         self.cs2.console.send_all(mirv.start_commands(take_dir, self._takes, self.framerate))
-        self._sleep(0.5)
+        refusals = [line for line in self.cs2.console.read_lines(0.5) if "AFXERROR" in line]
+        if refusals:
+            self.cs2.console.send_all(mirv.stop_commands())
+            raise Cs2Error(f"HLAE refused the take: {refusals[0]}")
         try:
             landed = self.cs2.play_ticks(request.end_tick - start)
         finally:
@@ -127,6 +130,9 @@ class HlaeRecorder:
     def _finish(self, request: ClipRequest, take_dir: Path) -> None:
         tickrate = self.cs2.tickrate
         lead = request.start_tick - max(1, request.start_tick - LEAD_TICKS)
+        video = take_dir / mirv.VIDEO_NAME
+        if not video.is_file() or video.stat().st_size == 0:
+            raise Cs2Error(f"HLAE wrote no video for this take ({video})")
         request.output_path.parent.mkdir(parents=True, exist_ok=True)
         self._run(mirv.finish_command(
             take_dir,

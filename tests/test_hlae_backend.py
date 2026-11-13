@@ -8,11 +8,23 @@ from highlights.recorder.hlae_backend import LEAD_TICKS, HlaeRecorder
 
 
 class FakeConsole:
-    def __init__(self):
+    """Records commands; like HLAE, writes a take's video when one starts."""
+
+    def __init__(self, replies=None):
         self.sent = []
+        self.replies = list(replies or [])
+        self.write_video = True
 
     def send_all(self, commands):
         self.sent.extend(commands)
+        for command in commands:
+            if command.startswith("mirv_streams record name") and self.write_video:
+                take = Path(command.split('"')[1])
+                (take / "video.mp4").write_bytes(b"frames")
+
+    def read_lines(self, seconds):
+        lines, self.replies = self.replies, []
+        return lines
 
 
 class FakeCs2:
@@ -138,3 +150,20 @@ def test_consecutive_clips_use_fresh_presets(tmp_path):
     rec.record_clip(make_request(tmp_path))
     presets = [c.split()[-1] for c in cs2.console.sent if c.startswith("mirv_streams record screen settings")]
     assert presets == ["ahtake1", "ahtake2"]
+
+
+def test_hlae_errors_fail_the_clip_with_hlaes_own_words(tmp_path):
+    cs2, runs = FakeCs2(landings=[26527]), []
+    cs2.console.replies = ["AFXERROR: There is already a setting named ahtake1"]
+    clip = recorder(tmp_path, cs2, runs).record_clip(make_request(tmp_path))
+    assert not clip.succeeded
+    assert "already a setting" in clip.error
+    assert not any(e[0] == "step" for e in cs2.log)
+
+
+def test_a_take_without_video_is_reported_not_muxed(tmp_path):
+    cs2, runs = FakeCs2(landings=[26527]), []
+    cs2.console.write_video = False
+    clip = recorder(tmp_path, cs2, runs).record_clip(make_request(tmp_path))
+    assert not clip.succeeded and "no video" in clip.error
+    assert runs == []
