@@ -19,6 +19,8 @@ from highlights.engine.moments import Moment
 FADE_SECONDS = 0.25
 SHOW_SECONDS = 2.6
 START_SECONDS = 0.3
+# Translucent backing so white text stays readable on bright maps like Nuke.
+BOX_OPACITY = 0.45
 
 
 @dataclass(frozen=True)
@@ -68,6 +70,7 @@ def caption_filter(caption: Caption, work_dir: Path, height: int = 1080) -> str:
             f"drawtext=fontfile='{filter_path(find_font(text))}':"
             f"textfile='{filter_path(text_file)}':fontsize={size}:fontcolor=white:"
             f"x={margin}:y={y}:shadowcolor=black@0.7:shadowx=2:shadowy=2:"
+            f"box=1:boxcolor=black@{BOX_OPACITY}:boxborderw={round(size * 0.25)}:"
             f"alpha='{alpha}'"
         )
     return ",".join(filters)

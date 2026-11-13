@@ -13,7 +13,7 @@ BUNDLED_DIR = Path(__file__).resolve().parents[2] / "assets" / "fonts"
 SYSTEM_DIR = Path("C:/Windows/Fonts")
 
 # In order of preference.
-DISPLAY_FONTS = ("display.ttf", "bahnschrift.ttf", "segoeuib.ttf", "arialbd.ttf")
+DISPLAY_FONTS = ("display.ttf", "segoeuib.ttf", "bahnschrift.ttf", "arialbd.ttf")
 WIDE_FONTS = ("wide.ttc", "msyhbd.ttc", "msyh.ttc", "malgunbd.ttf", "YuGothB.ttc")
 
 

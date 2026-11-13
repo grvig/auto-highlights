@@ -25,8 +25,8 @@ def test_cjk_and_cyrillic_names_do():
 
 
 def test_display_font_is_preferred_for_latin(tmp_path):
-    folder = install(tmp_path, "arialbd.ttf", "bahnschrift.ttf", "msyh.ttc")
-    assert find_font("semi", (folder,)).name == "bahnschrift.ttf"
+    folder = install(tmp_path, "arialbd.ttf", "bahnschrift.ttf", "segoeuib.ttf", "msyh.ttc")
+    assert find_font("semi", (folder,)).name == "segoeuib.ttf"
 
 
 def test_wide_font_is_used_for_cjk(tmp_path):
