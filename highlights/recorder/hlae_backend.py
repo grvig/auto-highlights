@@ -9,6 +9,7 @@ recorded again, because a dropped seek would otherwise film the wrong round.
 from __future__ import annotations
 
 import logging
+import shutil
 import subprocess
 import time
 from collections.abc import Callable, Sequence
@@ -47,6 +48,7 @@ class HlaeRecorder:
         ffmpeg: str = "ffmpeg",
         runner: Runner = _run,
         sleeper: Callable[[float], None] = time.sleep,
+        keep_takes: bool = False,
     ) -> None:
         self.cs2 = cs2
         self.output_dir = Path(output_dir)
@@ -55,6 +57,9 @@ class HlaeRecorder:
         self.ffmpeg = ffmpeg
         self._run = runner
         self._sleep = sleeper
+        # Raw takes hold the full lead-in and a wav; once a clip is finished
+        # they are only kept when debugging.
+        self.keep_takes = keep_takes
         self._loaded: Path | None = None
         # Takes started in this game session; numbers each take's preset.
         self._takes = 0
@@ -89,7 +94,17 @@ class HlaeRecorder:
         except (Cs2Error, OSError, subprocess.CalledProcessError) as error:
             logger.error("[%s] %s failed: %s", self.name, request.label, error)
             return RecordedClip(request, request.output_path, succeeded=False, error=str(error))
+        if not self.keep_takes:
+            self._remove_takes(request)
         return RecordedClip(request, request.output_path, succeeded=True)
+
+    def _remove_takes(self, request: ClipRequest) -> None:
+        """Delete this clip's raw take folders (only ones this app created)."""
+        takes = self.output_dir / "takes"
+        stem = request.output_path.stem
+        for folder in takes.glob(f"{stem}*"):
+            if folder.is_dir() and (folder.name == stem or folder.name.startswith(f"{stem}_")):
+                shutil.rmtree(folder, ignore_errors=True)
 
     def _ensure_demo(self, demo_path: Path) -> None:
         if self._loaded == Path(demo_path):

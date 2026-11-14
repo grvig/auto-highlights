@@ -110,7 +110,9 @@ def test_a_take_that_lands_wrong_is_recorded_again(tmp_path):
 
 def test_each_take_gets_a_fresh_folder(tmp_path):
     cs2, runs = FakeCs2(landings=[1, 26527]), []
-    recorder(tmp_path, cs2, runs).record_clip(make_request(tmp_path))
+    rec = recorder(tmp_path, cs2, runs)
+    rec.keep_takes = True
+    rec.record_clip(make_request(tmp_path))
     takes = sorted(p.name for p in (tmp_path / "takes").iterdir())
     assert takes == ["001_r05_kill_semi", "001_r05_kill_semi_2"]
 
@@ -167,3 +169,16 @@ def test_a_take_without_video_is_reported_not_muxed(tmp_path):
     clip = recorder(tmp_path, cs2, runs).record_clip(make_request(tmp_path))
     assert not clip.succeeded and "no video" in clip.error
     assert runs == []
+
+
+def test_raw_takes_are_removed_once_the_clip_is_finished(tmp_path):
+    cs2, runs = FakeCs2(landings=[1, 26527]), []
+    assert recorder(tmp_path, cs2, runs).record_clip(make_request(tmp_path)).succeeded
+    assert list((tmp_path / "takes").iterdir()) == []
+
+
+def test_raw_takes_are_kept_when_a_clip_fails(tmp_path):
+    cs2, runs = FakeCs2(landings=[26527]), []
+    cs2.console.write_video = False
+    recorder(tmp_path, cs2, runs).record_clip(make_request(tmp_path))
+    assert [p.name for p in (tmp_path / "takes").iterdir()] == ["001_r05_kill_semi"]
