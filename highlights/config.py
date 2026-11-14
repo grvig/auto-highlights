@@ -12,6 +12,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from highlights.ffmpeg_locate import locate_ffmpeg
 from highlights.steam.locate import find_cs2_root
 
 CONFIG_FILENAME = "config.toml"
@@ -168,7 +169,7 @@ def load_config(
             pre_roll_seconds=float(clips.get("pre_roll_seconds", 3.0)),
             post_roll_seconds=float(clips.get("post_roll_seconds", 2.0)),
         ),
-        ffmpeg_path=str(paths.get("ffmpeg", "ffmpeg")),
+        ffmpeg_path=locate_ffmpeg(str(paths.get("ffmpeg", "ffmpeg"))),
         cs2_root_detected=not configured_cs2 and cs2_root is not None,
         cache_dir=_resolve(base, str(paths["cache_dir"])) if paths.get("cache_dir") else None,
         recording=RecordingConfig(
