@@ -38,7 +38,8 @@ from highlights.recorder.base import RecordedClip
 from highlights.recorder.cs2_controller import Cs2Error
 from highlights.recorder.dry_run import DryRunRecorder
 from highlights.recorder.naming import build_clip_requests, sanitise_part
-from highlights.recorder.factory import build_live_recorder, settings_guard
+from highlights.recorder.factory import build_live_recorder, settings_guard, update_hlae
+from highlights.recorder.hlae import BUNDLED_DIR as HLAE_BUNDLED_DIR
 from highlights.recorder.hlae import HlaeError
 from highlights.recorder.session import record_requests
 from highlights.editor.fonts import FontError
@@ -99,6 +100,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="report environment readiness (config, CS2, ffmpeg, folders) and "
         "exit; needs no demo and launches nothing",
+    )
+    parser.add_argument(
+        "--update-hlae",
+        action="store_true",
+        help="download the newest HLAE release (recording does this automatically)",
     )
     parser.add_argument(
         "--no-cache",
@@ -422,6 +428,22 @@ def stitch_recorded(
     return 0
 
 
+def run_update_hlae() -> int:
+    """Install or update HLAE. Returns an exit code."""
+    try:
+        config = load_config()
+    except ConfigError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+    target = config.recording.hlae_path or HLAE_BUNDLED_DIR
+    version = update_hlae(target)
+    if version is None:
+        print("Could not update HLAE; see the log.", file=sys.stderr)
+        return 1
+    print(f"HLAE {version} ready at {target}")
+    return 0
+
+
 def run_check() -> int:
     """Print the environment readiness report. Returns an exit code."""
     try:
@@ -474,6 +496,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.check:
         return run_check()
+    if args.update_hlae:
+        return run_update_hlae()
 
     if not args.demos:
         print("Error: a demo path is required (or use --check)", file=sys.stderr)

@@ -29,6 +29,9 @@ ffmpeg = "ffmpeg"
 # "hlae" renders every frame with synced game audio (recommended).
 # "window" captures the game window in real time, a fallback without HLAE.
 recorder = "hlae"
+# Fetch the newest HLAE from its official GitHub releases before recording.
+# CS2 updates break older HLAE builds, so leave this on.
+auto_update = true
 # Render size. 1440x1080 is 4:3; reels are stretched to 16:9 on export.
 width = 1440
 height = 1080

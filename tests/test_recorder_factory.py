@@ -33,6 +33,7 @@ def make_config(tmp_path, recorder="hlae", hlae=True):
 def fake_ffmpeg(monkeypatch, tmp_path):
     monkeypatch.setattr(factory, "resolve_ffmpeg", lambda name: tmp_path / "ffmpeg.exe")
     monkeypatch.setattr("highlights.recorder.hlae.BUNDLED_DIR", tmp_path / "no-bundle")
+    monkeypatch.setattr(factory, "ensure_current", lambda d: ("2.193.0", False))
 
 
 def test_hlae_is_used_when_installed(tmp_path):
@@ -68,3 +69,20 @@ def test_settings_guard_targets_the_signed_in_account(tmp_path):
 def test_settings_guard_is_a_no_op_without_steam(tmp_path):
     guard = factory.settings_guard(make_config(tmp_path), steam_root=tmp_path / "nope")
     assert isinstance(guard, type(nullcontext()))
+
+
+def test_recording_updates_hlae_first(tmp_path, monkeypatch):
+    seen = []
+    monkeypatch.setattr(factory, "ensure_current", lambda d: seen.append(d) or ("2.193.0", False))
+    factory.build_live_recorder(make_config(tmp_path))
+    assert seen == [tmp_path / "hlae"]
+
+
+def test_an_offline_update_check_does_not_block_recording(tmp_path, monkeypatch):
+    from highlights.recorder.hlae_release import ReleaseError
+
+    def offline(d):
+        raise ReleaseError("Could not check")
+    monkeypatch.setattr(factory, "ensure_current", offline)
+    assert factory.update_hlae(tmp_path) is None
+    assert factory.build_live_recorder(make_config(tmp_path)) is not None

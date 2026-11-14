@@ -49,6 +49,8 @@ class RecordingConfig:
     framerate: int = 60
     # Export shape for finished reels; see highlights.stitcher.aspect.
     aspect: str = "stretched"
+    # Fetch a newer HLAE before recording; CS2 updates break old ones.
+    auto_update: bool = True
 
 
 @dataclass(frozen=True)
@@ -176,6 +178,7 @@ def load_config(
             height=int(recording.get("height", 1080)),
             framerate=int(recording.get("framerate", 60)),
             aspect=str(recording.get("aspect", "stretched")),
+            auto_update=bool(recording.get("auto_update", True)),
         ),
     )
 
