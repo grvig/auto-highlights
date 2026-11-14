@@ -125,6 +125,18 @@ python -m highlights.cli "match.dem" --me --best 60 --record --stitch --music "D
 ```
 
 `--no-captions`, `--no-cards` and `--plain` (join only) turn parts off.
+Add `--dry-run --stitch` to preview the edit (cards, captions, replays, the
+music's tempo) without launching anything. The finished reel's loudness is
+levelled to -14 LUFS, the target YouTube and most platforms use.
+
+### Long runs
+
+- `--resume` keeps clips an interrupted `--record` run already finished.
+- `--edit-only` skips the game entirely and re-edits the clips on disk, e.g.
+  to try another song or transition.
+- HLAE is updated from its official GitHub releases before every recording
+  (CS2 updates break old builds); `--update-hlae` does it on demand. Raw takes
+  are deleted once each clip is finished.
 Captions use a font that can draw the player's name, so Chinese, Korean and
 Cyrillic names render properly.
 
