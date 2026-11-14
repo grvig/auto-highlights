@@ -41,7 +41,7 @@ from highlights.recorder.naming import build_clip_requests, sanitise_part
 from highlights.recorder.factory import build_live_recorder, settings_guard, update_hlae
 from highlights.recorder.hlae import BUNDLED_DIR as HLAE_BUNDLED_DIR
 from highlights.recorder.hlae import HlaeError
-from highlights.recorder.session import record_requests
+from highlights.recorder.session import already_recorded, record_requests
 from highlights.editor.fonts import FontError
 from highlights.editor.probe import ProbeError
 from highlights.editor.reel import EditOptions, ReelBuilder
@@ -154,6 +154,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="after recording, concatenate the clips into one reel (needs "
         "ffmpeg; has no effect on --dry-run, which writes no clips)",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="with --record: keep clips an interrupted run already recorded",
+    )
+    parser.add_argument(
+        "--edit-only",
+        action="store_true",
+        help="skip recording and re-edit the clips already on disk into a reel",
     )
     parser.add_argument(
         "--aspect",
@@ -354,6 +364,8 @@ def run_recording(
     names: dict[str, str] | None = None,
     aspect: str | None = None,
     edit: EditOptions | None = None,
+    resume: bool = False,
+    edit_only: bool = False,
 ) -> int:
     """Record a plan, dry by default. Returns an exit code."""
     warning = pov_recording_warning(not pov_demos, player_name, live)
@@ -374,6 +386,14 @@ def run_recording(
         names=names,
     )
 
+    if edit_only:
+        clips = [
+            RecordedClip(r, r.output_path, succeeded=already_recorded(r),
+                         error=None if already_recorded(r) else "not recorded yet")
+            for r in requests
+        ]
+        return stitch_recorded(clips, player_name, config, aspect, edit)
+
     try:
         recorder = build_live_recorder(config) if live else DryRunRecorder()
     except HlaeError as error:
@@ -383,7 +403,7 @@ def run_recording(
     print(f"\nRecording {len(requests)} clip(s) with the {recorder.name} backend")
     try:
         with settings_guard(config) if live else contextlib.nullcontext():
-            clips = record_requests(recorder, requests)
+            clips = record_requests(recorder, requests, skip_existing=resume and live)
     except Cs2Error as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
@@ -540,7 +560,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\nBest {args.best:g}s, {args.order} order")
     print_clip_plan(plan, player.name)
 
-    if args.dry_run or args.record:
+    if args.dry_run or args.record or args.edit_only:
         pov = [s.path.name for s in sources if not s.info.is_gotv]
         try:
             return run_recording(
@@ -549,6 +569,8 @@ def main(argv: list[str] | None = None) -> int:
                 fallback_demo=sources[0].path,
                 pov_demos=pov,
                 live=args.record,
+                resume=args.resume,
+                edit_only=args.edit_only,
                 stitch=args.stitch and args.record,
                 names={p.steamid: p.name for s in sources for p in s.players()},
                 aspect=args.aspect,

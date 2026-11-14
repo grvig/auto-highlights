@@ -194,3 +194,32 @@ def test_parser_reads_edit_flags(tmp_path):
 def test_editing_is_on_by_default():
     args = build_parser().parse_args(["m.dem"])
     assert not args.plain and args.transition == "fade" and args.music is None
+
+
+def test_edit_only_reuses_clips_on_disk_without_recording(tmp_path, monkeypatch):
+    from highlights import cli
+    from highlights.config import ClipConfig, Config
+    from highlights.engine.clip_plan import ClipPlan
+    from highlights.engine.moments import HighlightType, Moment
+
+    config = Config(cs2_root=None, output_dir=tmp_path / "out", clips_dir=tmp_path / "clips",
+                    clips=ClipConfig(3.0, 2.0))
+    moments = [Moment(round_number=r, highlight_type=HighlightType.KILL, player_steamid="P",
+                      core_tick=100 * r, start_tick=100 * r - 50, end_tick=100 * r + 50,
+                      description="k") for r in (1, 2)]
+    plan = ClipPlan(player_steamid="P", selected_types=(HighlightType.KILL,), moments=moments)
+    (tmp_path / "clips").mkdir()
+    (tmp_path / "clips" / "001_r01_kill_semi.mp4").write_bytes(b"video")
+    seen = {}
+    monkeypatch.setattr(cli, "load_config", lambda: config)
+    monkeypatch.setattr(cli, "build_live_recorder", lambda c: pytest.fail("must not record"))
+    monkeypatch.setattr(cli, "stitch_recorded", lambda clips, *a: seen.setdefault("clips", clips) and 0)
+    assert cli.run_recording(plan, "semi", fallback_demo=tmp_path / "m.dem", pov_demos=[],
+                             live=False, edit_only=True) == 0
+    assert [c.succeeded for c in seen["clips"]] == [True, False]
+
+
+def test_parser_reads_resume_and_edit_only():
+    args = build_parser().parse_args(["m.dem", "--record", "--resume"])
+    assert args.resume and not args.edit_only
+    assert build_parser().parse_args(["m.dem", "--edit-only"]).edit_only
