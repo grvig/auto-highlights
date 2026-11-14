@@ -75,3 +75,20 @@ def test_missing_hlae_is_reported(tmp_path, monkeypatch):
     monkeypatch.setattr("highlights.recorder.hlae.BUNDLED_DIR", tmp_path / "none")
     checks = run_preflight(make_config(tmp_path, hlae=False))
     assert not find(checks, "HLAE").ok
+
+
+def test_hlae_version_is_reported(tmp_path, monkeypatch):
+    monkeypatch.setattr("highlights.preflight.ffmpeg_available", lambda p: True)
+    config = make_config(tmp_path)
+    (tmp_path / "hlae" / "auto-highlights-version.txt").write_text("2.193.0")
+    assert find(run_preflight(config), "HLAE").detail.endswith("(v2.193.0)")
+
+
+def test_missing_caption_font_is_reported(tmp_path, monkeypatch):
+    from highlights.editor.fonts import FontError
+
+    def no_font(text):
+        raise FontError("No usable font found")
+    monkeypatch.setattr("highlights.preflight.ffmpeg_available", lambda p: True)
+    monkeypatch.setattr("highlights.preflight.find_font", no_font)
+    assert not find(run_preflight(make_config(tmp_path)), "caption font").ok
