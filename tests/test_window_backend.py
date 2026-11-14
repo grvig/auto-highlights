@@ -58,3 +58,16 @@ def test_spectates_before_capturing(tmp_path):
     rec, _ = make_recorder(tmp_path, cs2, runs, "")
     rec.record_clip(make_request(tmp_path, pov="V", camera="victim"))
     assert ("spectate", "victim") in cs2.log
+
+
+def test_slowed_victim_cams_stay_slow_in_window_capture(tmp_path):
+    from dataclasses import replace
+
+    from highlights.engine.moments import Segment
+
+    cs2, runs = FakeCs2(landings=[26527]), []
+    rec, _ = make_recorder(tmp_path, cs2, runs, "")
+    request = make_request(tmp_path, pov="V", camera="victim")
+    request = replace(request, segment=Segment(26207, 26527, pov_steamid="V", speed=0.5))
+    rec.record_clip(request)
+    assert "setpts=PTS/0.5" in runs[0]

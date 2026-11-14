@@ -80,4 +80,6 @@ class WindowRecorder(HlaeRecorder):
             (request.end_tick - request.start_tick) / tickrate,
             self.framerate,
             self.ffmpeg,
+            speed=request.speed,
+            has_audio=self.audio_device is not None,
         ))

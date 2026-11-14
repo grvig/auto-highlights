@@ -15,6 +15,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from highlights.recorder.mirv import _atempo_chain as atempo_chain
+
 # Measured against weapon_fire ticks: loopback audio arrives this early.
 AUDIO_DELAY_SECONDS = 0.55
 # Paused CS2 frames still shimmer slightly; -45dB treats that as frozen.
@@ -79,11 +81,25 @@ def trim_command(
     duration_seconds: float,
     framerate: int = 60,
     ffmpeg: str = "ffmpeg",
+    speed: float = 1.0,
+    has_audio: bool = False,
 ) -> list[str]:
-    """ffmpeg arguments that cut the played window out of a raw capture."""
+    """ffmpeg arguments that cut the played window out of a raw capture.
+
+    Below 1.0, speed slows picture (and sound, when captured) together, the
+    same way the HLAE backend finishes its takes.
+    """
+    if speed <= 0:
+        raise ValueError(f"Speed must be positive: {speed}")
+    filters: list[str] = []
+    if speed != 1.0:
+        filters = ["-vf", f"setpts=PTS/{speed:g}"]
+        if has_audio:
+            filters += ["-af", atempo_chain(speed)]
     return [
         ffmpeg, "-y", "-loglevel", "error",
         "-ss", f"{begin_seconds:.3f}", "-i", str(raw), "-t", f"{duration_seconds:.3f}",
+        *filters,
         "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
         "-r", str(int(framerate)), "-c:a", "aac", "-b:a", "192k",
         str(output),

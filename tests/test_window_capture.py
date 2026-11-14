@@ -57,3 +57,14 @@ def test_probe_and_trim_commands():
     assert trim[trim.index("-ss") + 1] == "1.933"
     assert trim[trim.index("-t") + 1] == "5.000"
     assert trim[-1] == "out.mp4"
+
+
+def test_trim_applies_slow_motion_to_picture_and_sound():
+    trim = wc.trim_command(Path("raw.mkv"), Path("out.mp4"), 1.0, 1.0, speed=0.5, has_audio=True)
+    assert trim[trim.index("-vf") + 1] == "setpts=PTS/0.5"
+    assert trim[trim.index("-af") + 1] == "atempo=0.5"
+
+
+def test_trim_without_captured_audio_only_slows_the_picture():
+    trim = wc.trim_command(Path("raw.mkv"), Path("out.mp4"), 1.0, 1.0, speed=0.5)
+    assert "-vf" in trim and "-af" not in trim
