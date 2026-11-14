@@ -80,7 +80,36 @@ def test_backend_is_closed_even_when_recording_explodes():
     assert "close" in recorder.events
 
 
-def test_empty_plan_still_opens_and_closes():
+def test_empty_plan_launches_nothing():
     recorder = ScriptedRecorder()
     assert record_requests(recorder, []) == []
-    assert recorder.events == ["open", "close"]
+    assert recorder.events == []
+
+
+def on_disk(tmp_path, index):
+    from dataclasses import replace
+
+    request = replace(make_request(index), output_path=tmp_path / f"{index:03d}.mp4")
+    request.output_path.write_bytes(b"video")
+    return request
+
+
+def test_clips_from_an_earlier_run_are_kept(tmp_path):
+    recorder = ScriptedRecorder()
+    requests = [on_disk(tmp_path, 1), make_request(2), on_disk(tmp_path, 3)]
+    results = record_requests(recorder, requests, skip_existing=True)
+    assert recorder.events == ["open", "record:2", "close"]
+    assert [c.index for c in results] == [1, 2, 3]
+    assert all(c.succeeded for c in results)
+
+
+def test_nothing_left_to_record_never_opens_the_game(tmp_path):
+    recorder = ScriptedRecorder()
+    results = record_requests(recorder, [on_disk(tmp_path, 1)], skip_existing=True)
+    assert recorder.events == [] and results[0].succeeded
+
+
+def test_existing_clips_are_rerecorded_unless_asked(tmp_path):
+    recorder = ScriptedRecorder()
+    record_requests(recorder, [on_disk(tmp_path, 1)])
+    assert recorder.events == ["open", "record:1", "close"]
