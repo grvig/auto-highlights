@@ -42,7 +42,9 @@ from highlights.recorder.factory import build_live_recorder, settings_guard, upd
 from highlights.recorder.hlae import BUNDLED_DIR as HLAE_BUNDLED_DIR
 from highlights.recorder.hlae import HlaeError
 from highlights.recorder.session import already_recorded, record_requests
+from highlights.editor.beats import beat_times, load_samples, tempo_of
 from highlights.editor.fonts import FontError
+from highlights.editor.preview import describe_edit
 from highlights.editor.probe import ProbeError
 from highlights.editor.reel import EditOptions, ReelBuilder
 from highlights.stitcher.runner import StitchError
@@ -366,6 +368,7 @@ def run_recording(
     edit: EditOptions | None = None,
     resume: bool = False,
     edit_only: bool = False,
+    preview_edit: bool = False,
 ) -> int:
     """Record a plan, dry by default. Returns an exit code."""
     warning = pov_recording_warning(not pov_demos, player_name, live)
@@ -413,12 +416,25 @@ def run_recording(
     for clip in failed:
         print(f"  #{clip.index:03d} {clip.error}", file=sys.stderr)
 
+    if preview_edit and edit:
+        print("\nEdit preview:")
+        for line in describe_edit(requests, edit, lambda song: music_tempo(song, config)):
+            print(f"  {line}")
+
     if stitch:
         stitch_code = stitch_recorded(clips, player_name, config, aspect, edit)
         if stitch_code != 0:
             return stitch_code
 
     return 1 if failed else 0
+
+
+def music_tempo(song: Path, config: Config) -> float | None:
+    """The track's tempo for the preview, or None if it cannot be read."""
+    try:
+        return tempo_of(beat_times(load_samples(song, config.ffmpeg_path)))
+    except (OSError, subprocess.CalledProcessError):
+        return None
 
 
 def stitch_recorded(
@@ -571,6 +587,7 @@ def main(argv: list[str] | None = None) -> int:
                 live=args.record,
                 resume=args.resume,
                 edit_only=args.edit_only,
+                preview_edit=args.stitch and args.dry_run,
                 stitch=args.stitch and args.record,
                 names={p.steamid: p.name for s in sources for p in s.players()},
                 aspect=args.aspect,
