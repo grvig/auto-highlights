@@ -39,3 +39,8 @@ def test_preview_without_captions_shows_bare_clips():
     options = replace(EditOptions("semi"), captions=False, cards=False)
     lines = describe_edit([request(1, Segment(2400, 2700))], options)
     assert lines[0].endswith("4.7s")
+
+
+def test_outro_preview_counts_the_kills():
+    options = EditOptions("semi", kills_shown=6)
+    assert "[outro]  GG  6 kills" in describe_edit([request(1, Segment(2400, 2700))], options)

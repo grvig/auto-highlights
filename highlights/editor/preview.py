@@ -33,7 +33,8 @@ def describe_edit(
         speed = "" if request.speed == 1.0 else f" x{request.speed:g}"
         lines.append(f"{request.label:<10} {request.duration_seconds:5.1f}s{speed}  {caption}".rstrip())
     if options.cards:
-        lines.append("[outro]  GG")
+        kills = f"  {options.kills_shown} kills" if options.kills_shown else ""
+        lines.append(f"[outro]  GG{kills}")
     join = "hard cuts" if options.transition == "cut" else f"{options.transition} transitions"
     if options.music:
         bpm = tempo(options.music) if tempo else None

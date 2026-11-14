@@ -46,6 +46,8 @@ class EditOptions:
     music: Path | None = None
     # Map name for each demo, keyed by the demo path a clip came from.
     maps: dict[Path, str] = field(default_factory=dict)
+    # The player's kills across the whole reel, for the outro card.
+    kills_shown: int | None = None
 
 
 class ReelBuilder:
@@ -91,7 +93,7 @@ class ReelBuilder:
             maps = sorted({m for m in self.options.maps.values() if m})
             parts.insert(0, self._card("title", title_lines(self.options.player_name, maps, len(
                 {c.request.index for c in usable})), TITLE_SECONDS, width, height, fps))
-            parts.append(self._card("outro", outro_lines(self.options.player_name),
+            parts.append(self._card("outro", outro_lines(self.options.player_name, self.options.kills_shown),
                                     OUTRO_SECONDS, width, height, fps))
             durations = [TITLE_SECONDS, *durations, OUTRO_SECONDS]
 

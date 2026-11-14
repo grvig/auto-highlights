@@ -31,6 +31,7 @@ from highlights.engine.multi import (
     match_from_source,
     players_across,
 )
+from highlights.engine.scoring import moment_kills
 from highlights.engine.selection import ORDERS, arrange, select_best
 from highlights.steam.account import signed_in_account
 from highlights.steam.locate import find_steam_root
@@ -429,6 +430,17 @@ def run_recording(
     return 1 if failed else 0
 
 
+def kills_in_plan(plan: ClipPlan, sources: list[DemoSource], matches: list[Match]) -> int:
+    """How many of the player's kills the planned moments contain."""
+    by_demo = {source.path: match.context for source, match in zip(sources, matches)}
+    total = 0
+    for moment in plan.moments:
+        context = by_demo.get(Path(moment.source_demo)) if moment.source_demo else None
+        context = context or matches[0].context
+        total += len(moment_kills(moment, context.kills))
+    return total
+
+
 def music_tempo(song: Path, config: Config) -> float | None:
     """The track's tempo for the preview, or None if it cannot be read."""
     try:
@@ -598,6 +610,7 @@ def main(argv: list[str] | None = None) -> int:
                     transition=args.transition,
                     music=args.music,
                     maps={s.path: s.info.map_name for s in sources},
+                    kills_shown=kills_in_plan(plan, sources, matches),
                 ),
             )
         except ConfigError as error:

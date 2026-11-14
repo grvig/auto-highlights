@@ -96,3 +96,10 @@ def test_hard_cuts_join_without_crossfades(tmp_path):
     builder(tmp_path, runs, transition="cut").build(clips, tmp_path / "reel.mp4")
     graph = runs[-1][runs[-1].index("-filter_complex") + 1]
     assert "xfade" not in graph and "concat=n=2" in graph
+
+
+def test_outro_card_carries_the_kill_count(tmp_path):
+    runs = []
+    builder(tmp_path, runs, kills_shown=6).build([recorded(tmp_path, 1)], tmp_path / "reel.mp4")
+    texts = sorted(p.read_text(encoding="utf-8") for p in (tmp_path / "work").glob("card_outro_*.txt"))
+    assert "6 KILLS SHOWN" in texts
