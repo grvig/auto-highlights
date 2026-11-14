@@ -65,3 +65,14 @@ def test_real_ffmpeg_export_produces_the_right_shape(source_4x3, tmp_path, name,
     width, height, sar = probe(out)
     assert (width, height) == expected
     assert sar in ("1:1", "N/A")  # square pixels: the stretch is baked in
+
+
+def test_export_levels_loudness_for_upload():
+    from pathlib import Path
+
+    from highlights.stitcher.aspect import PROFILES, convert_args
+
+    args = convert_args(Path("in.mp4"), Path("out.mp4"), PROFILES["stretched"])
+    assert args[args.index("-af") + 1].startswith("loudnorm=I=-14")
+    plain = convert_args(Path("in.mp4"), Path("out.mp4"), PROFILES["stretched"], normalise=False)
+    assert "-af" not in plain and plain[plain.index("-c:a") + 1] == "copy"

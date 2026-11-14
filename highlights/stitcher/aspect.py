@@ -59,15 +59,32 @@ def video_filter(profile: ExportProfile) -> str:
     return f"{chains[profile.mode]},setsar=1"
 
 
-def convert(source: Path, output: Path, profile: ExportProfile, ffmpeg: str = "ffmpeg") -> Path:
-    """Re-encode a video into the profile's shape, keeping its audio as is."""
-    output.parent.mkdir(parents=True, exist_ok=True)
-    args = [
+# Loudness target for the finished reel: what YouTube and most platforms
+# normalise to, so the reel is neither quieter nor squashed after upload.
+LOUDNESS = "loudnorm=I=-14:TP=-1.5:LRA=11"
+
+
+def convert_args(
+    source: Path, output: Path, profile: ExportProfile, ffmpeg: str = "ffmpeg",
+    normalise: bool = True,
+) -> list[str]:
+    """ffmpeg arguments that reshape a video and, by default, level its loudness."""
+    audio = ["-af", LOUDNESS, "-ar", "48000", "-c:a", "aac", "-b:a", "192k"] if normalise else ["-c:a", "copy"]
+    return [
         ffmpeg, "-y", "-i", str(source),
         "-vf", video_filter(profile),
-        "-c:v", "libx264", "-crf", "18", "-c:a", "copy",
+        "-c:v", "libx264", "-crf", "18", *audio,
         str(output),
     ]
+
+
+def convert(
+    source: Path, output: Path, profile: ExportProfile, ffmpeg: str = "ffmpeg",
+    normalise: bool = True,
+) -> Path:
+    """Re-encode a video into the profile's shape, levelling its loudness."""
+    output.parent.mkdir(parents=True, exist_ok=True)
+    args = convert_args(source, output, profile, ffmpeg, normalise)
     logger.info("Exporting %s as %s", source.name, profile.name)
     result = subprocess.run(args, capture_output=True, text=True, check=False)
     if result.returncode != 0 or not output.exists():
