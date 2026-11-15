@@ -480,6 +480,10 @@ def stitch_recorded(
         else:
             output = stitch_clips(clips, reel_path, config.ffmpeg_path, work_dir=config.clips_dir)
         final = convert(output, config.output_dir / reel_name, profile, config.ffmpeg_path)
+        if edit and builder.chapters:
+            chapters = final.with_suffix(".chapters.txt")
+            chapters.write_text("\n".join(builder.chapters) + "\n", encoding="utf-8")
+            print(f"Chapters for the video description: {chapters}")
     except (StitchError, RuntimeError, ValueError, OSError,
             subprocess.CalledProcessError, FontError, ProbeError) as error:
         print(f"Error: {error}", file=sys.stderr)

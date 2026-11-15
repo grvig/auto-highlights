@@ -16,8 +16,9 @@ from pathlib import Path
 
 from highlights.editor import beats as beat_tools
 from highlights.editor.cards import card_command, outro_lines, title_lines
+from highlights.editor.chapters import chapter_lines, starts
 from highlights.editor.effects import effect_filters
-from highlights.editor.captions import caption_filter, caption_for, replay_caption
+from highlights.editor.captions import caption_filter, caption_for, headline_for, replay_caption
 from highlights.editor.music import check_music, music_command
 from highlights.editor.probe import MediaInfo, probe
 from highlights.editor.transitions import DEFAULT_TRANSITION, join_command, transition_seconds
@@ -72,6 +73,7 @@ class ReelBuilder:
         self._run = runner
         self._probe = prober or (lambda path: probe(path, ffmpeg))
         self._size = (1440, 1080, 60)  # replaced by the first clip's format
+        self.chapters: list[str] = []
         self._beats = beat_finder or (
             lambda path: beat_tools.beat_times(beat_tools.load_samples(path, ffmpeg))
         )
@@ -105,6 +107,7 @@ class ReelBuilder:
                                     OUTRO_SECONDS, width, height, fps))
             durations = [TITLE_SECONDS, *durations, OUTRO_SECONDS]
 
+        self.chapters = self._chapters(usable, durations, fade)
         joined = self.work_dir / "joined.mp4" if self.options.music else output
         self._run(join_command(parts, durations, joined, width, height, fps,
                                self.options.transition if fade else "fade", self.ffmpeg, fade))
@@ -113,6 +116,21 @@ class ReelBuilder:
             self._run(music_command(joined, self.options.music, output, total, ffmpeg=self.ffmpeg))
         logger.info("Edited reel written to %s", output)
         return output
+
+    def _chapters(self, clips: list[RecordedClip], durations: list[float], fade: float) -> list[str]:
+        """Chapter lines: intro, the start of each highlight, outro."""
+        offsets = starts(durations, fade)
+        entries: list[tuple[float, str]] = []
+        if self.options.cards:
+            entries.append((0.0, "Intro"))
+            offsets = offsets[1:]
+        for clip, start in zip(clips, offsets):
+            if clip.request.part == 1:
+                moment = clip.request.moment
+                entries.append((start, f"{headline_for(moment)} (Round {moment.round_number})"))
+        if self.options.cards:
+            entries.append((offsets[len(clips)], "Outro"))
+        return chapter_lines(entries)
 
     def _prepare(self, number: int, clip: RecordedClip, duration: float) -> Path:
         """Caption the first window of each moment and apply its beat trim."""

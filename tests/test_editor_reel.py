@@ -127,3 +127,13 @@ def test_effects_are_off_unless_asked(tmp_path):
     clip = replace(clip, request=replace(clip.request, segment=marked))
     builder(tmp_path, runs, cards=False).build([clip], tmp_path / "r.mp4")
     assert "-vf" not in runs[0]
+
+
+def test_reel_lists_a_chapter_per_highlight(tmp_path):
+    runs = []
+    clips = [recorded(tmp_path, 1, 1), recorded(tmp_path, 1, 2), recorded(tmp_path, 2, 1)]
+    reel = builder(tmp_path, runs)
+    reel.build(clips, tmp_path / "reel.mp4")
+    assert reel.chapters[0] == "00:00 Intro"
+    assert [line.split(" ", 1)[1] for line in reel.chapters[1:]] == [
+        "ACE (Round 1)", "ACE (Round 2)", "Outro"]
