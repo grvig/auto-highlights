@@ -44,3 +44,12 @@ aspect = "stretched"
 # Seconds of footage kept either side of a highlight moment.
 pre_roll_seconds = 3.0
 post_roll_seconds = 2.0
+
+[editing]
+# Your usual style, so it needs no flags each run. Flags still win.
+# music = "D:/music/track.mp3"
+# music_start = 0.0
+# "fade", "cut", "fadeblack", "fadewhite", "smoothleft" or "zoomin".
+transition = "fade"
+# Slow motion, punch-ins on headshots and flashes on kills.
+pro = false

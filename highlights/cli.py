@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Protocol
 
 from highlights import __version__
-from highlights.config import Config, ConfigError, load_config
+from highlights.config import Config, ConfigError, EditingConfig, load_config
 from highlights.logging_setup import LEVELS, configure_logging
 from highlights.preflight import all_passed, run_preflight
 from highlights.engine.cache import DemoCache
@@ -190,7 +190,7 @@ def build_parser() -> argparse.ArgumentParser:
     edit.add_argument(
         "--music-start",
         type=float,
-        default=0.0,
+        default=None,
         metavar="SECONDS",
         help="start the music this far into the track, e.g. to skip a slow intro",
     )
@@ -198,7 +198,7 @@ def build_parser() -> argparse.ArgumentParser:
     edit.add_argument("--no-cards", action="store_true", help="leave out the title and outro cards")
     edit.add_argument(
         "--transition",
-        default="fade",
+        default=None,
         choices=TRANSITIONS,
         help="how clips join (default: fade; cut for hard cuts)",
     )
@@ -461,6 +461,21 @@ def kills_in_plan(plan: ClipPlan, sources: list[DemoSource], matches: list[Match
     return total
 
 
+def editing_style(args: argparse.Namespace, defaults: EditingConfig | None = None) -> EditingConfig:
+    """Flags given on the command line, else the config's [editing] defaults."""
+    if defaults is None:
+        try:
+            defaults = load_config().editing
+        except ConfigError:
+            defaults = EditingConfig()
+    return EditingConfig(
+        music=args.music or defaults.music,
+        music_start=defaults.music_start if args.music_start is None else args.music_start,
+        transition=args.transition or defaults.transition,
+        pro=args.pro or defaults.pro,
+    )
+
+
 def music_tempo(song: Path, config: Config) -> float | None:
     """The track's tempo for the preview, or None if it cannot be read."""
     try:
@@ -609,7 +624,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: {reason}", file=sys.stderr)
         return 1
 
-    multi = build_multi_plan(matches, player.steamid, types, slowmo=args.slowmo or args.pro)
+    style = editing_style(args)
+    multi = build_multi_plan(matches, player.steamid, types, slowmo=args.slowmo or style.pro)
     for label in multi.missing_from:
         print(f"Note: {player.name} is not in {label}", file=sys.stderr)
     plan = multi.plan
@@ -638,14 +654,14 @@ def main(argv: list[str] | None = None) -> int:
                     player_name=player.name,
                     captions=not args.no_captions,
                     cards=not args.no_cards,
-                    transition=args.transition,
-                    music=args.music,
+                    transition=style.transition,
+                    music=style.music,
                     maps={s.path: s.info.map_name for s in sources},
                     kills_shown=kills_in_plan(plan, sources, matches),
-                    punch_ins=args.punch_ins or args.pro,
+                    punch_ins=args.punch_ins or style.pro,
                     centred_captions=args.aspect == "vertical",
-                    music_start=max(args.music_start, 0.0),
-                    flashes=args.flashes or args.pro,
+                    music_start=max(style.music_start, 0.0),
+                    flashes=args.flashes or style.pro,
                 ),
             )
         except ConfigError as error:

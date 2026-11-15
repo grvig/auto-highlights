@@ -55,6 +55,17 @@ class RecordingConfig:
 
 
 @dataclass(frozen=True)
+class EditingConfig:
+    """Defaults for the editor, so a usual style needs no flags each run."""
+
+    music: Path | None = None
+    music_start: float = 0.0
+    transition: str = "fade"
+    # Slow motion, punch-ins and flashes on kills.
+    pro: bool = False
+
+
+@dataclass(frozen=True)
 class Config:
     # None when it was neither configured nor found automatically.
     cs2_root: Path | None
@@ -71,6 +82,7 @@ class Config:
     # same drive the user picked for media rather than the system drive.
     cache_dir: Path | None = None
     recording: RecordingConfig = RecordingConfig()
+    editing: EditingConfig = EditingConfig()
 
     @property
     def resolved_cache_dir(self) -> Path:
@@ -157,6 +169,7 @@ def load_config(
     paths = raw.get("paths", {})
     clips = raw.get("clips", {})
     recording = raw.get("recording", {})
+    editing = raw.get("editing", {})
 
     base = config_path.parent
     configured_cs2 = paths.get("cs2_root")
@@ -180,6 +193,12 @@ def load_config(
             framerate=int(recording.get("framerate", 60)),
             aspect=str(recording.get("aspect", "stretched")),
             auto_update=bool(recording.get("auto_update", True)),
+        ),
+        editing=EditingConfig(
+            music=_resolve(base, str(editing["music"])) if editing.get("music") else None,
+            music_start=float(editing.get("music_start", 0.0)),
+            transition=str(editing.get("transition", "fade")),
+            pro=bool(editing.get("pro", False)),
         ),
     )
 

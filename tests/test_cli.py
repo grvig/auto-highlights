@@ -193,7 +193,7 @@ def test_parser_reads_edit_flags(tmp_path):
 
 def test_editing_is_on_by_default():
     args = build_parser().parse_args(["m.dem"])
-    assert not args.plain and args.transition == "fade" and args.music is None
+    assert not args.plain and args.transition is None and args.music is None
 
 
 def test_edit_only_reuses_clips_on_disk_without_recording(tmp_path, monkeypatch):
@@ -239,4 +239,17 @@ def test_parser_reads_effect_flags_and_the_pro_preset():
 def test_parser_reads_music_start():
     args = build_parser().parse_args(["m.dem", "--music", "s.mp3", "--music-start", "12.5"])
     assert args.music_start == 12.5
-    assert build_parser().parse_args(["m.dem"]).music_start == 0.0
+    assert build_parser().parse_args(["m.dem"]).music_start is None
+
+
+def test_flags_override_the_configs_editing_style(tmp_path):
+    from highlights.cli import editing_style
+    from highlights.config import EditingConfig
+
+    saved = EditingConfig(music=tmp_path / "usual.mp3", music_start=8.0, transition="fadeblack", pro=True)
+    plain = editing_style(build_parser().parse_args(["m.dem"]), saved)
+    assert plain == saved
+    flagged = editing_style(build_parser().parse_args(
+        ["m.dem", "--music", "other.mp3", "--music-start", "0", "--transition", "cut"]), saved)
+    assert flagged.music.name == "other.mp3" and flagged.music_start == 0.0
+    assert flagged.transition == "cut" and flagged.pro
