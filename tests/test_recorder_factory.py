@@ -86,3 +86,16 @@ def test_an_offline_update_check_does_not_block_recording(tmp_path, monkeypatch)
     monkeypatch.setattr(factory, "ensure_current", offline)
     assert factory.update_hlae(tmp_path) is None
     assert factory.build_live_recorder(make_config(tmp_path)) is not None
+
+
+def test_recorder_restores_the_signed_in_players_settings(tmp_path):
+    steam = tmp_path / "steam"
+    (steam / "config").mkdir(parents=True)
+    (steam / "config" / "loginusers.vdf").write_text(
+        '"users" { "76561199266315708" { "PersonaName" "semi" "MostRecent" "1" } }'
+    )
+    cfg = steam / "userdata" / "1306049980" / "730" / "local" / "cfg"
+    cfg.mkdir(parents=True)
+    (cfg / "cs2_user_convars_0_slot0.vcfg").write_text('\t\t"hud_showtargetid"\t\t"true"\n')
+    recorder = factory.build_live_recorder(make_config(tmp_path), steam_root=steam)
+    assert "hud_showtargetid 1" in recorder.restore_commands

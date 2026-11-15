@@ -59,6 +59,36 @@ MOVIE_SETUP = (
 )
 
 
+# CS2's defaults for footage settings, used when the player's files do not
+# mention one (CS2 only writes settings that differ from their default).
+SETTING_DEFAULTS = {
+    "cl_draw_only_deathnotices": "0",
+    "r_show_build_info": "1",
+    "spec_show_xray": "1",
+    "hud_showtargetid": "1",
+    "snd_mute_losefocus": "1",
+}
+
+
+def restore_settings(player_values: dict[str, str]) -> list[str]:
+    """Commands that put every footage setting back to the player's value.
+
+    Sent before the game closes, so CS2 itself saves the player's values and
+    Steam Cloud never syncs the recording ones.
+    """
+    restored = []
+    for command in MOVIE_SETUP:
+        name = command.split()[0]
+        if name == "sv_cheats":
+            continue  # not saved to the player's settings
+        value = player_values.get(name, SETTING_DEFAULTS.get(name))
+        if value is None:
+            continue
+        value = {"true": "1", "false": "0"}.get(value.lower(), value)
+        restored.append(f"{name} {value}")
+    return restored
+
+
 def play_demo(demo_name: str) -> str:
     """Load and start playing a demo staged in the replays folder."""
     stem = str(demo_name).strip()

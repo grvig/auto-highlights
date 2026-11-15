@@ -14,7 +14,8 @@ from contextlib import AbstractContextManager
 from pathlib import Path
 
 from highlights.config import Config
-from highlights.recorder.cfg_guard import CfgGuard, cs2_cfg_dir
+from highlights.recorder.cfg_guard import CfgGuard, cs2_cfg_dir, read_convars
+from highlights.recorder.cs2_commands import restore_settings
 from highlights.recorder.cs2_controller import Cs2Controller
 from highlights.recorder.hlae import (
     BUNDLED_DIR,
@@ -33,12 +34,13 @@ from highlights.steam.locate import find_steam_root
 logger = logging.getLogger(__name__)
 
 
-def build_live_recorder(config: Config) -> HlaeRecorder:
+def build_live_recorder(config: Config, steam_root: Path | None = None) -> HlaeRecorder:
     """The recorder config asks for, falling back to window capture."""
     config.verify_cs2_install()
     rec = config.recording
     cs2 = Cs2Controller(config.cs2_root)
-    common = dict(output_dir=config.clips_dir, framerate=rec.framerate, ffmpeg=config.ffmpeg_path)
+    common = dict(output_dir=config.clips_dir, framerate=rec.framerate, ffmpeg=config.ffmpeg_path,
+                  restore_commands=player_restore_commands(steam_root))
 
     if rec.recorder == "hlae":
         if rec.auto_update:
@@ -53,6 +55,15 @@ def build_live_recorder(config: Config) -> HlaeRecorder:
     # Window capture films a game the player has already started with
     # -netconport, at whatever size it is running.
     return WindowRecorder(cs2, **common)
+
+
+def player_restore_commands(steam_root: Path | None = None) -> list[str]:
+    """Console commands returning the signed-in player's footage settings."""
+    steam_root = steam_root or find_steam_root()
+    account = signed_in_account(steam_root) if steam_root else None
+    if account is None:
+        return []
+    return restore_settings(read_convars(cs2_cfg_dir(steam_root, account.steamid)))
 
 
 def update_hlae(hlae_dir: Path) -> str | None:

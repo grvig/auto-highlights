@@ -58,3 +58,20 @@ def test_missing_cfg_folder_is_harmless(tmp_path):
     with CfgGuard(Path(tmp_path / "absent"), tmp_path / "backup") as guard:
         pass
     assert guard.backup_dir is None
+
+
+def test_reads_the_players_saved_settings(tmp_path):
+    from highlights.recorder.cfg_guard import read_convars
+
+    (tmp_path / "cs2_user_convars_0_slot0.vcfg").write_text(
+        '"config"\n{\n\t"convars"\n\t{\n\t\t"hud_showtargetid"\t\t"true"\n\t\t"volume"\t\t"0.49"\n\t}\n}\n'
+    )
+    (tmp_path / "cs2_machine_convars.vcfg").write_text('\t\t"r_show_build_info"\t\t"true"\n')
+    values = read_convars(tmp_path)
+    assert values == {"hud_showtargetid": "true", "volume": "0.49", "r_show_build_info": "true"}
+
+
+def test_missing_settings_files_read_as_empty(tmp_path):
+    from highlights.recorder.cfg_guard import read_convars
+
+    assert read_convars(tmp_path / "nope") == {}

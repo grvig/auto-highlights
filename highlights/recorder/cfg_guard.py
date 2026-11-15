@@ -10,6 +10,7 @@ a crash mid-restore can still be undone by hand.
 from __future__ import annotations
 
 import logging
+import re
 import shutil
 import time
 from pathlib import Path
@@ -23,6 +24,23 @@ def cs2_cfg_dir(steam_root: Path, steamid64: str) -> Path:
     """Where CS2 keeps one account's settings."""
     account = account_id_from_steamid64(steamid64)
     return Path(steam_root) / "userdata" / str(account) / "730" / "local" / "cfg"
+
+
+CONVAR_FILES = ("cs2_user_convars_0_slot0.vcfg", "cs2_machine_convars.vcfg")
+_PAIR = re.compile(r'^\s*"([^"]+)"\s+"([^"]*)"\s*$', re.MULTILINE)
+
+
+def read_convars(cfg_dir: Path) -> dict[str, str]:
+    """The player's saved console settings, name to value."""
+    values: dict[str, str] = {}
+    for name in CONVAR_FILES:
+        try:
+            text = (Path(cfg_dir) / name).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for key, value in _PAIR.findall(text):
+            values.setdefault(key, value)
+    return values
 
 
 class CfgGuard:

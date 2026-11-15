@@ -88,3 +88,15 @@ def test_simple_commands():
     assert cmd.toggle_demo_ui() == "demoui"
     assert cmd.hide_hud(True).endswith(" 1")
     assert cmd.hide_hud(False).endswith(" 0")
+
+
+def test_footage_settings_are_put_back_to_the_players_values():
+    player = {"hud_showtargetid": "true", "spec_show_xray": "0",
+              "cl_hud_telemetry_ping_show": "2", "snd_mute_losefocus": "false"}
+    commands = cmd.restore_settings(player)
+    assert "hud_showtargetid 1" in commands
+    assert "spec_show_xray 0" in commands
+    assert "cl_hud_telemetry_ping_show 2" in commands
+    assert "snd_mute_losefocus 0" in commands
+    assert "cl_draw_only_deathnotices 0" in commands  # default, not in the file
+    assert not any(c.startswith("sv_cheats") for c in commands)

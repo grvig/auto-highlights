@@ -201,3 +201,10 @@ def test_plain_clips_render_at_the_normal_rate(tmp_path):
     cs2, runs = FakeCs2(landings=[26527]), []
     recorder(tmp_path, cs2, runs).record_clip(make_request(tmp_path))
     assert "host_framerate 60" in cs2.console.sent
+
+
+def test_close_puts_the_players_settings_back_before_quitting(tmp_path):
+    cs2 = FakeCs2()
+    HlaeRecorder(cs2, tmp_path, restore_commands=["hud_showtargetid 1"]).close()
+    assert cs2.console.sent[-1] == "hud_showtargetid 1"
+    assert cs2.log[-1] == ("quit",)

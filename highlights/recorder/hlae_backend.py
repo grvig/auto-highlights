@@ -53,6 +53,7 @@ class HlaeRecorder:
         runner: Runner = _run,
         sleeper: Callable[[float], None] = time.sleep,
         keep_takes: bool = False,
+        restore_commands: Sequence[str] = (),
     ) -> None:
         self.cs2 = cs2
         self.output_dir = Path(output_dir)
@@ -64,6 +65,8 @@ class HlaeRecorder:
         # Raw takes hold the full lead-in and a wav; once a clip is finished
         # they are only kept when debugging.
         self.keep_takes = keep_takes
+        # Put the player's own settings back before the game saves them.
+        self.restore_commands = list(restore_commands)
         self._loaded: Path | None = None
         # Takes started in this game session; numbers each take's preset.
         self._takes = 0
@@ -80,6 +83,7 @@ class HlaeRecorder:
     def close(self) -> None:
         try:
             self.cs2.console.send_all(mirv.stop_commands())
+            self.cs2.console.send_all(self.restore_commands)
         except Exception as error:  # never mask the original failure
             logger.debug("[%s] stopping streams failed: %s", self.name, error)
         self.cs2.quit()
