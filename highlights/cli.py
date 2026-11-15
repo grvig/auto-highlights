@@ -187,6 +187,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     edit = parser.add_argument_group("editing (with --stitch)")
     edit.add_argument("--music", type=Path, help="your own music track to cut the reel to")
+    edit.add_argument(
+        "--music-start",
+        type=float,
+        default=0.0,
+        metavar="SECONDS",
+        help="start the music this far into the track, e.g. to skip a slow intro",
+    )
     edit.add_argument("--no-captions", action="store_true", help="leave out highlight captions")
     edit.add_argument("--no-cards", action="store_true", help="leave out the title and outro cards")
     edit.add_argument(
@@ -637,6 +644,7 @@ def main(argv: list[str] | None = None) -> int:
                     kills_shown=kills_in_plan(plan, sources, matches),
                     punch_ins=args.punch_ins or args.pro,
                     centred_captions=args.aspect == "vertical",
+                    music_start=max(args.music_start, 0.0),
                     flashes=args.flashes or args.pro,
                 ),
             )

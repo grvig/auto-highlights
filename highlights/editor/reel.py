@@ -55,6 +55,8 @@ class EditOptions:
     flashes: bool = False
     # Centre captions for exports that crop the sides (vertical).
     centred_captions: bool = False
+    # Seconds into the track where the reel's music begins (skips an intro).
+    music_start: float = 0.0
 
 
 class ReelBuilder:
@@ -94,7 +96,10 @@ class ReelBuilder:
             check_music(self.options.music)
             lead_in = (TITLE_SECONDS - fade) if self.options.cards else 0.0
             durations = beat_tools.snap_durations(
-                durations, self._beats(self.options.music), fade,
+                durations,
+                [b - self.options.music_start for b in self._beats(self.options.music)
+                 if b >= self.options.music_start],
+                fade,
                 [TRIMMABLE_SECONDS] * len(durations), lead_in,
             )
 
@@ -113,7 +118,8 @@ class ReelBuilder:
                                self.options.transition if fade else "fade", self.ffmpeg, fade))
         if self.options.music:
             total = sum(durations) - fade * (len(durations) - 1)
-            self._run(music_command(joined, self.options.music, output, total, ffmpeg=self.ffmpeg))
+            self._run(music_command(joined, self.options.music, output, total,
+                                    start=self.options.music_start, ffmpeg=self.ffmpeg))
         logger.info("Edited reel written to %s", output)
         return output
 

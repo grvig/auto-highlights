@@ -137,3 +137,18 @@ def test_reel_lists_a_chapter_per_highlight(tmp_path):
     assert reel.chapters[0] == "00:00 Intro"
     assert [line.split(" ", 1)[1] for line in reel.chapters[1:]] == [
         "ACE (Round 1)", "ACE (Round 2)", "Outro"]
+
+
+def test_music_can_start_partway_with_beats_still_lined_up(tmp_path):
+    song = tmp_path / "song.mp3"
+    song.write_bytes(b"id3")
+    runs = []
+    opts = EditOptions(player_name="semi", cards=False, music=song, music_start=10.25)
+    reel = ReelBuilder(opts, tmp_path / "work", runner=runs.append,
+                       prober=lambda p: MediaInfo(5.3, 1440, 1080, 60.0, True),
+                       beat_finder=lambda p: [10.25 + i * 0.5 for i in range(100)])
+    reel.build([recorded(tmp_path, 1), recorded(tmp_path, 2)], tmp_path / "reel.mp4")
+    first = runs[0]
+    cut = float(first[first.index("-t") + 1]) - 0.175  # half the crossfade
+    assert abs(cut % 0.5) < 1e-6 or abs(cut % 0.5 - 0.5) < 1e-6
+    assert "atrim=start=10.25" in runs[-1][runs[-1].index("-filter_complex") + 1]

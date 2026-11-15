@@ -234,3 +234,9 @@ def test_parser_reads_effect_flags_and_the_pro_preset():
     args = build_parser().parse_args(["m.dem", "--punch-ins", "--flashes"])
     assert args.punch_ins and args.flashes and not args.pro
     assert build_parser().parse_args(["m.dem", "--pro"]).pro
+
+
+def test_parser_reads_music_start():
+    args = build_parser().parse_args(["m.dem", "--music", "s.mp3", "--music-start", "12.5"])
+    assert args.music_start == 12.5
+    assert build_parser().parse_args(["m.dem"]).music_start == 0.0
