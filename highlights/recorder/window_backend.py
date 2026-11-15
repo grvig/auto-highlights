@@ -82,4 +82,6 @@ class WindowRecorder(HlaeRecorder):
             self.ffmpeg,
             speed=request.speed,
             has_audio=self.audio_device is not None,
+            ramps=self._ramp_seconds(request),
+            ramp_speed=request.window.ramp_speed,
         ))

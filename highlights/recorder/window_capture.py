@@ -15,7 +15,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from highlights.recorder.mirv import _atempo_chain as atempo_chain
+from highlights.recorder.mirv import atempo_chain, ramp_filter, speed_pieces
 
 # Measured against weapon_fire ticks: loopback audio arrives this early.
 AUDIO_DELAY_SECONDS = 0.55
@@ -83,23 +83,24 @@ def trim_command(
     ffmpeg: str = "ffmpeg",
     speed: float = 1.0,
     has_audio: bool = False,
+    ramps: tuple[tuple[float, float], ...] = (),
+    ramp_speed: float = 1.0,
 ) -> list[str]:
     """ffmpeg arguments that cut the played window out of a raw capture.
 
-    Below 1.0, speed slows picture (and sound, when captured) together, the
-    same way the HLAE backend finishes its takes.
+    Speed and ramps slow picture (and sound, when captured) the same way the
+    HLAE backend finishes its takes. The cut length is an input limit, so
+    slowed footage keeps its full stretched length.
     """
     if speed <= 0:
         raise ValueError(f"Speed must be positive: {speed}")
-    filters: list[str] = []
-    if speed != 1.0:
-        filters = ["-vf", f"setpts=PTS/{speed:g}"]
-        if has_audio:
-            filters += ["-af", atempo_chain(speed)]
+    pieces = speed_pieces(duration_seconds, ramps, speed, ramp_speed)
+    graph = ramp_filter(pieces, "0:v", "0:a" if has_audio else None)
+    maps = ["-map", "[v]"] + (["-map", "[a]"] if has_audio else [])
     return [
         ffmpeg, "-y", "-loglevel", "error",
-        "-ss", f"{begin_seconds:.3f}", "-i", str(raw), "-t", f"{duration_seconds:.3f}",
-        *filters,
+        "-ss", f"{begin_seconds:.3f}", "-t", f"{duration_seconds:.3f}", "-i", str(raw),
+        "-filter_complex", graph, *maps,
         "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
         "-r", str(int(framerate)), "-c:a", "aac", "-b:a", "192k",
         str(output),

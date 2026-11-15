@@ -45,8 +45,8 @@ def test_finish_slows_picture_and_sound_together():
 
 
 def test_very_slow_motion_chains_atempo_stages():
-    assert mirv._atempo_chain(0.25) == "atempo=0.5,atempo=0.5"
-    assert mirv._atempo_chain(0.3) == "atempo=0.5,atempo=0.6"
+    assert mirv.atempo_chain(0.25) == "atempo=0.5,atempo=0.5"
+    assert mirv.atempo_chain(0.3) == "atempo=0.5,atempo=0.6"
 
 
 def test_finish_rejects_zero_speed():

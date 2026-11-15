@@ -116,38 +116,47 @@ def speed_pieces(
     return pieces
 
 
-def ramp_filter(pieces: list[tuple[float, float, float]]) -> str:
+def ramp_filter(
+    pieces: list[tuple[float, float, float]],
+    video_in: str = "0:v",
+    audio_in: str | None = "1:a",
+) -> str:
     """A filter graph playing each stretch at its speed, joined seamlessly.
 
-    Input 0 is the video, input 1 the audio; the result is labelled [v][a].
+    Video comes from video_in and sound from audio_in (None for a silent
+    capture); the result is labelled [v] and, with sound, [a].
     """
-    if len(pieces) == 1:
-        _, _, speed = pieces[0]
+    count = len(pieces)
+    has_audio = audio_in is not None
+    if count == 1:
+        speed = pieces[0][2]
         video, audio = "setpts=PTS-STARTPTS", "asetpts=PTS-STARTPTS"
         if speed != 1.0:
-            video += f",setpts=PTS/{speed:g}"
-            audio += "," + _atempo_chain(speed)
-        return f"[0:v]{video}[v];[1:a]{audio}[a]"
-    count = len(pieces)
-    parts = [
-        f"[0:v]split={count}" + "".join(f"[sv{i}]" for i in range(count)),
-        f"[1:a]asplit={count}" + "".join(f"[sa{i}]" for i in range(count)),
-    ]
+            video += f",setpts=PTS/{speed:g},fps={OUTPUT_FPS}"
+            audio += "," + atempo_chain(speed)
+        graph = f"[{video_in}]{video}[v]"
+        return graph + (f";[{audio_in}]{audio}[a]" if has_audio else "")
+    parts = [f"[{video_in}]split={count}" + "".join(f"[sv{i}]" for i in range(count))]
+    if has_audio:
+        parts.append(f"[{audio_in}]asplit={count}" + "".join(f"[sa{i}]" for i in range(count)))
     joins = []
     for i, (start, end, speed) in enumerate(pieces):
-        audio = f"atrim=start={start:g}:end={end:g},asetpts=PTS-STARTPTS"
-        if speed != 1.0:
-            audio += "," + _atempo_chain(speed)
         parts.append(f"[sv{i}]trim=start={start:g}:end={end:g},setpts=(PTS-STARTPTS)/{speed:g}[v{i}]")
-        parts.append(f"[sa{i}]{audio}[a{i}]")
-        joins.append(f"[v{i}][a{i}]")
+        joins.append(f"[v{i}]")
+        if has_audio:
+            audio = f"atrim=start={start:g}:end={end:g},asetpts=PTS-STARTPTS"
+            if speed != 1.0:
+                audio += "," + atempo_chain(speed)
+            parts.append(f"[sa{i}]{audio}[a{i}]")
+            joins[-1] += f"[a{i}]"
+    outputs = "[vc][a]" if has_audio else "[vc]"
+    parts.append("".join(joins) + f"concat=n={count}:v=1:a={int(has_audio)}{outputs}")
     # Slowed stretches have fewer frames per second; even the output out.
-    parts.append("".join(joins) + f"concat=n={count}:v=1:a=1[vc][a]")
     parts.append(f"[vc]fps={OUTPUT_FPS}[v]")
     return ";".join(parts)
 
 
-def _atempo_chain(speed: float) -> str:
+def atempo_chain(speed: float) -> str:
     """atempo only accepts 0.5-2.0 per stage, so slower speeds chain stages."""
     stages: list[str] = []
     remaining = speed

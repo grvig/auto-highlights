@@ -61,10 +61,20 @@ def test_probe_and_trim_commands():
 
 def test_trim_applies_slow_motion_to_picture_and_sound():
     trim = wc.trim_command(Path("raw.mkv"), Path("out.mp4"), 1.0, 1.0, speed=0.5, has_audio=True)
-    assert trim[trim.index("-vf") + 1] == "setpts=PTS/0.5"
-    assert trim[trim.index("-af") + 1] == "atempo=0.5"
+    graph = trim[trim.index("-filter_complex") + 1]
+    assert "setpts=PTS/0.5" in graph and "[0:a]asetpts=PTS-STARTPTS,atempo=0.5[a]" in graph
+    assert trim.index("-t") < trim.index("-i")  # slowed output keeps its full length
 
 
 def test_trim_without_captured_audio_only_slows_the_picture():
     trim = wc.trim_command(Path("raw.mkv"), Path("out.mp4"), 1.0, 1.0, speed=0.5)
-    assert "-vf" in trim and "-af" not in trim
+    graph = trim[trim.index("-filter_complex") + 1]
+    assert "setpts=PTS/0.5" in graph and "[a]" not in graph
+    assert "[a]" not in trim
+
+
+def test_trim_plays_ramps_from_the_single_capture_file():
+    trim = wc.trim_command(Path("raw.mkv"), Path("out.mp4"), 1.0, 5.0, has_audio=True,
+                           ramps=((2.0, 2.5),), ramp_speed=0.5)
+    graph = trim[trim.index("-filter_complex") + 1]
+    assert graph.startswith("[0:v]split=3") and "[0:a]asplit=3" in graph

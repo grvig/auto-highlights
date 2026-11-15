@@ -70,4 +70,4 @@ def test_slowed_victim_cams_stay_slow_in_window_capture(tmp_path):
     request = make_request(tmp_path, pov="V", camera="victim")
     request = replace(request, segment=Segment(26207, 26527, pov_steamid="V", speed=0.5))
     rec.record_clip(request)
-    assert "setpts=PTS/0.5" in runs[0]
+    assert "setpts=PTS/0.5" in runs[0][runs[0].index("-filter_complex") + 1]
