@@ -50,3 +50,12 @@ def test_preview_marks_slow_motion_ramps():
     ramped = Segment(2400, 2700, ramps=((2600, 2632), (2650, 2670)))
     line = describe_edit([request(1, ramped)], EditOptions("semi", cards=False))[0]
     assert "slow-mo x2" in line
+
+
+def test_preview_counts_punch_ins_and_flashes_when_on():
+    marked = Segment(2400, 2700, kill_ticks=(2500, 2600), headshot_ticks=(2600,))
+    on = EditOptions("semi", cards=False, punch_ins=True, flashes=True)
+    line = describe_edit([request(1, marked)], on)[0]
+    assert "punch-in x1" in line and "flash x2" in line
+    off = describe_edit([request(1, marked)], EditOptions("semi", cards=False))[0]
+    assert "punch-in" not in off and "flash" not in off

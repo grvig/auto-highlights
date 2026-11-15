@@ -33,6 +33,10 @@ def describe_edit(
         speed = "" if request.speed == 1.0 else f" x{request.speed:g}"
         if request.window.ramps:
             speed += f" slow-mo x{len(request.window.ramps)}"
+        if options.punch_ins and request.window.headshot_ticks:
+            speed += f" punch-in x{len(request.window.headshot_ticks)}"
+        if options.flashes and request.window.kill_ticks:
+            speed += f" flash x{len(request.window.kill_ticks)}"
         lines.append(f"{request.label:<10} {request.duration_seconds:5.1f}s{speed}  {caption}".rstrip())
     if options.cards:
         kills = f"  {options.kills_shown} kills" if options.kills_shown else ""
