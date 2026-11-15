@@ -137,6 +137,8 @@ Frag-movie effects, all timed to the exact tick of each kill:
 - `--punch-ins` zooms toward the crosshair on headshots.
 - `--flashes` flashes the screen for a few frames on every kill.
 - `--pro` turns all three on.
+- `--teaser` opens the reel with a slowed flash of its best kill before the
+  title card.
 
 `--music-start 12` starts the song 12 seconds in, to skip a slow intro, with
 cuts still on the beat. Your usual track and style can live in the
@@ -163,11 +165,13 @@ Cyrillic names render properly.
 - **Engine**: complete and verified against real matchmaking demos — kills,
   multi-kills, aces, clutches, deaths, utility impact, scoring, best-of
   selection, multi-demo plans and victim-cam replays.
-- **Recorder**: the CS2 control path (binary console protocol, confirmed seeks,
-  tick-exact stepped playback, spectating by name) and HLAE rendering were
-  proven against a live CS2 with standalone scripts; the backends in this repo
-  are their port and are unit-tested.
+- **Recorder**: proven end to end on a live CS2 (2026-11-15): HLAE launch,
+  demo load, confirmed seeks, tick-exact playback, first-person camera, every
+  clip of an ace recorded with sound, the game closed and the player's
+  settings put back. Slow-motion ramps and the window-capture fallback are
+  unit-tested but not yet run live.
 - **Editor**: captions, title/outro cards, crossfades, music with ducking and
-  beat-synced cuts, all rendered with ffmpeg and checked on real footage.
+  beat-synced cuts, punch-ins, kill flashes, teaser, chapters and thumbnail,
+  all rendered with ffmpeg and checked on real footage.
 - **Stitcher**: joins clips and exports every aspect profile with ffmpeg.
 - **App**: not started.
