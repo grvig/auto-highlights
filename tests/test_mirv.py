@@ -35,13 +35,13 @@ def test_finish_trims_both_streams_identically():
     assert args.count("-ss") == 2 and args.count("-t") == 2
     assert args[args.index("-ss") + 1] == "0.500"
     assert args[-1] == "out.mp4"
-    assert "atempo" not in " ".join(args)
+    assert "atempo" not in " ".join(args) and "concat" not in " ".join(args)
 
 
 def test_finish_slows_picture_and_sound_together():
     args = mirv.finish_command(Path("take"), Path("out.mp4"), 0.5, 5.0, speed=0.5)
-    assert "setpts=PTS/0.5" in args[args.index("-vf") + 1]
-    assert "atempo=0.5" in args[args.index("-af") + 1]
+    graph = args[args.index("-filter_complex") + 1]
+    assert "setpts=PTS/0.5" in graph and "atempo=0.5" in graph
 
 
 def test_very_slow_motion_chains_atempo_stages():
@@ -60,3 +60,20 @@ def test_every_take_gets_its_own_preset():
     assert "mirv_streams record screen settings ahtake1" in first
     assert "mirv_streams record screen settings ahtake2" in second
     assert not any("settings remove" in c for c in mirv.stop_commands())
+
+
+def test_pieces_cover_the_clip_with_ramps_in_between():
+    assert mirv.speed_pieces(5.0, ((2.0, 2.5),), 1.0, 0.4) == [
+        (0.0, 2.0, 1.0), (2.0, 2.5, 0.4), (2.5, 5.0, 1.0)]
+    assert mirv.speed_pieces(5.0) == [(0.0, 5.0, 1.0)]
+    assert mirv.speed_pieces(5.0, ((0.0, 0.5),), 1.0, 0.5) == [(0.0, 0.5, 0.5), (0.5, 5.0, 1.0)]
+
+
+def test_ramped_finish_joins_the_stretches_in_one_shot():
+    args = mirv.finish_command(Path("take"), Path("out.mp4"), 0.5, 5.0,
+                               ramps=((2.0, 2.5),), ramp_speed=0.4)
+    graph = args[args.index("-filter_complex") + 1]
+    assert "split=3" in graph and "asplit=3" in graph
+    assert "trim=start=2:end=2.5,setpts=(PTS-STARTPTS)/0.4" in graph
+    assert "atempo=0.5,atempo=0.8" in graph
+    assert "concat=n=3:v=1:a=1[vc][a]" in graph and graph.endswith("[vc]fps=60[v]")
