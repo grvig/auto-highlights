@@ -182,3 +182,22 @@ def test_raw_takes_are_kept_when_a_clip_fails(tmp_path):
     cs2.console.write_video = False
     recorder(tmp_path, cs2, runs).record_clip(make_request(tmp_path))
     assert [p.name for p in (tmp_path / "takes").iterdir()] == ["001_r05_kill_semi"]
+
+
+def test_ramped_clips_render_faster_and_finish_with_their_ramps(tmp_path):
+    from dataclasses import replace
+
+    cs2, runs = FakeCs2(landings=[26527]), []
+    request = make_request(tmp_path)
+    ramped = replace(request.segment, ramps=((26399, 26431),), ramp_speed=0.4)
+    rec = recorder(tmp_path, cs2, runs)
+    rec.record_clip(replace(request, segment=ramped))
+    assert "host_framerate 150" in cs2.console.sent
+    graph = runs[0][runs[0].index("-filter_complex") + 1]
+    assert "trim=start=3:end=3.5" in graph  # ticks 192-224 into the clip
+
+
+def test_plain_clips_render_at_the_normal_rate(tmp_path):
+    cs2, runs = FakeCs2(landings=[26527]), []
+    recorder(tmp_path, cs2, runs).record_clip(make_request(tmp_path))
+    assert "host_framerate 60" in cs2.console.sent

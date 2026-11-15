@@ -9,6 +9,7 @@ recorded again, because a dropped seek would otherwise film the wrong round.
 from __future__ import annotations
 
 import logging
+import math
 import shutil
 import subprocess
 import time
@@ -26,6 +27,9 @@ LEAD_TICKS = 32
 # How far the step may stop from the window's end and still count.
 LANDING_TOLERANCE_TICKS = 10
 TAKES_PER_CLIP = 2
+# Upper bound on rendering rate for slowed footage; beyond it frames are
+# repeated instead (render time grows with every extra frame).
+MAX_RENDER_RATE = 240
 
 Runner = Callable[[Sequence[str]], object]
 
@@ -112,6 +116,22 @@ class HlaeRecorder:
         self.cs2.load_demo(self.cs2.stage_demo(demo_path))
         self._loaded = Path(demo_path)
 
+    def render_rate(self, request: ClipRequest) -> int:
+        """Frames per second to render. Slowed footage needs more frames to
+        stay smooth, so ramped clips render at framerate / ramp speed."""
+        window = request.window
+        slowest = window.speed * (window.ramp_speed if window.ramps else 1.0)
+        if slowest >= 1.0:
+            return self.framerate
+        return min(MAX_RENDER_RATE, math.ceil(self.framerate / slowest))
+
+    def _ramp_seconds(self, request: ClipRequest) -> tuple[tuple[float, float], ...]:
+        tickrate = self.cs2.tickrate
+        return tuple(
+            ((start - request.start_tick) / tickrate, (end - request.start_tick) / tickrate)
+            for start, end in request.window.ramps
+        )
+
     def _take_dir(self, request: ClipRequest) -> Path:
         base = self.output_dir / "takes" / request.output_path.stem
         candidate, n = base, 1
@@ -130,7 +150,7 @@ class HlaeRecorder:
         take_dir = self._take_dir(request)
         take_dir.mkdir(parents=True)
         self._takes += 1
-        self.cs2.console.send_all(mirv.start_commands(take_dir, self._takes, self.framerate))
+        self.cs2.console.send_all(mirv.start_commands(take_dir, self._takes, self.render_rate(request)))
         refusals = [line for line in self.cs2.console.read_lines(0.5) if "AFXERROR" in line]
         if refusals:
             self.cs2.console.send_all(mirv.stop_commands())
@@ -156,5 +176,7 @@ class HlaeRecorder:
             duration_seconds=(request.end_tick - request.start_tick) / tickrate,
             speed=request.speed,
             ffmpeg=self.ffmpeg,
+            ramps=self._ramp_seconds(request),
+            ramp_speed=request.window.ramp_speed,
         ))
         logger.info("[%s] %s -> %s", self.name, request.label, request.output_path)
