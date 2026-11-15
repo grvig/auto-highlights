@@ -84,6 +84,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="plan for the Steam account signed in on this PC",
     )
     parser.add_argument(
+        "--pro",
+        action="store_true",
+        help="frag-movie style: slow motion, punch-ins and flashes on kills",
+    )
+    parser.add_argument(
         "--slowmo",
         action="store_true",
         help="dip into slow motion on each of the player's kills",
@@ -189,6 +194,8 @@ def build_parser() -> argparse.ArgumentParser:
         choices=TRANSITIONS,
         help="how clips join (default: fade; cut for hard cuts)",
     )
+    edit.add_argument("--punch-ins", action="store_true", help="zoom in on headshots")
+    edit.add_argument("--flashes", action="store_true", help="flash the screen on every kill")
     edit.add_argument("--plain", action="store_true", help="just join the clips, no editing")
     return parser
 
@@ -583,7 +590,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: {reason}", file=sys.stderr)
         return 1
 
-    multi = build_multi_plan(matches, player.steamid, types, slowmo=args.slowmo)
+    multi = build_multi_plan(matches, player.steamid, types, slowmo=args.slowmo or args.pro)
     for label in multi.missing_from:
         print(f"Note: {player.name} is not in {label}", file=sys.stderr)
     plan = multi.plan
@@ -616,6 +623,8 @@ def main(argv: list[str] | None = None) -> int:
                     music=args.music,
                     maps={s.path: s.info.map_name for s in sources},
                     kills_shown=kills_in_plan(plan, sources, matches),
+                    punch_ins=args.punch_ins or args.pro,
+                    flashes=args.flashes or args.pro,
                 ),
             )
         except ConfigError as error:

@@ -16,6 +16,7 @@ from pathlib import Path
 
 from highlights.editor import beats as beat_tools
 from highlights.editor.cards import card_command, outro_lines, title_lines
+from highlights.editor.effects import effect_filters
 from highlights.editor.captions import caption_filter, caption_for, replay_caption
 from highlights.editor.music import check_music, music_command
 from highlights.editor.probe import MediaInfo, probe
@@ -48,6 +49,9 @@ class EditOptions:
     maps: dict[Path, str] = field(default_factory=dict)
     # The player's kills across the whole reel, for the outro card.
     kills_shown: int | None = None
+    # Zoom in on headshots and flash on every kill.
+    punch_ins: bool = False
+    flashes: bool = False
 
 
 class ReelBuilder:
@@ -76,6 +80,7 @@ class ReelBuilder:
         self.work_dir.mkdir(parents=True, exist_ok=True)
         infos = [self._probe(c.output_path) for c in usable]
         width, height = infos[0].width or 1440, infos[0].height or 1080
+        self._size = (width, height, round(infos[0].fps or 60))
         fps = round(infos[0].fps or 60)
 
         durations = [info.duration for info in infos]
@@ -109,7 +114,13 @@ class ReelBuilder:
     def _prepare(self, number: int, clip: RecordedClip, duration: float) -> Path:
         """Caption the first window of each moment and apply its beat trim."""
         request = clip.request
-        filters = []
+        window = request.window
+        width, height, fps = getattr(self, "_size", (1440, 1080, 60))
+        filters = effect_filters(
+            [window.screen_seconds(t) for t in window.headshot_ticks] if self.options.punch_ins else [],
+            [window.screen_seconds(t) for t in window.kill_ticks] if self.options.flashes else [],
+            width, height, fps,
+        )
         caption = None
         if self.options.captions and request.camera_name and request.window.pov_steamid:
             caption = replay_caption(request.camera_name)

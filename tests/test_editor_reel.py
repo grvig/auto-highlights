@@ -103,3 +103,27 @@ def test_outro_card_carries_the_kill_count(tmp_path):
     builder(tmp_path, runs, kills_shown=6).build([recorded(tmp_path, 1)], tmp_path / "reel.mp4")
     texts = sorted(p.read_text(encoding="utf-8") for p in (tmp_path / "work").glob("card_outro_*.txt"))
     assert "6 KILLS SHOWN" in texts
+
+
+def test_headshots_punch_in_and_kills_flash_at_their_screen_time(tmp_path):
+    from dataclasses import replace
+
+    runs = []
+    clip = recorded(tmp_path, 1, 2)
+    marked = replace(clip.request.segment, kill_ticks=(64, 192), headshot_ticks=(192,))
+    clip = replace(clip, request=replace(clip.request, segment=marked))
+    builder(tmp_path, runs, cards=False, punch_ins=True, flashes=True).build([clip], tmp_path / "r.mp4")
+    vf = runs[0][runs[0].index("-vf") + 1]
+    assert "zoompan" in vf and "(it-3.000)" in vf  # headshot at tick 192 = 3s
+    assert "eq=brightness" in vf and "(t-1.000)" in vf and "(t-3.000)" in vf
+
+
+def test_effects_are_off_unless_asked(tmp_path):
+    from dataclasses import replace
+
+    runs = []
+    clip = recorded(tmp_path, 1, 2)
+    marked = replace(clip.request.segment, kill_ticks=(64,), headshot_ticks=(64,))
+    clip = replace(clip, request=replace(clip.request, segment=marked))
+    builder(tmp_path, runs, cards=False).build([clip], tmp_path / "r.mp4")
+    assert "-vf" not in runs[0]

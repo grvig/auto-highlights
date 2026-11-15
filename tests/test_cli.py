@@ -228,3 +228,9 @@ def test_parser_reads_resume_and_edit_only():
 def test_parser_reads_slowmo():
     assert build_parser().parse_args(["m.dem", "--slowmo"]).slowmo
     assert not build_parser().parse_args(["m.dem"]).slowmo
+
+
+def test_parser_reads_effect_flags_and_the_pro_preset():
+    args = build_parser().parse_args(["m.dem", "--punch-ins", "--flashes"])
+    assert args.punch_ins and args.flashes and not args.pro
+    assert build_parser().parse_args(["m.dem", "--pro"]).pro
