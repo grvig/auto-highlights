@@ -51,6 +51,10 @@ class Segment:
     # the instant of a kill, ramped down and back up in one continuous shot.
     ramps: tuple[tuple[int, int], ...] = ()
     ramp_speed: float = 0.4
+    # The player's kills inside this window, and which were headshots, so the
+    # editor can time effects to the shot.
+    kill_ticks: tuple[int, ...] = ()
+    headshot_ticks: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
         if self.start_tick > self.end_tick:

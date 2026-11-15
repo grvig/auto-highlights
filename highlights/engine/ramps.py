@@ -42,6 +42,26 @@ def kill_ramps(
     return tuple((start, end) for start, end in spans)
 
 
+def mark_kills(moments: list[Moment], ctx: DetectionContext) -> list[Moment]:
+    """Note the player's kills (and headshots) on each of their own windows."""
+    result: list[Moment] = []
+    for moment in moments:
+        kills = moment_kills(moment, ctx.kills) if moment.highlight_type in KILL_TYPES else []
+        if not kills:
+            result.append(moment)
+            continue
+        windows = []
+        for w in moment.windows:
+            inside = [k for k in kills if w.start_tick <= k.tick <= w.end_tick]
+            windows.append(replace(
+                w,
+                kill_ticks=tuple(k.tick for k in inside),
+                headshot_ticks=tuple(k.tick for k in inside if k.headshot),
+            ) if w.pov_steamid is None else w)
+        result.append(replace(moment, segments=tuple(windows)))
+    return result
+
+
 def add_kill_ramps(
     moments: list[Moment], ctx: DetectionContext, ramp_speed: float = RAMP_SPEED
 ) -> list[Moment]:
