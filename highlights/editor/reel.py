@@ -19,6 +19,8 @@ from highlights.editor.cards import card_command, outro_lines, title_lines
 from highlights.editor.chapters import chapter_lines, starts
 from highlights.editor.effects import effect_filters
 from highlights.editor.encoding import INTERMEDIATE_VIDEO
+from highlights.editor.thumbnail import best_frame
+from highlights.recorder.mirv import atempo_chain
 from highlights.editor.captions import caption_filter, caption_for, headline_for, replay_caption
 from highlights.editor.music import check_music, music_command
 from highlights.editor.probe import MediaInfo, probe
@@ -31,6 +33,9 @@ TITLE_SECONDS = 2.5
 OUTRO_SECONDS = 2.5
 # Seconds of post-roll beat sync may trim off the end of a clip.
 TRIMMABLE_SECONDS = 0.6
+# The teaser: this much footage around the best kill, slowed to this speed.
+TEASER_FOOTAGE_SECONDS = 2.0
+TEASER_SPEED = 0.6
 
 Runner = Callable[[Sequence[str]], object]
 Prober = Callable[[Path], MediaInfo]
@@ -58,6 +63,8 @@ class EditOptions:
     centred_captions: bool = False
     # Seconds into the track where the reel's music begins (skips an intro).
     music_start: float = 0.0
+    # Open with a slowed flash of the best kill before the title card.
+    teaser: bool = False
 
 
 class ReelBuilder:
@@ -96,6 +103,8 @@ class ReelBuilder:
         if self.options.music:
             check_music(self.options.music)
             lead_in = (TITLE_SECONDS - fade) if self.options.cards else 0.0
+            if self.options.teaser:
+                lead_in += TEASER_FOOTAGE_SECONDS / TEASER_SPEED - fade
             durations = beat_tools.snap_durations(
                 durations,
                 [b - self.options.music_start for b in self._beats(self.options.music)
@@ -113,7 +122,11 @@ class ReelBuilder:
                                     OUTRO_SECONDS, width, height, fps))
             durations = [TITLE_SECONDS, *durations, OUTRO_SECONDS]
 
-        self.chapters = self._chapters(usable, durations, fade)
+        frame = best_frame(usable) if self.options.teaser else None
+        if frame:
+            parts.insert(0, self._teaser(*frame))
+            durations = [TEASER_FOOTAGE_SECONDS / TEASER_SPEED, *durations]
+        self.chapters = self._chapters(usable, durations, fade, teaser=frame is not None)
         joined = self.work_dir / "joined.mp4" if self.options.music else output
         self._run(join_command(parts, durations, joined, width, height, fps,
                                self.options.transition if fade else "fade", self.ffmpeg, fade))
@@ -124,13 +137,16 @@ class ReelBuilder:
         logger.info("Edited reel written to %s", output)
         return output
 
-    def _chapters(self, clips: list[RecordedClip], durations: list[float], fade: float) -> list[str]:
+    def _chapters(
+        self, clips: list[RecordedClip], durations: list[float], fade: float, teaser: bool = False
+    ) -> list[str]:
         """Chapter lines: intro, the start of each highlight, outro."""
         offsets = starts(durations, fade)
         entries: list[tuple[float, str]] = []
-        if self.options.cards:
+        lead = int(teaser) + int(self.options.cards)
+        if lead:
             entries.append((0.0, "Intro"))
-            offsets = offsets[1:]
+            offsets = offsets[lead:]
         for clip, start in zip(clips, offsets):
             if clip.request.part == 1:
                 moment = clip.request.moment
@@ -138,6 +154,19 @@ class ReelBuilder:
         if self.options.cards:
             entries.append((offsets[len(clips)], "Outro"))
         return chapter_lines(entries)
+
+    def _teaser(self, clip: RecordedClip, kill_seconds: float) -> Path:
+        """A slowed flash of the best kill, to hook the viewer before the title."""
+        path = self.work_dir / "teaser.mp4"
+        start = max(kill_seconds - TEASER_FOOTAGE_SECONDS * 0.6, 0.0)
+        fps = self._size[2]
+        self._run([
+            self.ffmpeg, "-y", "-loglevel", "error",
+            "-ss", f"{start:.3f}", "-t", f"{TEASER_FOOTAGE_SECONDS:.3f}", "-i", str(clip.output_path),
+            "-vf", f"setpts=PTS/{TEASER_SPEED:g},fps={fps}", "-af", atempo_chain(TEASER_SPEED),
+            *INTERMEDIATE_VIDEO, "-c:a", "aac", "-b:a", "192k", str(path),
+        ])
+        return path
 
     def _prepare(self, number: int, clip: RecordedClip, duration: float) -> Path:
         """Caption the first window of each moment and apply its beat trim."""

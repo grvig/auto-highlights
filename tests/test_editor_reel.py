@@ -152,3 +152,20 @@ def test_music_can_start_partway_with_beats_still_lined_up(tmp_path):
     cut = float(first[first.index("-t") + 1]) - 0.175  # half the crossfade
     assert abs(cut % 0.5) < 1e-6 or abs(cut % 0.5 - 0.5) < 1e-6
     assert "atrim=start=10.25" in runs[-1][runs[-1].index("-filter_complex") + 1]
+
+
+def test_teaser_opens_the_reel_with_the_best_kill_slowed(tmp_path):
+    from dataclasses import replace
+
+    runs = []
+    clip = recorded(tmp_path, 1)
+    clip = replace(clip, request=replace(clip.request, segment=replace(clip.request.segment, kill_ticks=(192,))))
+    reel = builder(tmp_path, runs, teaser=True)
+    reel.build([clip, recorded(tmp_path, 2)], tmp_path / "reel.mp4")
+    teaser = next(r for r in runs if Path(r[-1]).name == "teaser.mp4")
+    assert teaser[teaser.index("-ss") + 1] == "1.800"  # 1.2s before the kill at 3s
+    assert "setpts=PTS/0.6" in teaser[teaser.index("-vf") + 1]
+    join = runs[-1]
+    assert Path(join[join.index("-i") + 1]).name == "teaser.mp4"
+    assert reel.chapters[0] == "00:00 Intro" and reel.chapters[-1].endswith("Outro")
+    assert len(reel.chapters) == 4

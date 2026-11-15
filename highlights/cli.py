@@ -202,6 +202,7 @@ def build_parser() -> argparse.ArgumentParser:
         choices=TRANSITIONS,
         help="how clips join (default: fade; cut for hard cuts)",
     )
+    edit.add_argument("--teaser", action="store_true", help="open with a slowed flash of the best kill")
     edit.add_argument("--punch-ins", action="store_true", help="zoom in on headshots")
     edit.add_argument("--flashes", action="store_true", help="flash the screen on every kill")
     edit.add_argument("--plain", action="store_true", help="just join the clips, no editing")
@@ -661,6 +662,7 @@ def main(argv: list[str] | None = None) -> int:
                     punch_ins=args.punch_ins or style.pro,
                     centred_captions=args.aspect == "vertical",
                     music_start=max(style.music_start, 0.0),
+                    teaser=args.teaser,
                     flashes=args.flashes or style.pro,
                 ),
             )
