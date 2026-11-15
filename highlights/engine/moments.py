@@ -47,6 +47,10 @@ class Segment:
     pov_steamid: str | None = None
     # Playback speed: 1.0 is real time, 0.5 is half-speed slow motion.
     speed: float = 1.0
+    # Tick spans inside the segment played slower still (speed * ramp_speed):
+    # the instant of a kill, ramped down and back up in one continuous shot.
+    ramps: tuple[tuple[int, int], ...] = ()
+    ramp_speed: float = 0.4
 
     def __post_init__(self) -> None:
         if self.start_tick > self.end_tick:
@@ -56,11 +60,24 @@ class Segment:
             )
         if self.speed <= 0:
             raise ValueError(f"Segment speed must be positive, got {self.speed}")
+        if not 0 < self.ramp_speed <= 1:
+            raise ValueError(f"Ramp speed must be in (0, 1], got {self.ramp_speed}")
+        previous_end = self.start_tick
+        for start, end in self.ramps:
+            if not previous_end <= start < end <= self.end_tick:
+                raise ValueError(f"Ramp {start}-{end} must be ordered and inside the segment")
+            previous_end = end
+
+    @property
+    def ramped_ticks(self) -> int:
+        return sum(end - start for start, end in self.ramps)
 
     @property
     def duration_seconds(self) -> float:
         """Length of the footage once played back, so slow motion runs longer."""
-        return tick_span_seconds(self.start_tick, self.end_tick) / self.speed
+        span = tick_span_seconds(self.start_tick, self.end_tick)
+        slowed = tick_span_seconds(0, self.ramped_ticks)
+        return (span - slowed + slowed / self.ramp_speed) / self.speed
 
 
 @dataclass(frozen=True)
