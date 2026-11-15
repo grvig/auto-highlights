@@ -34,6 +34,7 @@ def fake_ffmpeg(monkeypatch, tmp_path):
     monkeypatch.setattr(factory, "resolve_ffmpeg", lambda name: tmp_path / "ffmpeg.exe")
     monkeypatch.setattr("highlights.recorder.hlae.BUNDLED_DIR", tmp_path / "no-bundle")
     monkeypatch.setattr(factory, "ensure_current", lambda d: ("2.193.0", False))
+    monkeypatch.setattr(factory, "find_steam_root", lambda: None)  # never the real PC
 
 
 def test_hlae_is_used_when_installed(tmp_path):

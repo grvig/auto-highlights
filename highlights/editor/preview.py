@@ -31,6 +31,8 @@ def describe_edit(
                               options.maps.get(Path(request.demo_path)))
             caption = f"{cap.headline} - {cap.detail}"
         speed = "" if request.speed == 1.0 else f" x{request.speed:g}"
+        if request.window.ramps:
+            speed += f" slow-mo x{len(request.window.ramps)}"
         lines.append(f"{request.label:<10} {request.duration_seconds:5.1f}s{speed}  {caption}".rstrip())
     if options.cards:
         kills = f"  {options.kills_shown} kills" if options.kills_shown else ""

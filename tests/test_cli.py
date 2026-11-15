@@ -223,3 +223,8 @@ def test_parser_reads_resume_and_edit_only():
     args = build_parser().parse_args(["m.dem", "--record", "--resume"])
     assert args.resume and not args.edit_only
     assert build_parser().parse_args(["m.dem", "--edit-only"]).edit_only
+
+
+def test_parser_reads_slowmo():
+    assert build_parser().parse_args(["m.dem", "--slowmo"]).slowmo
+    assert not build_parser().parse_args(["m.dem"]).slowmo

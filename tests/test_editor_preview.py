@@ -44,3 +44,9 @@ def test_preview_without_captions_shows_bare_clips():
 def test_outro_preview_counts_the_kills():
     options = EditOptions("semi", kills_shown=6)
     assert "[outro]  GG  6 kills" in describe_edit([request(1, Segment(2400, 2700))], options)
+
+
+def test_preview_marks_slow_motion_ramps():
+    ramped = Segment(2400, 2700, ramps=((2600, 2632), (2650, 2670)))
+    line = describe_edit([request(1, ramped)], EditOptions("semi", cards=False))[0]
+    assert "slow-mo x2" in line

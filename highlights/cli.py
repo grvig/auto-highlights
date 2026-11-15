@@ -84,6 +84,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="plan for the Steam account signed in on this PC",
     )
     parser.add_argument(
+        "--slowmo",
+        action="store_true",
+        help="dip into slow motion on each of the player's kills",
+    )
+    parser.add_argument(
         "--best",
         type=float,
         metavar="SECONDS",
@@ -578,7 +583,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: {reason}", file=sys.stderr)
         return 1
 
-    multi = build_multi_plan(matches, player.steamid, types)
+    multi = build_multi_plan(matches, player.steamid, types, slowmo=args.slowmo)
     for label in multi.missing_from:
         print(f"Note: {player.name} is not in {label}", file=sys.stderr)
     plan = multi.plan
