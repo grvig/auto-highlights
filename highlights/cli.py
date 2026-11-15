@@ -48,6 +48,7 @@ from highlights.editor.fonts import FontError
 from highlights.editor.preview import describe_edit
 from highlights.editor.probe import ProbeError
 from highlights.editor.reel import EditOptions, ReelBuilder
+from highlights.editor.thumbnail import best_frame, thumbnail_command
 from highlights.stitcher.runner import StitchError
 from highlights.stitcher.aspect import PROFILES, convert
 from highlights.stitcher.stitch import stitch_clips
@@ -484,6 +485,13 @@ def stitch_recorded(
             chapters = final.with_suffix(".chapters.txt")
             chapters.write_text("\n".join(builder.chapters) + "\n", encoding="utf-8")
             print(f"Chapters for the video description: {chapters}")
+            frame = best_frame(clips)
+            if frame:
+                thumb = final.with_suffix(".thumbnail.png")
+                subprocess.run(thumbnail_command(frame[0], frame[1], player_name, thumb,
+                                                 config.clips_dir / "edit", config.ffmpeg_path),
+                               check=True, capture_output=True)
+                print(f"Thumbnail: {thumb}")
     except (StitchError, RuntimeError, ValueError, OSError,
             subprocess.CalledProcessError, FontError, ProbeError) as error:
         print(f"Error: {error}", file=sys.stderr)
