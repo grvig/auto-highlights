@@ -58,8 +58,14 @@ def _alpha(start: float, end: float) -> str:
     )
 
 
-def caption_filter(caption: Caption, work_dir: Path, height: int = 1080) -> str:
-    """A drawtext chain that shows the caption in the lower left."""
+def caption_filter(
+    caption: Caption, work_dir: Path, height: int = 1080, centred: bool = False
+) -> str:
+    """A drawtext chain that shows the caption in the lower left.
+
+    centred puts it in the middle instead, for exports that crop the sides
+    away (the 9:16 vertical shape keeps only the centre of the frame).
+    """
     work_dir.mkdir(parents=True, exist_ok=True)
     start, end = START_SECONDS, START_SECONDS + SHOW_SECONDS
     alpha = _alpha(start, end)
@@ -75,7 +81,7 @@ def caption_filter(caption: Caption, work_dir: Path, height: int = 1080) -> str:
         filters.append(
             f"drawtext=fontfile='{filter_path(find_font(text))}':"
             f"textfile='{filter_path(text_file)}':fontsize={size}:fontcolor=white:"
-            f"x={margin}:y={y}:shadowcolor=black@0.7:shadowx=2:shadowy=2:"
+            f"x={'(w-tw)/2' if centred else margin}:y={y}:shadowcolor=black@0.7:shadowx=2:shadowy=2:"
             f"box=1:boxcolor=black@{BOX_OPACITY}:boxborderw={round(size * 0.25)}:"
             f"alpha='{alpha}'"
         )

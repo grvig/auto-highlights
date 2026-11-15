@@ -624,6 +624,7 @@ def main(argv: list[str] | None = None) -> int:
                     maps={s.path: s.info.map_name for s in sources},
                     kills_shown=kills_in_plan(plan, sources, matches),
                     punch_ins=args.punch_ins or args.pro,
+                    centred_captions=args.aspect == "vertical",
                     flashes=args.flashes or args.pro,
                 ),
             )

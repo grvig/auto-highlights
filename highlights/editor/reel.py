@@ -52,6 +52,8 @@ class EditOptions:
     # Zoom in on headshots and flash on every kill.
     punch_ins: bool = False
     flashes: bool = False
+    # Centre captions for exports that crop the sides (vertical).
+    centred_captions: bool = False
 
 
 class ReelBuilder:
@@ -69,6 +71,7 @@ class ReelBuilder:
         self.ffmpeg = ffmpeg
         self._run = runner
         self._probe = prober or (lambda path: probe(path, ffmpeg))
+        self._size = (1440, 1080, 60)  # replaced by the first clip's format
         self._beats = beat_finder or (
             lambda path: beat_tools.beat_times(beat_tools.load_samples(path, ffmpeg))
         )
@@ -115,7 +118,7 @@ class ReelBuilder:
         """Caption the first window of each moment and apply its beat trim."""
         request = clip.request
         window = request.window
-        width, height, fps = getattr(self, "_size", (1440, 1080, 60))
+        width, height, fps = self._size
         filters = effect_filters(
             [window.screen_seconds(t) for t in window.headshot_ticks] if self.options.punch_ins else [],
             [window.screen_seconds(t) for t in window.kill_ticks] if self.options.flashes else [],
@@ -128,7 +131,8 @@ class ReelBuilder:
             caption = caption_for(request.moment, self.options.player_name,
                                   self.options.maps.get(Path(request.demo_path)))
         if caption:
-            filters.append(caption_filter(caption, self.work_dir / f"captions_{number:03d}"))
+            filters.append(caption_filter(caption, self.work_dir / f"captions_{number:03d}",
+                                          height, self.options.centred_captions))
         prepared = self.work_dir / f"part_{number:03d}.mp4"
         args = [self.ffmpeg, "-y", "-loglevel", "error", "-i", str(clip.output_path),
                 "-t", f"{duration:.3f}"]

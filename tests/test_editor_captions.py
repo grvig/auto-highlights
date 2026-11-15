@@ -58,3 +58,9 @@ def test_replay_caption_names_whose_eyes_we_see():
     from highlights.editor.captions import replay_caption
 
     assert replay_caption("臻咘踔") == Caption("REPLAY", "臻咘踔's view")
+
+
+def test_captions_can_be_centred_for_vertical_exports(tmp_path):
+    chain = caption_filter(Caption("ACE", "semi"), tmp_path / "w", centred=True)
+    assert chain.count("x=(w-tw)/2") == 2
+    assert "x=(w-tw)/2" not in caption_filter(Caption("ACE", "semi"), tmp_path / "w2")
