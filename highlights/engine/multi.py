@@ -64,6 +64,7 @@ def build_multi_plan(
     matches: list[Match],
     steamid: str,
     selected_types: Iterable[HighlightType],
+    slowmo: bool = False,
 ) -> MultiPlan:
     """Plan each match for one player and pool the moments, match by match."""
     types = tuple(dict.fromkeys(selected_types))
@@ -74,7 +75,7 @@ def build_multi_plan(
         if match.find(steamid) is None:
             missing.append(match.label)
             continue
-        plan = build_clip_plan(match.context, steamid, types)
+        plan = build_clip_plan(match.context, steamid, types, slowmo=slowmo)
         per_match[match.label] = len(plan)
         moments.extend(plan.moments)
 

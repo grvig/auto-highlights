@@ -19,6 +19,7 @@ from highlights.engine.detectors.utility_damage import UtilityDamageDetector
 from highlights.engine.detectors.utility_flash import FlashUtilityDetector
 from highlights.engine.detectors.utility_smoke import SmokeUtilityDetector
 from highlights.engine.moments import HighlightType, Moment, Segment
+from highlights.engine.ramps import add_kill_ramps
 from highlights.engine.replays import add_victim_replays
 from highlights.engine.scoring import score_moments
 
@@ -173,6 +174,7 @@ def build_clip_plan(
     merge: bool = True,
     score: bool = True,
     replays: bool = True,
+    slowmo: bool = False,
 ) -> ClipPlan:
     """Run the detectors for the selected types and order the result by time.
 
@@ -196,6 +198,8 @@ def build_clip_plan(
         moments = score_moments(moments, ctx)
     if replays:
         moments = add_victim_replays(moments, ctx)
+    if slowmo:
+        moments = add_kill_ramps(moments, ctx)
     return ClipPlan(
         player_steamid=player_steamid,
         selected_types=types,
