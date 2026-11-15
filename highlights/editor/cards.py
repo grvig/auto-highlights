@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from highlights.editor.encoding import INTERMEDIATE_VIDEO
 from highlights.editor.fonts import filter_path, find_font
 
 BACKGROUND = "0x0b0d12"
@@ -83,6 +84,6 @@ def card_command(
         ffmpeg, "-y", "-loglevel", "error",
         "-f", "lavfi", "-i", f"color=c={BACKGROUND}:s={width}x{height}:r={fps}:d={duration:g}",
         "-f", "lavfi", "-i", f"anullsrc=r=48000:cl=stereo:d={duration:g}",
-        "-vf", video, "-c:v", "libx264", "-preset", "medium", "-crf", "17",
+        "-vf", video, *INTERMEDIATE_VIDEO,
         "-c:a", "aac", "-b:a", "192k", "-shortest", str(output),
     ]

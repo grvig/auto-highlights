@@ -18,6 +18,7 @@ from highlights.editor import beats as beat_tools
 from highlights.editor.cards import card_command, outro_lines, title_lines
 from highlights.editor.chapters import chapter_lines, starts
 from highlights.editor.effects import effect_filters
+from highlights.editor.encoding import INTERMEDIATE_VIDEO
 from highlights.editor.captions import caption_filter, caption_for, headline_for, replay_caption
 from highlights.editor.music import check_music, music_command
 from highlights.editor.probe import MediaInfo, probe
@@ -162,7 +163,7 @@ class ReelBuilder:
                 "-t", f"{duration:.3f}"]
         if filters:
             args += ["-vf", ",".join(filters)]
-        args += ["-c:v", "libx264", "-preset", "medium", "-crf", "17", "-pix_fmt", "yuv420p",
+        args += [*INTERMEDIATE_VIDEO,
                  "-c:a", "aac", "-b:a", "192k", str(prepared)]
         self._run(args)
         return prepared

@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from highlights.editor.encoding import INTERMEDIATE_VIDEO
+
 DEFAULT_TRANSITION = "fade"
 DEFAULT_SECONDS = 0.35
 # A transition never eats more than this share of the shortest clip.
@@ -80,6 +82,6 @@ def join_command(
     return [
         ffmpeg, "-y", "-loglevel", "error", *inputs,
         "-filter_complex", graph, "-map", f"[{video}]", "-map", f"[{audio}]",
-        "-c:v", "libx264", "-preset", "medium", "-crf", "17", "-pix_fmt", "yuv420p",
+        *INTERMEDIATE_VIDEO,
         "-c:a", "aac", "-b:a", "192k", str(output),
     ]
