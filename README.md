@@ -129,6 +129,24 @@ Add `--dry-run --stitch` to preview the edit (cards, captions, replays, the
 music's tempo) without launching anything. The finished reel's loudness is
 levelled to -14 LUFS, the target YouTube and most platforms use.
 
+Frag-movie effects, all timed to the exact tick of each kill:
+
+- `--slowmo` dips into slow motion as each of the player's shots lands and
+  snaps back to real time, in one continuous shot. Slowed footage is
+  rendered at a higher frame rate so it stays smooth.
+- `--punch-ins` zooms toward the crosshair on headshots.
+- `--flashes` flashes the screen for a few frames on every kill.
+- `--pro` turns all three on.
+
+`--music-start 12` starts the song 12 seconds in, to skip a slow intro, with
+cuts still on the beat. Your usual track and style can live in the
+`[editing]` section of `config.toml`, so no flags are needed each run.
+
+Next to every reel the app writes `<player>_highlights.chapters.txt`
+(timestamps to paste into a YouTube description) and a 1280x720
+`<player>_highlights.thumbnail.png` taken from the best highlight's first
+kill.
+
 ### Long runs
 
 - `--resume` keeps clips an interrupted `--record` run already finished.
