@@ -84,7 +84,7 @@ def test_simple_commands():
     assert cmd.pause() == "demo_pause"
     assert cmd.resume() == "demo_resume"
     assert cmd.disconnect() == "disconnect"
-    assert cmd.spectator_mode() == "spec_mode 4"
+    assert cmd.spectator_mode() == "spec_mode 2"
     assert cmd.toggle_demo_ui() == "demoui"
     assert cmd.hide_hud(True).endswith(" 1")
     assert cmd.hide_hud(False).endswith(" 0")

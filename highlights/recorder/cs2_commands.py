@@ -16,10 +16,12 @@ from __future__ import annotations
 # players by the account ID, not the 64-bit form the demo carries.
 STEAM_ID64_BASE = 76561197960265728
 
-# spec_mode values. 4 is first person ("in eye"), which is what a POV
-# highlight reel wants; 5 is the chase/third-person camera.
-SPEC_MODE_FIRST_PERSON = 4
-SPEC_MODE_THIRD_PERSON = 5
+# spec_mode values as CS2 numbers them (ObserverMode_t): 2 is first person
+# ("in eye"), 3 the chase camera, 4 a free roaming camera. CS:GO used 4 for
+# in-eye, and sending that in CS2 parks a free camera wherever it happens to
+# be, which a live recording on 2026-11-15 caught.
+SPEC_MODE_FIRST_PERSON = 2
+SPEC_MODE_THIRD_PERSON = 3
 
 
 class CommandError(ValueError):

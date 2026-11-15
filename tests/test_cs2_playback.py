@@ -89,13 +89,13 @@ def test_spectate_locks_pov_in_first_person(controller):
     controller.spectate("semi")
     assert controller.test_console.sent == [
         'spec_player "semi"',
-        "spec_mode 4",
+        "spec_mode 2",
     ]
 
 
 def test_spectate_can_use_third_person(controller):
     controller.spectate("semi", first_person=False)
-    assert controller.test_console.sent[-1] == "spec_mode 5"
+    assert controller.test_console.sent[-1] == "spec_mode 3"
 
 
 def test_seek_clears_a_stepped_pause_then_waits_for_confirmation(controller):
