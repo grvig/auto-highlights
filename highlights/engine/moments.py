@@ -72,6 +72,25 @@ class Segment:
                 raise ValueError(f"Ramp {start}-{end} must be ordered and inside the segment")
             previous_end = end
 
+    def screen_seconds(self, tick: int, tickrate: int = 64) -> float:
+        """When a tick appears in the played-back clip, ramps and speed included."""
+        tick = min(max(tick, self.start_tick), self.end_tick)
+        normal = slowed = 0
+        cursor = self.start_tick
+        for start, end in self.ramps:
+            if tick <= start:
+                break
+            normal += start - cursor
+            if tick <= end:
+                slowed += tick - start
+                cursor = tick
+                break
+            slowed += end - start
+            cursor = end
+        normal += tick - cursor
+        seconds = (normal + slowed / self.ramp_speed) / tickrate
+        return round(seconds / self.speed, 4)
+
     @property
     def ramped_ticks(self) -> int:
         return sum(end - start for start, end in self.ramps)
