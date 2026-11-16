@@ -32,3 +32,19 @@ def test_plans_open_at_the_fight_not_the_fixed_lead():
     planned_start = 5000 - ctx.pre_roll_seconds * 64
     assert moment.windows[0].start_tick < planned_start
     assert moment.windows[0].start_tick == 4500 - 96
+
+
+def test_a_fight_that_carries_on_after_the_last_kill_is_followed():
+    from highlights.engine.fights import fight_end
+
+    ticks = [1050, 1100, 1180]  # still shooting after the planned end at 1000
+    assert fight_end(1000, ticks, ceiling=100_000) == 1180 + 64
+
+
+def test_the_tail_is_capped_and_stops_at_the_ceiling():
+    from highlights.engine.fights import fight_end
+
+    ticks = list(range(1010, 2000, 64))
+    assert fight_end(1000, ticks, ceiling=100_000) == 1000 + 256
+    assert fight_end(1000, ticks, ceiling=1100) == 1100
+    assert fight_end(1000, [1500], ceiling=100_000) == 1000  # a later, separate fight
