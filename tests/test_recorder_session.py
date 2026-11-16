@@ -113,3 +113,15 @@ def test_existing_clips_are_rerecorded_unless_asked(tmp_path):
     recorder = ScriptedRecorder()
     record_requests(recorder, [on_disk(tmp_path, 1)])
     assert recorder.events == ["open", "record:1", "close"]
+
+
+def test_clips_are_filmed_demo_by_demo_but_returned_in_reel_order():
+    from dataclasses import replace
+
+    nuke1 = make_request(3)
+    cache = replace(make_request(1), demo_path=Path("cache.dem"))
+    nuke2 = make_request(2)
+    recorder = ScriptedRecorder()
+    results = record_requests(recorder, [nuke1, cache, nuke2])
+    assert recorder.events == ["open", "record:2", "record:3", "record:1", "close"]
+    assert [c.index for c in results] == [3, 1, 2]

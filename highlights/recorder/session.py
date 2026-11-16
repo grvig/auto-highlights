@@ -20,6 +20,19 @@ def already_recorded(request: ClipRequest) -> bool:
     return path.is_file() and path.stat().st_size > 0
 
 
+def recording_order(requests: list[ClipRequest]) -> list[ClipRequest]:
+    """The order to film in: grouped by demo, then by tick.
+
+    A reel arranged as a montage hops between matches, and loading a demo
+    costs far more than a clip, so filming goes demo by demo. Results still
+    come back in reel order.
+    """
+    first_seen: dict[str, int] = {}
+    for request in requests:
+        first_seen.setdefault(str(request.demo_path), len(first_seen))
+    return sorted(requests, key=lambda r: (first_seen[str(r.demo_path)], r.start_tick))
+
+
 def record_requests(
     recorder: Recorder, requests: list[ClipRequest], skip_existing: bool = False
 ) -> list[RecordedClip]:
@@ -40,7 +53,7 @@ def record_requests(
     if todo:
         recorder.open()
         try:
-            for request in todo:
+            for request in recording_order(todo):
                 recorded[id(request)] = recorder.record_clip(request)
         finally:
             recorder.close()
