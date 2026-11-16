@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 from highlights.engine.detection import DetectionContext
-from highlights.engine.models import Kill
+from highlights.engine.models import Kill, Shot
 from highlights.engine.moments import HighlightType, Moment
 
 # Points per style detail on a kill. Rare, hard plays are worth the most.
@@ -162,6 +162,44 @@ BASE_POINTS = {
 }
 
 
+# Weapons whose "shots" are not gunfire.
+NOT_GUNS = ("knife", "bayonet", "hegrenade", "flashbang", "smokegrenade", "molotov",
+            "incgrenade", "decoy", "c4", "taser")
+# Shots counted from this long before the first kill (the opening spray).
+ACCURACY_LEAD_SECONDS = 3.0
+# Shots per kill that still read as clean, and the rate that reads as spraying.
+CLEAN_SHOTS_PER_KILL = 2.5
+SPRAY_SHOTS_PER_KILL = 7.0
+CLEAN_POINTS_PER_KILL = 1.5
+SPRAY_PENALTY_PER_KILL = 1.5
+
+
+def is_gunfire(shot: Shot) -> bool:
+    return not any(shot.weapon.startswith(name) for name in NOT_GUNS)
+
+
+def accuracy_score(
+    moment_kills: list[Kill], shots: list[Shot], player: str, tickrate: int = 64
+) -> tuple[float, tuple[str, ...]]:
+    """Few shots per kill reads as clean and earns points; spraying costs them."""
+    if not moment_kills or not shots:
+        return 0.0, ()
+    start = moment_kills[0].tick - int(ACCURACY_LEAD_SECONDS * tickrate)
+    end = moment_kills[-1].tick
+    fired = sum(
+        1 for s in shots
+        if s.shooter_steamid == player and start <= s.tick <= end and is_gunfire(s)
+    )
+    per_kill = fired / len(moment_kills)
+    if fired and fired <= len(moment_kills):
+        return CLEAN_POINTS_PER_KILL * 1.5 * len(moment_kills), ("one-taps",)
+    if per_kill <= CLEAN_SHOTS_PER_KILL:
+        return CLEAN_POINTS_PER_KILL * len(moment_kills), ("clean",)
+    if per_kill >= SPRAY_SHOTS_PER_KILL:
+        return -SPRAY_PENALTY_PER_KILL * len(moment_kills), ("sprayed",)
+    return 0.0, ()
+
+
 def score_moment(moment: Moment, ctx: DetectionContext) -> Moment:
     """The moment with its score and the tags that explain it filled in."""
     kills = moment_kills(moment, ctx.kills) if moment.highlight_type in KILL_TYPES else []
@@ -175,6 +213,7 @@ def score_moment(moment: Moment, ctx: DetectionContext) -> Moment:
         tempo_score(kills, ctx.tickrate),
         style_score(kills),
         impact_score(kills, round_kills, roster),
+        accuracy_score(kills, ctx.shots, moment.player_steamid, ctx.tickrate),
     )
     score = BASE_POINTS.get(moment.highlight_type, 0.0) + sum(p for p, _ in parts)
     tags = tuple(dict.fromkeys(tag for _, part_tags in parts for tag in part_tags))

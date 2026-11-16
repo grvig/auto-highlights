@@ -187,3 +187,25 @@ def test_a_death_clip_does_not_score_the_players_own_kills():
     death = next(m for m in plan.moments if m.highlight_type is HighlightType.DEATH)
     assert death.score == 0.0
     assert death.tags == ()
+
+
+def test_one_taps_score_highest_and_sprays_lose_points():
+    from highlights.engine.models import Shot
+    from highlights.engine.scoring import accuracy_score
+
+    kills = [make_kill(1000, "P", "a"), make_kill(1200, "P", "b")]
+    taps = [Shot(990, "P", "ak47"), Shot(1195, "P", "ak47")]
+    spray = [Shot(900 + i * 5, "P", "ak47") for i in range(60)]
+    assert accuracy_score(kills, taps, "P") == (4.5, ("one-taps",))
+    assert accuracy_score(kills, taps + taps[:1] + [Shot(1100, "P", "ak47")], "P")[1] == ("clean",)
+    points, tags = accuracy_score(kills, spray, "P")
+    assert points < 0 and tags == ("sprayed",)
+
+
+def test_knife_swings_grenades_and_other_players_do_not_count():
+    from highlights.engine.models import Shot
+    from highlights.engine.scoring import accuracy_score
+
+    kills = [make_kill(1000, "P", "a")]
+    noise = [Shot(950, "P", "knife_t"), Shot(960, "P", "hegrenade"), Shot(970, "Q", "ak47")] * 5
+    assert accuracy_score(kills, noise + [Shot(999, "P", "deagle")], "P")[1] == ("one-taps",)
