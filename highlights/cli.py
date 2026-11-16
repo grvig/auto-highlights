@@ -152,9 +152,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-t",
         "--types",
-        default="all",
-        help="comma-separated highlight types (default: all). "
-        "e.g. kill,multi_kill,ace,clutch,death,utility",
+        default="frags",
+        help="comma-separated highlight types (default: frags = kill, "
+        "multi_kill, ace, clutch). Also death, utility, or all",
     )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument(
@@ -220,10 +220,17 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+# The player's own plays: what a highlight reel shows by default. Deaths and
+# utility are there for anyone who asks, but nobody clips their own deaths.
+FRAG_TYPES = (HighlightType.KILL, HighlightType.MULTI_KILL, HighlightType.ACE, HighlightType.CLUTCH)
+
+
 def parse_types(spec: str) -> list[HighlightType]:
     """Turn a --types string into HighlightType values."""
-    if spec.strip().lower() in ("", "all"):
+    if spec.strip().lower() == "all":
         return list(HighlightType)
+    if spec.strip().lower() in ("", "frags"):
+        return list(FRAG_TYPES)
     result: list[HighlightType] = []
     for token in spec.split(","):
         key = token.strip().lower()

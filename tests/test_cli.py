@@ -62,7 +62,13 @@ def test_missing_demo_exits_nonzero_with_message(tmp_path, capsys):
 
 def test_parse_types_all_returns_every_type():
     assert set(parse_types("all")) == set(HighlightType)
-    assert set(parse_types("")) == set(HighlightType)
+
+
+def test_default_types_are_the_players_frags_without_deaths_or_utility():
+    frags = set(parse_types(build_parser().parse_args(["m.dem"]).types))
+    assert frags == {HighlightType.KILL, HighlightType.MULTI_KILL, HighlightType.ACE,
+                     HighlightType.CLUTCH}
+    assert set(parse_types("")) == frags
 
 
 def test_parse_types_accepts_values_and_aliases():
