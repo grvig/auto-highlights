@@ -58,6 +58,9 @@ class RecordingConfig:
     # playback can only show CS2's spectator HUD (team bar, money, player
     # card), never the player's own, so clean is the default.
     hud: str = "clean"
+    # Window capture only: the DirectShow device that hears the game (a
+    # loopback such as "virtual-audio-capturer"). None records no sound.
+    audio_device: str | None = None
     # Fetch a newer HLAE before recording; CS2 updates break old ones.
     auto_update: bool = True
 
@@ -204,6 +207,7 @@ def load_config(
             framerate=int(recording.get("framerate", 60)),
             aspect=str(recording.get("aspect", "stretched")),
             hud=str(recording.get("hud", "clean")),
+            audio_device=str(recording["audio_device"]) if recording.get("audio_device") else None,
             auto_update=bool(recording.get("auto_update", True)),
         ),
         editing=EditingConfig(

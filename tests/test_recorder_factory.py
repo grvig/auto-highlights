@@ -109,3 +109,12 @@ def test_recordings_use_the_clean_hud_unless_config_asks_for_full(tmp_path):
     assert not factory.build_live_recorder(config).cs2.full_hud
     full = replace(config, recording=replace(config.recording, hud="full"))
     assert factory.build_live_recorder(full).cs2.full_hud
+
+
+def test_window_capture_records_from_the_configured_sound_device(tmp_path):
+    from dataclasses import replace
+
+    config = make_config(tmp_path, "window")
+    with_sound = replace(config, recording=replace(config.recording, audio_device="virtual-audio-capturer"))
+    assert factory.build_live_recorder(with_sound).audio_device == "virtual-audio-capturer"
+    assert factory.build_live_recorder(config).audio_device is None

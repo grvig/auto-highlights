@@ -54,7 +54,7 @@ def build_live_recorder(config: Config, steam_root: Path | None = None) -> HlaeR
 
     # Window capture films a game the player has already started with
     # -netconport, at whatever size it is running.
-    return WindowRecorder(cs2, **common)
+    return WindowRecorder(cs2, audio_device=rec.audio_device, **common)
 
 
 def player_restore_commands(steam_root: Path | None = None) -> list[str]:

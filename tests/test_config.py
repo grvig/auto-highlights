@@ -183,3 +183,10 @@ def test_clip_timing_defaults_keep_whole_engagements(tmp_path):
 
 def test_editing_defaults_to_hard_cuts(tmp_path):
     assert load_config(write_config(tmp_path)).editing.transition == "cut"
+
+
+def test_window_sound_device_is_optional(tmp_path):
+    path = write_config(tmp_path)
+    assert load_config(path).recording.audio_device is None
+    path.write_text(path.read_text() + '\n[recording]\naudio_device = "virtual-audio-capturer"\n')
+    assert load_config(path).recording.audio_device == "virtual-audio-capturer"
