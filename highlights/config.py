@@ -74,6 +74,9 @@ class EditingConfig:
     transition: str = "cut"
     # Slow motion, punch-ins and flashes on kills.
     pro: bool = False
+    # Seconds of the best plays a recorded reel aims for when --best is not
+    # given; 0 keeps every play.
+    target_seconds: float = 120.0
 
 
 @dataclass(frozen=True)
@@ -215,6 +218,7 @@ def load_config(
             music_start=float(editing.get("music_start", 0.0)),
             transition=str(editing.get("transition", EditingConfig.transition)),
             pro=bool(editing.get("pro", False)),
+            target_seconds=float(editing.get("target_seconds", EditingConfig.target_seconds)),
         ),
     )
 

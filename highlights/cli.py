@@ -100,6 +100,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="dip into slow motion on each of the player's kills",
     )
     parser.add_argument(
+        "--all",
+        action="store_true",
+        help="keep every play instead of the best ~2 minutes when recording",
+    )
+    parser.add_argument(
         "--min-score",
         type=float,
         default=DEFAULT_MIN_SCORE,
@@ -509,7 +514,19 @@ def editing_style(args: argparse.Namespace, defaults: EditingConfig | None = Non
         music_start=defaults.music_start if args.music_start is None else args.music_start,
         transition=args.transition or defaults.transition,
         pro=args.pro or defaults.pro,
+        target_seconds=defaults.target_seconds,
     )
+
+
+def reel_target(args: argparse.Namespace, style: EditingConfig) -> float | None:
+    """Seconds of best plays to keep: --best, else the config's reel length
+    when footage is being made, so a recording is not every frag of a match."""
+    if args.all:
+        return None
+    if args.best:
+        return args.best
+    making_footage = args.record or args.edit_only or (args.dry_run and args.stitch)
+    return (style.target_seconds or None) if making_footage else None
 
 
 def music_tempo(song: Path, config: Config) -> float | None:
@@ -667,10 +684,11 @@ def main(argv: list[str] | None = None) -> int:
     for label in multi.missing_from:
         print(f"Note: {player.name} is not in {label}", file=sys.stderr)
     plan = multi.plan
-    if args.best:
-        chosen = select_best(plan.moments, args.best, min_score=args.min_score)
+    best = reel_target(args, style)
+    if best:
+        chosen = select_best(plan.moments, best, min_score=args.min_score)
         plan = replace(plan, moments=arrange(chosen, plan.moments, args.order))
-        print(f"\nBest {args.best:g}s, {args.order} order")
+        print(f"\nBest {best:g}s, {args.order} order")
     print_clip_plan(plan, player.name)
 
     if args.dry_run or args.record or args.edit_only:

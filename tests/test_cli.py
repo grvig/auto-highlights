@@ -269,3 +269,15 @@ def test_parser_reads_spectator_hud():
 def test_victim_cams_are_opt_in():
     assert not build_parser().parse_args(["m.dem"]).victim_cams
     assert build_parser().parse_args(["m.dem", "--victim-cams"]).victim_cams
+
+
+def test_recordings_aim_for_the_configured_reel_length():
+    from highlights.cli import reel_target
+    from highlights.config import EditingConfig
+
+    style = EditingConfig(target_seconds=120)
+    parse = build_parser().parse_args
+    assert reel_target(parse(["m.dem", "--record"]), style) == 120
+    assert reel_target(parse(["m.dem", "--record", "--best", "45"]), style) == 45
+    assert reel_target(parse(["m.dem", "--record", "--all"]), style) is None
+    assert reel_target(parse(["m.dem"]), style) is None  # just planning: show everything

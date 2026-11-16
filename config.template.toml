@@ -62,3 +62,5 @@ merge_gap_seconds = 10.0
 transition = "cut"
 # Slow motion, punch-ins on headshots and flashes on kills.
 pro = false
+# Seconds of your best plays a recorded reel aims for (0 = every play).
+target_seconds = 120
