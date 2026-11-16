@@ -66,99 +66,72 @@ python -m highlights.cli --check
 
 ## Usage
 
-Inspect a demo (no game needed):
+The whole thing in one line, for the Steam account signed in on this PC:
 
 ```powershell
-python -m highlights.cli "path\to\match.dem"
+python -m highlights.cli "match1.dem" "match2.dem" --me --record --stitch
 ```
 
-Plan a player's highlights:
+That plans your best plays across the demos, records them in CS2, and writes
+about two minutes of them back to back: whole fights (the walk-up, every kill,
+a beat after), hard cuts, your game sound, no text and no effects, exported
+in 4:3 stretched to 16:9. Each reel gets its own timestamped name in
+`output_dir`, so nothing is ever overwritten.
+
+### Planning
 
 ```powershell
-python -m highlights.cli "path\to\match.dem" --player semi --types clutch,ace,multi_kill
+python -m highlights.cli "path\to\match.dem"                # players and stats
+python -m highlights.cli "path\to\match.dem" --me           # every play, scored
+python -m highlights.cli "path\to\match.dem" --me --best 90 # the best 90 seconds
 ```
 
-`--types` accepts `kill`, `multi_kill`, `ace`, `clutch`, `death`, `utility`
-(comma-separated, or `all`). `--me` picks the signed-in Steam account. Pass
-several demos to plan across matches. `--best 60` keeps the strongest 60
-seconds; `--order` arranges them as a montage or chronologically.
-
-Moments from the same round are merged, so an ace that is also a clutch is
-filmed once. Multi-kills get victim-cam replays from the victims' eyes.
+- Highlights are your frags: kills, multi-kills, aces and clutches.
+  `--types all` adds deaths and utility.
+- Plays are scored for impact (clutches, round swings), speed and
+  cleanliness: one-taps and few shots per kill rank above spraying, and
+  ordinary plays are left out rather than used as filler (`--min-score`).
+- An ace that is also a clutch is filmed once, as one fight.
+- `--best SECONDS` sets the reel length (recording defaults to 120 from
+  config); `--all` keeps every play; `--order montage|chronological`.
+- How much of each fight to keep is in `[clips]` of `config.toml`.
 
 ### Recording
 
-See what would be captured, without launching anything:
-
 ```powershell
-python -m highlights.cli "match.dem" --player semi --best 60 --dry-run -v
+python -m highlights.cli "match.dem" --me --dry-run --stitch    # preview, launches nothing
+python -m highlights.cli "match.dem" --me --record --stitch      # the real thing
 ```
 
-Record and stitch for real:
+CS2 is launched through HLAE at 1440x1080, each clip is rendered frame by
+frame with game audio, the game is closed and your CS2 settings are put back
+exactly as they were (a backup is kept next to the clips folder).
 
-```powershell
-python -m highlights.cli "match.dem" --player semi --best 60 --record --stitch
-```
-
-This launches CS2 through HLAE at 1440x1080, renders each clip, closes the
-game, and puts your CS2 settings back exactly as they were (a backup is kept
-next to the clips folder). Clips land in `clips_dir`, numbered in plan order.
-The reel is written to `output_dir` as `<player>_highlights.mp4`.
-
-`--aspect` picks the reel's shape: `stretched` (default, 4:3 filling 16:9),
-`4:3`, `pillarbox`, `16:9`, or `vertical`.
-
-### Editing
-
-`--stitch` edits the clips into a finished movie rather than just joining
-them:
-
-- a title card (player, maps, number of highlights) and a "GG" outro card;
-- a caption on each highlight ("ACE + 1V3 CLUTCH", player, map, round), and
-  "REPLAY · <name>'s view" on victim cams;
-- crossfades between clips (`--transition cut|fade|fadeblack|...`);
-- with `--music song.mp3`, your own track under the reel, ducking whenever
-  the game is loud, with every cut pulled onto a beat of the song.
-
-```powershell
-python -m highlights.cli "match.dem" --me --best 60 --record --stitch --music "D:\music\track.mp3"
-```
-
-`--no-captions`, `--no-cards` and `--plain` (join only) turn parts off.
-Add `--dry-run --stitch` to preview the edit (cards, captions, replays, the
-music's tempo) without launching anything. The finished reel's loudness is
-levelled to -14 LUFS, the target YouTube and most platforms use.
-
-Frag-movie effects, all timed to the exact tick of each kill:
-
-- `--slowmo` dips into slow motion as each of the player's shots lands and
-  snaps back to real time, in one continuous shot. Slowed footage is
-  rendered at a higher frame rate so it stays smooth.
-- `--punch-ins` zooms toward the crosshair on headshots.
-- `--flashes` flashes the screen for a few frames on every kill.
-- `--pro` turns all three on.
-- `--teaser` opens the reel with a slowed flash of its best kill before the
-  title card.
-
-`--music-start 12` starts the song 12 seconds in, to skip a slow intro, with
-cuts still on the beat. Your usual track and style can live in the
-`[editing]` section of `config.toml`, so no flags are needed each run.
-
-Next to every reel the app writes `<player>_highlights.chapters.txt`
-(timestamps to paste into a YouTube description) and a 1280x720
-`<player>_highlights.thumbnail.png` taken from the best highlight's first
-kill.
-
-### Long runs
-
-- `--resume` keeps clips an interrupted `--record` run already finished.
-- `--edit-only` skips the game entirely and re-edits the clips on disk, e.g.
-  to try another song or transition.
+- The HUD is clean by default: crosshair and kill feed. Demo playback can
+  only show CS2's spectator HUD, never your own; `--spectator-hud` keeps it.
+- `--aspect` picks the shape: `stretched` (default), `4:3`, `pillarbox`,
+  `16:9`, or `vertical`.
+- `--resume` keeps clips an interrupted run already finished; `--edit-only`
+  re-edits the clips on disk without touching the game.
 - HLAE is updated from its official GitHub releases before every recording
-  (CS2 updates break old builds); `--update-hlae` does it on demand. Raw takes
-  are deleted once each clip is finished.
-Captions use a font that can draw the player's name, so Chinese, Korean and
-Cyrillic names render properly.
+  (CS2 updates break old builds); `--update-hlae` does it on demand.
+
+### Optional extras
+
+None of these are on by default; the default reel is plain.
+
+- `--music song.mp3` (your own file) under the game sound, ducking under
+  gunshots, with cuts pulled onto the beat; `--music-start` skips an intro.
+- `--transition fade|fadeblack|...` instead of hard cuts.
+- `--captions` names each play on screen; `--cards` adds title and outro
+  cards.
+- `--victim-cams` replays quick multi-kills from each victim's eyes.
+- `--slowmo`, `--punch-ins`, `--flashes` (or `--pro` for all three), and
+  `--teaser`.
+
+Next to every reel the app writes a `.chapters.txt` (timestamps for a YouTube
+description) and a 1280x720 `.thumbnail.png`. Loudness is levelled to the
+-14 LUFS that YouTube uses, as one steady gain so gunshots keep their punch.
 
 ## Status
 
