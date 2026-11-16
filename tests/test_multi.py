@@ -53,3 +53,12 @@ def test_players_across_counts_appearances_by_steamid():
     assert roster[0][0].steamid == "ME" and roster[0][1] == 2
     assert roster[0][0].name == "semi2"  # the most recent name is shown
     assert ("B", 1) in [(p.steamid, n) for p, n in roster]
+
+
+def test_victim_cams_can_be_left_out_of_a_multi_plan():
+    kills = [make_kill(1000, "ME", "a"), make_kill(1050, "ME", "b")]
+    nuke = match("nuke", [player("ME", "semi")], kills, "nuke.dem")
+    with_cams = build_multi_plan([nuke], "ME", [HighlightType.KILL])
+    without = build_multi_plan([nuke], "ME", [HighlightType.KILL], replays=False)
+    assert any(m.replays for m in with_cams.plan.moments)
+    assert not any(m.replays for m in without.plan.moments)

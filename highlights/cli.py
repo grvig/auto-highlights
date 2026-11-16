@@ -90,6 +90,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="frag-movie style: slow motion, punch-ins and flashes on kills",
     )
     parser.add_argument(
+        "--victim-cams",
+        action="store_true",
+        help="after quick multi-kills, replay each kill from the victim's eyes",
+    )
+    parser.add_argument(
         "--slowmo",
         action="store_true",
         help="dip into slow motion on each of the player's kills",
@@ -635,7 +640,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     style = editing_style(args)
-    multi = build_multi_plan(matches, player.steamid, types, slowmo=args.slowmo or style.pro)
+    multi = build_multi_plan(matches, player.steamid, types, slowmo=args.slowmo or style.pro,
+                             replays=args.victim_cams)
     for label in multi.missing_from:
         print(f"Note: {player.name} is not in {label}", file=sys.stderr)
     plan = multi.plan

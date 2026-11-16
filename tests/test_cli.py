@@ -258,3 +258,8 @@ def test_flags_override_the_configs_editing_style(tmp_path):
 def test_parser_reads_spectator_hud():
     assert build_parser().parse_args(["m.dem", "--spectator-hud"]).spectator_hud
     assert not build_parser().parse_args(["m.dem"]).spectator_hud
+
+
+def test_victim_cams_are_opt_in():
+    assert not build_parser().parse_args(["m.dem"]).victim_cams
+    assert build_parser().parse_args(["m.dem", "--victim-cams"]).victim_cams
