@@ -39,9 +39,10 @@ framerate = 60
 # Reel shape: "stretched" (4:3 stretched to 16:9), "4:3", "pillarbox",
 # "16:9" or "vertical".
 aspect = "stretched"
-# "full" keeps the normal game HUD (radar, ammo, chat, crosshair) on screen;
-# "clean" hides everything except the kill feed.
-hud = "full"
+# "clean" hides everything except the kill feed and crosshair. "full" keeps
+# a HUD, but demos only offer CS2's spectator HUD (team bar with money and
+# avatars), not the one you see in-game.
+hud = "clean"
 
 [clips]
 # Seconds of footage kept either side of a highlight moment.

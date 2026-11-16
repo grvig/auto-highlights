@@ -71,7 +71,10 @@ def movie_setup(full_hud: bool = True) -> list[str]:
     """Console settings for recording. The full HUD is how the game is played:
     radar, ammo, chat, round banners and crosshair all stay on screen."""
     if full_hud:
-        return [*DEMO_CLEANUP, "cl_draw_only_deathnotices 0"]
+        # Demos only have the spectator HUD; drop its control hints and use the
+        # round radar players see.
+        return [*DEMO_CLEANUP, "cl_draw_only_deathnotices 0", "cl_spec_show_bindings 0",
+                "cl_radar_square_when_spectating 0"]
     return [*DEMO_CLEANUP, *CLEAN_HUD]
 
 

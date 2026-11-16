@@ -255,6 +255,6 @@ def test_flags_override_the_configs_editing_style(tmp_path):
     assert flagged.transition == "cut" and flagged.pro
 
 
-def test_parser_reads_clean_hud():
-    assert build_parser().parse_args(["m.dem", "--clean-hud"]).clean_hud
-    assert not build_parser().parse_args(["m.dem"]).clean_hud
+def test_parser_reads_spectator_hud():
+    assert build_parser().parse_args(["m.dem", "--spectator-hud"]).spectator_hud
+    assert not build_parser().parse_args(["m.dem"]).spectator_hud

@@ -50,9 +50,10 @@ class RecordingConfig:
     framerate: int = 60
     # Export shape for finished reels; see highlights.stitcher.aspect.
     aspect: str = "stretched"
-    # "full" keeps the normal game HUD (radar, ammo, chat, crosshair) in
-    # footage; "clean" strips it down to the kill feed.
-    hud: str = "full"
+    # "clean" strips the HUD to the kill feed. "full" keeps a HUD, but demo
+    # playback can only show CS2's spectator HUD (team bar, money, player
+    # card), never the player's own, so clean is the default.
+    hud: str = "clean"
     # Fetch a newer HLAE before recording; CS2 updates break old ones.
     auto_update: bool = True
 
@@ -197,7 +198,7 @@ def load_config(
             height=int(recording.get("height", 1080)),
             framerate=int(recording.get("framerate", 60)),
             aspect=str(recording.get("aspect", "stretched")),
-            hud=str(recording.get("hud", "full")),
+            hud=str(recording.get("hud", "clean")),
             auto_update=bool(recording.get("auto_update", True)),
         ),
         editing=EditingConfig(

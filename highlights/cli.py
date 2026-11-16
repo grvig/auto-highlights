@@ -170,9 +170,10 @@ def build_parser() -> argparse.ArgumentParser:
         "ffmpeg; has no effect on --dry-run, which writes no clips)",
     )
     parser.add_argument(
-        "--clean-hud",
+        "--spectator-hud",
         action="store_true",
-        help="hide the HUD except the kill feed (default: the normal game HUD)",
+        help="keep CS2's spectator HUD (team bar, money, radar) instead of the "
+        "clean default with only the kill feed",
     )
     parser.add_argument(
         "--resume",
@@ -396,7 +397,7 @@ def run_recording(
     resume: bool = False,
     edit_only: bool = False,
     preview_edit: bool = False,
-    clean_hud: bool = False,
+    spectator_hud: bool = False,
 ) -> int:
     """Record a plan, dry by default. Returns an exit code."""
     warning = pov_recording_warning(not pov_demos, player_name, live)
@@ -426,8 +427,8 @@ def run_recording(
         return stitch_recorded(clips, player_name, config, aspect, edit)
 
     try:
-        if clean_hud:
-            config = replace(config, recording=replace(config.recording, hud="clean"))
+        if spectator_hud:
+            config = replace(config, recording=replace(config.recording, hud="full"))
         recorder = build_live_recorder(config) if live else DryRunRecorder()
     except HlaeError as error:
         print(f"Error: {error}", file=sys.stderr)
@@ -656,7 +657,7 @@ def main(argv: list[str] | None = None) -> int:
                 resume=args.resume,
                 edit_only=args.edit_only,
                 preview_edit=args.stitch and args.dry_run,
-                clean_hud=args.clean_hud,
+                spectator_hud=args.spectator_hud,
                 stitch=args.stitch and args.record,
                 names={p.steamid: p.name for s in sources for p in s.players()},
                 aspect=args.aspect,
