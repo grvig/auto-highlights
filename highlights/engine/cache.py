@@ -23,7 +23,7 @@ import polars as pl
 logger = logging.getLogger(__name__)
 
 # Bump when parsing changes shape, so old entries are ignored rather than misread.
-CACHE_VERSION = 1
+CACHE_VERSION = 2  # 2: weapon_fire events for shot accuracy
 
 HEADER_FILE = "header.json"
 

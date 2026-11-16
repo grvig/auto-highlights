@@ -20,11 +20,13 @@ from highlights.engine.models import (
     Damage,
     Kill,
     Round,
+    Shot,
     Smoke,
     extract_blinds,
     extract_damages,
     extract_kills,
     extract_rounds,
+    extract_shots,
     extract_smokes,
 )
 from highlights.engine.timing import CS2_TICKRATE
@@ -40,7 +42,7 @@ DEFAULT_TICKRATE = CS2_TICKRATE
 GOTV_CLIENT_NAME = "SourceTV Demo"
 
 # Events outside awpy's default set that detectors need, parsed together.
-EXTRA_EVENTS = ("player_blind", "smokegrenade_detonate")
+EXTRA_EVENTS = ("player_blind", "smokegrenade_detonate", "weapon_fire")
 
 
 class DemoError(Exception):
@@ -212,6 +214,11 @@ class DemoSource:
     def damage_list(self) -> list[Damage]:
         """Damage events as Damage models, world damage excluded."""
         return extract_damages(self.damages)
+
+    def shot_list(self) -> list[Shot]:
+        """Every weapon fired, as Shot models, empty if the demo has none."""
+        frame = self.extra_event("weapon_fire")
+        return extract_shots(frame) if frame is not None else []
 
     def smoke_list(self) -> list[Smoke]:
         """Smoke detonations as Smoke models, empty if the demo has none."""

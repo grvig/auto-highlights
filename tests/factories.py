@@ -116,6 +116,7 @@ def make_context(
     blinds: list[Blind] | None = None,
     damages: list[Damage] | None = None,
     smokes: list[Smoke] | None = None,
+    shots: list | None = None,
     pre_roll: float = 3.0,
     post_roll: float = 2.0,
     first_tick: int = 0,
@@ -133,4 +134,5 @@ def make_context(
         blinds=blinds or [],
         damages=damages or [],
         smokes=smokes or [],
+        shots=shots or [],
     )

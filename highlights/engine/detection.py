@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from highlights.engine.demo_source import DemoSource
-from highlights.engine.models import Blind, Damage, Kill, Round, Smoke
+from highlights.engine.models import Blind, Damage, Kill, Round, Shot, Smoke
 from highlights.engine.moments import (
     HighlightType,
     Moment,
@@ -40,6 +40,7 @@ class DetectionContext:
     blinds: list[Blind] = field(default_factory=list)
     damages: list[Damage] = field(default_factory=list)
     smokes: list[Smoke] = field(default_factory=list)
+    shots: list[Shot] = field(default_factory=list)
     # The demo these tables came from; moments built from it carry it along.
     demo_path: Path | None = None
     # Events closer than this share one continuous segment.
@@ -68,6 +69,7 @@ class DetectionContext:
             blinds=source.blind_list(),
             damages=source.damage_list(),
             smokes=source.smoke_list(),
+            shots=source.shot_list(),
             demo_path=source.path,
             merge_gap_seconds=merge_gap_seconds,
         )

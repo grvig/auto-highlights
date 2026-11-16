@@ -99,6 +99,9 @@ def test_clip_timing_from_config_reaches_the_planner():
         def smoke_list(self):
             return []
 
+        def shot_list(self):
+            return []
+
     ctx = match_from_source(Source(), ClipConfig(6.0, 2.5, merge_gap_seconds=8.0)).context
     assert (ctx.pre_roll_seconds, ctx.post_roll_seconds, ctx.merge_gap_seconds) == (6.0, 2.5, 8.0)
 

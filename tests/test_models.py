@@ -103,3 +103,20 @@ def test_kill_str_marks_headshots():
 def test_round_is_frozen():
     rounds = extract_rounds(pl.DataFrame(ROUND_COLUMNS))
     assert isinstance(rounds[0], Round)
+
+
+def test_shots_come_out_tick_ordered_without_the_weapon_prefix():
+    import polars as pl
+
+    from highlights.engine.models import extract_shots
+
+    frame = pl.DataFrame({
+        "tick": [300, 100, 200],
+        "user_steamid": ["P", None, "Q"],
+        "user_name": ["semi", "x", "q"],
+        "weapon": ["weapon_ak47", "weapon_knife", "weapon_usp_silencer"],
+        "silenced": [False, False, True],
+    })
+    shots = extract_shots(frame)
+    assert [(s.tick, s.shooter_steamid, s.weapon) for s in shots] == [
+        (200, "Q", "usp_silencer"), (300, "P", "ak47")]

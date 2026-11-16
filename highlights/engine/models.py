@@ -105,6 +105,15 @@ class Smoke:
 
 
 @dataclass(frozen=True)
+class Shot:
+    """One weapon firing (a weapon_fire event)."""
+
+    tick: int
+    shooter_steamid: str
+    weapon: str
+
+
+@dataclass(frozen=True)
 class Blind:
     """One player being flashed by another (a player_blind event)."""
 
@@ -211,6 +220,24 @@ def extract_smokes(smokes: pl.DataFrame) -> list[Smoke]:
             y=_as_float(row.get("y")),
         )
         for row in smokes.iter_rows(named=True)
+        if row["user_steamid"] is not None
+    ]
+    return sorted(result, key=lambda s: s.tick)
+
+
+def extract_shots(shots: pl.DataFrame) -> list[Shot]:
+    """Convert awpy's weapon_fire frame into Shot models, tick-ordered.
+
+    Knife swings and grenade throws also fire this event; they are kept here
+    and filtered by whoever counts shots.
+    """
+    result = [
+        Shot(
+            tick=_as_int(row["tick"]),
+            shooter_steamid=_as_str(row["user_steamid"]),
+            weapon=_as_str(row.get("weapon")).removeprefix("weapon_"),
+        )
+        for row in shots.iter_rows(named=True)
         if row["user_steamid"] is not None
     ]
     return sorted(result, key=lambda s: s.tick)
