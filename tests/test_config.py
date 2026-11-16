@@ -167,3 +167,10 @@ def test_hud_defaults_to_clean_and_rejects_unknown_values(tmp_path):
     path.write_text(path.read_text() + '\n[recording]\nhud = "minimal"\n')
     with pytest.raises(ConfigError, match="recording.hud"):
         load_config(path).validate()
+
+
+def test_merge_gap_is_read_from_clips(tmp_path):
+    path = write_config(tmp_path)
+    assert load_config(path).clips.merge_gap_seconds == 2.0
+    path.write_text(path.read_text() + "\n[clips]\nmerge_gap_seconds = 8.0\n")
+    assert load_config(path).clips.merge_gap_seconds == 8.0

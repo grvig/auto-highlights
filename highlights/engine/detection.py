@@ -18,6 +18,7 @@ from highlights.engine.moments import (
     HighlightType,
     Moment,
     Segment,
+    DEFAULT_MERGE_GAP_SECONDS,
     build_segments,
     pad_window,
 )
@@ -41,6 +42,8 @@ class DetectionContext:
     smokes: list[Smoke] = field(default_factory=list)
     # The demo these tables came from; moments built from it carry it along.
     demo_path: Path | None = None
+    # Events closer than this share one continuous segment.
+    merge_gap_seconds: float = DEFAULT_MERGE_GAP_SECONDS
 
     @classmethod
     def from_source(
@@ -48,6 +51,7 @@ class DetectionContext:
         source: DemoSource,
         pre_roll_seconds: float = 3.0,
         post_roll_seconds: float = 2.0,
+        merge_gap_seconds: float = DEFAULT_MERGE_GAP_SECONDS,
     ) -> DetectionContext:
         rounds = source.round_list()
         kills = source.kill_list()
@@ -65,6 +69,7 @@ class DetectionContext:
             damages=source.damage_list(),
             smokes=source.smoke_list(),
             demo_path=source.path,
+            merge_gap_seconds=merge_gap_seconds,
         )
 
     def round_by_number(self, number: int) -> Round | None:
@@ -111,6 +116,7 @@ class DetectionContext:
             self.post_roll_seconds,
             first_tick=self.first_tick,
             last_tick=self.last_tick,
+            merge_gap_seconds=self.merge_gap_seconds,
             tickrate=self.tickrate,
         )
 

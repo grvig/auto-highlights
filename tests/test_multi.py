@@ -62,3 +62,52 @@ def test_victim_cams_can_be_left_out_of_a_multi_plan():
     without = build_multi_plan([nuke], "ME", [HighlightType.KILL], replays=False)
     assert any(m.replays for m in with_cams.plan.moments)
     assert not any(m.replays for m in without.plan.moments)
+
+
+def test_clip_timing_from_config_reaches_the_planner():
+    from highlights.config import ClipConfig
+    from highlights.engine.multi import match_from_source
+
+    class Source:
+        path = Path("nuke.dem")
+        tickrate = 64
+
+        class info:
+            map_name = "de_nuke"
+
+        def players(self):
+            return []
+
+        def round_list(self):
+            return []
+
+        def kill_list(self):
+            return []
+
+        def tick_bounds(self):
+            return 0, 100_000
+
+        def round_rosters(self):
+            return {}
+
+        def blind_list(self):
+            return []
+
+        def damage_list(self):
+            return []
+
+        def smoke_list(self):
+            return []
+
+    ctx = match_from_source(Source(), ClipConfig(6.0, 2.5, merge_gap_seconds=8.0)).context
+    assert (ctx.pre_roll_seconds, ctx.post_roll_seconds, ctx.merge_gap_seconds) == (6.0, 2.5, 8.0)
+
+
+def test_a_wider_merge_gap_keeps_a_fight_in_one_clip():
+    from highlights.engine.moments import build_segments
+
+    kills = [1000, 1000 + 64 * 8]  # eight seconds apart: three dead seconds between windows
+    tight = build_segments(kills, 3.0, 2.0, first_tick=0, last_tick=100_000)
+    wide = build_segments(kills, 3.0, 2.0, first_tick=0, last_tick=100_000, merge_gap_seconds=8.0)
+    assert len(tight) == 2
+    assert len(wide) == 1 and (wide[0].start_tick, wide[0].end_tick) == (808, 1640)

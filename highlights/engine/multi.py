@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
+from highlights.config import ClipConfig
 from highlights.engine.clip_plan import ClipPlan, build_clip_plan
 from highlights.engine.demo_source import DemoSource, Player
 from highlights.engine.detection import DetectionContext
@@ -38,12 +39,16 @@ class MultiPlan:
     missing_from: list[str] = field(default_factory=list)
 
 
-def match_from_source(source: DemoSource) -> Match:
+def match_from_source(source: DemoSource, timing: ClipConfig | None = None) -> Match:
+    """A demo ready to plan from, padded with the configured clip timing."""
     label = f"{source.info.map_name} ({source.path.name})"
+    timing = timing or ClipConfig(3.0, 2.0)
     return Match(
         label=label,
         players=source.players(),
-        context=DetectionContext.from_source(source),
+        context=DetectionContext.from_source(
+            source, timing.pre_roll_seconds, timing.post_roll_seconds, timing.merge_gap_seconds
+        ),
     )
 
 

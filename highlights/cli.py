@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Protocol
 
 from highlights import __version__
-from highlights.config import Config, ConfigError, EditingConfig, load_config
+from highlights.config import ClipConfig, Config, ConfigError, EditingConfig, load_config
 from highlights.logging_setup import LEVELS, configure_logging
 from highlights.preflight import all_passed, run_preflight
 from highlights.engine.cache import DemoCache
@@ -476,6 +476,14 @@ def kills_in_plan(plan: ClipPlan, sources: list[DemoSource], matches: list[Match
     return total
 
 
+def clip_timing() -> ClipConfig:
+    """How much of each engagement to keep, from config (defaults if none)."""
+    try:
+        return load_config().clips
+    except ConfigError:
+        return ClipConfig(3.0, 2.0)
+
+
 def editing_style(args: argparse.Namespace, defaults: EditingConfig | None = None) -> EditingConfig:
     """Flags given on the command line, else the config's [editing] defaults."""
     if defaults is None:
@@ -619,7 +627,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: {error}", file=sys.stderr)
         return 1
 
-    matches = [match_from_source(source) for source in sources]
+    timing = clip_timing()
+    matches = [match_from_source(source, timing) for source in sources]
     if len(sources) == 1:
         print_match_summary(sources[0])
         print_players(sources[0])

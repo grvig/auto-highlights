@@ -31,6 +31,8 @@ class ConfigError(Exception):
 class ClipConfig:
     pre_roll_seconds: float
     post_roll_seconds: float
+    # Kills closer than this stay in one continuous clip instead of two.
+    merge_gap_seconds: float = 2.0
 
 
 # Recording backends: HLAE renders frame-perfect footage with synced audio;
@@ -187,6 +189,7 @@ def load_config(
         clips=ClipConfig(
             pre_roll_seconds=float(clips.get("pre_roll_seconds", 3.0)),
             post_roll_seconds=float(clips.get("post_roll_seconds", 2.0)),
+            merge_gap_seconds=float(clips.get("merge_gap_seconds", 2.0)),
         ),
         ffmpeg_path=locate_ffmpeg(str(paths.get("ffmpeg", "ffmpeg"))),
         cs2_root_detected=not configured_cs2 and cs2_root is not None,
