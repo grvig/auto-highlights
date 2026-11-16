@@ -8,6 +8,7 @@ that reaches the filesystem goes through here.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import datetime
 from pathlib import Path
 
 from highlights.engine.clip_plan import ClipPlan
@@ -45,6 +46,21 @@ def sanitise_part(text: str, fallback: str = "player") -> str:
     if not collapsed or collapsed.lower() in _RESERVED_STEMS:
         return fallback
     return collapsed
+
+
+def reel_filename(player_name: str, output_dir: Path, when: datetime | None = None) -> str:
+    """A reel name that never overwrites an earlier reel.
+
+    Stamped with the time it was made (player_highlights_2026-11-16_0827.mp4),
+    with a counter added if two reels land in the same minute.
+    """
+    stamp = (when or datetime.now()).strftime("%Y-%m-%d_%H%M")
+    base = f"{sanitise_part(player_name)}_highlights_{stamp}"
+    name, number = f"{base}.mp4", 1
+    while (Path(output_dir) / name).exists():
+        number += 1
+        name = f"{base}_{number}.mp4"
+    return name
 
 
 def clip_filename(

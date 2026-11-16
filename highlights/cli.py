@@ -38,7 +38,7 @@ from highlights.steam.locate import find_steam_root
 from highlights.recorder.base import RecordedClip
 from highlights.recorder.cs2_controller import Cs2Error
 from highlights.recorder.dry_run import DryRunRecorder
-from highlights.recorder.naming import build_clip_requests, sanitise_part
+from highlights.recorder.naming import build_clip_requests, reel_filename, sanitise_part
 from highlights.recorder.factory import build_live_recorder, settings_guard, update_hlae
 from highlights.recorder.hlae import BUNDLED_DIR as HLAE_BUNDLED_DIR
 from highlights.recorder.hlae import HlaeError
@@ -529,7 +529,7 @@ def stitch_recorded(
 ) -> int:
     """Edit (or just join) recorded clips into a reel in the chosen shape."""
     profile = PROFILES.get(aspect or config.recording.aspect, PROFILES["stretched"])
-    reel_name = f"{sanitise_part(player_name)}_highlights.mp4"
+    reel_name = reel_filename(player_name, config.output_dir)
     reel_path = config.clips_dir / f"_joined_{reel_name}"
     print(f"\n{'Editing' if edit else 'Stitching'} {len(clips)} clip(s) into {reel_name}")
     try:

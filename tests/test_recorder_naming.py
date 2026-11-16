@@ -136,3 +136,23 @@ def test_victim_cam_requests_carry_the_victims_name():
         plan, Path("m.dem"), "semi", Path("out"), names={"P": "semi", "V": "臻咘踔"}
     )
     assert [r.spectate_name for r in requests] == ["semi", "臻咘踔"]
+
+
+def test_reel_names_are_stamped_and_never_overwrite(tmp_path):
+    from datetime import datetime
+
+    from highlights.recorder.naming import reel_filename
+
+    when = datetime(2026, 11, 16, 8, 27)
+    first = reel_filename("semi", tmp_path, when)
+    assert first == "semi_highlights_2026-11-16_0827.mp4"
+    (tmp_path / first).write_bytes(b"reel")
+    assert reel_filename("semi", tmp_path, when) == "semi_highlights_2026-11-16_0827_2.mp4"
+
+
+def test_reel_names_are_safe_for_any_player_name(tmp_path):
+    from datetime import datetime
+
+    from highlights.recorder.naming import reel_filename
+
+    assert reel_filename("a/b:c", tmp_path, datetime(2026, 1, 1)).startswith("a_b_c_highlights_")
