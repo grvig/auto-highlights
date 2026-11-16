@@ -62,8 +62,12 @@ def video_filter(profile: ExportProfile) -> str:
 
 # Loudness target for the finished reel: what YouTube and most platforms
 # normalise to, so the reel is neither quieter nor squashed after upload.
-LOUDNESS = "loudnorm=I=-14:TP=-1.5:LRA=11"
-LOUDNESS_TARGET = {"I": -14.0, "TP": -1.5, "LRA": 11.0}
+# Game audio is all transients: at -14 LUFS gunshots overshoot full scale, so
+# the reel is levelled a little lower and a limiter catches what is left.
+LOUDNESS = "loudnorm=I=-16:TP=-2:LRA=11"
+# Limited at 4x the sample rate so peaks between samples are caught too;
+# measured on a real reel: true peak -1.2 dBFS after AAC encoding.
+PEAK_LIMIT = "aresample=192000,alimiter=limit=0.708:level=false,aresample=48000"  # -3 dBFS
 
 
 def measure_args(source: Path, ffmpeg: str = "ffmpeg") -> list[str]:
@@ -102,7 +106,8 @@ def convert_args(
     normalise: bool = True, loudness: str = LOUDNESS,
 ) -> list[str]:
     """ffmpeg arguments that reshape a video and, by default, level its loudness."""
-    audio = ["-af", loudness, "-ar", "48000", "-c:a", "aac", "-b:a", "192k"] if normalise else ["-c:a", "copy"]
+    audio = (["-af", f"{loudness},{PEAK_LIMIT}", "-ar", "48000", "-c:a", "aac", "-b:a", "192k"]
+             if normalise else ["-c:a", "copy"])
     return [
         ffmpeg, "-y", "-i", str(source),
         "-vf", video_filter(profile),

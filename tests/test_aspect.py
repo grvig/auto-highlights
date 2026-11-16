@@ -73,7 +73,8 @@ def test_export_levels_loudness_for_upload():
     from highlights.stitcher.aspect import PROFILES, convert_args
 
     args = convert_args(Path("in.mp4"), Path("out.mp4"), PROFILES["stretched"])
-    assert args[args.index("-af") + 1].startswith("loudnorm=I=-14")
+    assert args[args.index("-af") + 1].startswith("loudnorm=I=-16")
+    assert args[args.index("-af") + 1].endswith("alimiter=limit=0.708:level=false,aresample=48000")
     plain = convert_args(Path("in.mp4"), Path("out.mp4"), PROFILES["stretched"], normalise=False)
     assert "-af" not in plain and plain[plain.index("-c:a") + 1] == "copy"
 
