@@ -131,7 +131,7 @@ None of these are on by default; the default reel is plain.
 
 Next to every reel the app writes a `.chapters.txt` (timestamps for a YouTube
 description) and a 1280x720 `.thumbnail.png`. Loudness is levelled to the
--14 LUFS that YouTube uses, as one steady gain so gunshots keep their punch.
+-16 LUFS as one steady gain, with true peaks limited so gunshots never clip.
 
 ## Status
 
