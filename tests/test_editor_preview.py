@@ -21,7 +21,8 @@ def request(part, segment, camera=None):
 def test_preview_lists_cards_captions_and_replays():
     requests = [request(1, Segment(2400, 2700)),
                 request(2, Segment(2604, 2677, pov_steamid="V", speed=0.6), camera="臻咘踔")]
-    lines = describe_edit(requests, EditOptions("semi", maps={Path("cache.dem"): "de_cache"}))
+    lines = describe_edit(requests, EditOptions("semi", captions=True, cards=True, transition="fade",
+                                                   maps={Path("cache.dem"): "de_cache"}))
     assert lines[0] == "[title]  semi  Cache"
     assert "DOUBLE KILL - semi  ·  Cache  ·  Round 1" in lines[1]
     assert "x0.6" in lines[2] and "REPLAY - 臻咘踔's view" in lines[2]
@@ -42,7 +43,7 @@ def test_preview_without_captions_shows_bare_clips():
 
 
 def test_outro_preview_counts_the_kills():
-    options = EditOptions("semi", kills_shown=6)
+    options = EditOptions("semi", cards=True, kills_shown=6)
     assert "[outro]  GG  6 kills" in describe_edit([request(1, Segment(2400, 2700))], options)
 
 

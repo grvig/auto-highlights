@@ -63,7 +63,7 @@ class EditingConfig:
 
     music: Path | None = None
     music_start: float = 0.0
-    transition: str = "fade"
+    transition: str = "cut"
     # Slow motion, punch-ins and flashes on kills.
     pro: bool = False
 

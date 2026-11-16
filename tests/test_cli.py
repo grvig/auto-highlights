@@ -184,11 +184,11 @@ def test_order_defaults_to_montage_and_rejects_unknown():
 
 def test_parser_reads_edit_flags(tmp_path):
     args = build_parser().parse_args(
-        ["m.dem", "--music", "song.mp3", "--no-captions", "--transition", "cut", "--plain"]
+        ["m.dem", "--music", "song.mp3", "--captions", "--transition", "fade", "--plain"]
     )
     assert args.music.name == "song.mp3"
-    assert args.no_captions and args.plain and not args.no_cards
-    assert args.transition == "cut"
+    assert args.captions and args.plain and not args.cards
+    assert args.transition == "fade"
 
 
 def test_editing_is_on_by_default():

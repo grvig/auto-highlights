@@ -52,7 +52,7 @@ post_roll_seconds = 2.0
 # Your usual style, so it needs no flags each run. Flags still win.
 # music = "D:/music/track.mp3"
 # music_start = 0.0
-# "fade", "cut", "fadeblack", "fadewhite", "smoothleft" or "zoomin".
-transition = "fade"
+# "cut" (plain hard cuts), "fade", "fadeblack", "fadewhite", "smoothleft" or "zoomin".
+transition = "cut"
 # Slow motion, punch-ins on headshots and flashes on kills.
 pro = false

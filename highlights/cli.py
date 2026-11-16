@@ -199,13 +199,13 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="SECONDS",
         help="start the music this far into the track, e.g. to skip a slow intro",
     )
-    edit.add_argument("--no-captions", action="store_true", help="leave out highlight captions")
-    edit.add_argument("--no-cards", action="store_true", help="leave out the title and outro cards")
+    edit.add_argument("--captions", action="store_true", help="name each highlight on screen")
+    edit.add_argument("--cards", action="store_true", help="add title and outro cards")
     edit.add_argument(
         "--transition",
         default=None,
         choices=TRANSITIONS,
-        help="how clips join (default: fade; cut for hard cuts)",
+        help="how clips join (default: cut, plain hard cuts)",
     )
     edit.add_argument("--teaser", action="store_true", help="open with a slowed flash of the best kill")
     edit.add_argument("--punch-ins", action="store_true", help="zoom in on headshots")
@@ -662,8 +662,8 @@ def main(argv: list[str] | None = None) -> int:
                 aspect=args.aspect,
                 edit=None if args.plain else EditOptions(
                     player_name=player.name,
-                    captions=not args.no_captions,
-                    cards=not args.no_cards,
+                    captions=args.captions,
+                    cards=args.cards,
                     transition=style.transition,
                     music=style.music,
                     maps={s.path: s.info.map_name for s in sources},

@@ -30,7 +30,9 @@ def recorded(tmp_path, index, part=1, ok=True):
 
 
 def builder(tmp_path, runs, **options):
-    opts = EditOptions(player_name="semi", maps={Path("nuke.dem"): "de_nuke"}, **options)
+    # the fully edited style; plain is the default and is tested on its own
+    edited = {"captions": True, "cards": True, "transition": "fade", **options}
+    opts = EditOptions(player_name="semi", maps={Path("nuke.dem"): "de_nuke"}, **edited)
     return ReelBuilder(opts, tmp_path / "work", runner=runs.append,
                        prober=lambda p: MediaInfo(5.3, 1440, 1080, 60.0, True),
                        beat_finder=lambda p: [i * 0.5 for i in range(200)])
@@ -143,7 +145,7 @@ def test_music_can_start_partway_with_beats_still_lined_up(tmp_path):
     song = tmp_path / "song.mp3"
     song.write_bytes(b"id3")
     runs = []
-    opts = EditOptions(player_name="semi", cards=False, music=song, music_start=10.25)
+    opts = EditOptions(player_name="semi", transition="fade", music=song, music_start=10.25)
     reel = ReelBuilder(opts, tmp_path / "work", runner=runs.append,
                        prober=lambda p: MediaInfo(5.3, 1440, 1080, 60.0, True),
                        beat_finder=lambda p: [10.25 + i * 0.5 for i in range(100)])
@@ -169,3 +171,15 @@ def test_teaser_opens_the_reel_with_the_best_kill_slowed(tmp_path):
     assert Path(join[join.index("-i") + 1]).name == "teaser.mp4"
     assert reel.chapters[0] == "00:00 Intro" and reel.chapters[-1].endswith("Outro")
     assert len(reel.chapters) == 4
+
+
+def test_plain_is_the_default_hard_cuts_and_no_text(tmp_path):
+    runs = []
+    opts = EditOptions(player_name="semi")
+    reel = ReelBuilder(opts, tmp_path / "work", runner=runs.append,
+                       prober=lambda p: MediaInfo(5.3, 1440, 1080, 60.0, True))
+    reel.build([recorded(tmp_path, 1), recorded(tmp_path, 2)], tmp_path / "reel.mp4")
+    assert [Path(r[-1]).name for r in runs] == ["part_001.mp4", "part_002.mp4", "reel.mp4"]
+    assert all("-vf" not in r for r in runs[:2])
+    graph = runs[-1][runs[-1].index("-filter_complex") + 1]
+    assert "xfade" not in graph and "concat" in graph

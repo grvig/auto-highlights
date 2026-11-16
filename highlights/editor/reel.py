@@ -48,9 +48,10 @@ def _run(args: Sequence[str]) -> object:
 @dataclass(frozen=True)
 class EditOptions:
     player_name: str
-    captions: bool = True
-    cards: bool = True
-    transition: str = DEFAULT_TRANSITION
+    # Plain by default: the plays back to back with hard cuts and no text.
+    captions: bool = False
+    cards: bool = False
+    transition: str = "cut"
     music: Path | None = None
     # Map name for each demo, keyed by the demo path a clip came from.
     maps: dict[Path, str] = field(default_factory=dict)
