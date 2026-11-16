@@ -130,21 +130,20 @@ None of these are on by default; the default reel is plain.
   `--teaser`.
 
 Next to every reel the app writes a `.chapters.txt` (timestamps for a YouTube
-description) and a 1280x720 `.thumbnail.png`. Loudness is levelled to the
+description) and a 1280x720 `.thumbnail.png`. Loudness is levelled to
 -16 LUFS as one steady gain, with true peaks limited so gunshots never clip.
 
 ## Status
 
-- **Engine**: complete and verified against real matchmaking demos — kills,
-  multi-kills, aces, clutches, deaths, utility impact, scoring, best-of
-  selection, multi-demo plans and victim-cam replays.
-- **Recorder**: proven end to end on a live CS2 (2026-11-15): HLAE launch,
-  demo load, confirmed seeks, tick-exact playback, first-person camera, every
-  clip of an ace recorded with sound, the game closed and the player's
-  settings put back. Slow-motion ramps and the window-capture fallback are
-  unit-tested but not yet run live.
-- **Editor**: captions, title/outro cards, crossfades, music with ducking and
-  beat-synced cuts, punch-ins, kill flashes, teaser, chapters and thumbnail,
-  all rendered with ffmpeg and checked on real footage.
-- **Stitcher**: joins clips and exports every aspect profile with ffmpeg.
+- **Engine**: complete and verified against real matchmaking demos: kills,
+  multi-kills, aces, clutches, deaths, utility, scoring (impact, speed and
+  shot accuracy), whole-fight clip windows, best-of selection and
+  multi-demo plans.
+- **Recorder**: proven end to end on a live CS2 (2026-11-16): HLAE and the
+  window-capture fallback both record every clip with sound; slow-motion
+  ramps render smoothly at 150 fps; victim cams follow the right player; the
+  game is closed and the player's settings are put back.
+- **Editor**: plain hard-cut reels by default; captions, cards, transitions,
+  music, effects, chapters and thumbnails available as options. All checked
+  on real footage.
 - **App**: not started.
