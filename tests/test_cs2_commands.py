@@ -80,6 +80,18 @@ def test_movie_setup_cleans_the_hud_and_keeps_sound():
     assert cmd.MOVIE_SETUP[0] == "sv_cheats 1"
 
 
+def test_full_hud_keeps_the_players_hud_and_only_cleans_demo_overlays():
+    full = cmd.movie_setup(full_hud=True)
+    assert "cl_draw_only_deathnotices 0" in full
+    assert "hud_showtargetid 0" not in full
+    assert "spec_show_xray 0" in full and "r_show_build_info 0" in full
+
+
+def test_clean_hud_strips_to_the_kill_feed():
+    clean = cmd.movie_setup(full_hud=False)
+    assert "cl_draw_only_deathnotices 1" in clean and "hud_showtargetid 0" in clean
+
+
 def test_simple_commands():
     assert cmd.pause() == "demo_pause"
     assert cmd.resume() == "demo_resume"

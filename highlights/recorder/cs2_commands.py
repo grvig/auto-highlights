@@ -43,20 +43,36 @@ def account_id_from_steamid64(steamid: str | int) -> int:
 # reliable, so demos are staged here first.
 REPLAYS_FOLDER = "replays"
 
-# Console settings for clean footage: no build stamp, telemetry, x-ray or
-# target names, only the kill feed, and sound kept while unfocused.
-MOVIE_SETUP = (
+# Always applied: hides what only exists because a demo is playing (build
+# stamp, telemetry, x-ray outlines, trueview status) and keeps sound playing
+# while the window is unfocused. The player's HUD itself is left alone.
+DEMO_CLEANUP = (
     "sv_cheats 1",
-    "cl_draw_only_deathnotices 1",
     "r_show_build_info 0",
     "cl_hud_telemetry_frametime_show 0",
     "cl_hud_telemetry_ping_show 0",
     "cl_hud_telemetry_net_misdelivery_show 0",
     "cl_trueview_show_status 0",
     "spec_show_xray 0",
-    "hud_showtargetid 0",
     "snd_mute_losefocus 0",
 )
+
+# Optional: strips the HUD down to the kill feed, for a cinematic look.
+CLEAN_HUD = (
+    "cl_draw_only_deathnotices 1",
+    "hud_showtargetid 0",
+)
+
+# Every setting recording may change, for putting the player's values back.
+MOVIE_SETUP = DEMO_CLEANUP + CLEAN_HUD
+
+
+def movie_setup(full_hud: bool = True) -> list[str]:
+    """Console settings for recording. The full HUD is how the game is played:
+    radar, ammo, chat, round banners and crosshair all stay on screen."""
+    if full_hud:
+        return [*DEMO_CLEANUP, "cl_draw_only_deathnotices 0"]
+    return [*DEMO_CLEANUP, *CLEAN_HUD]
 
 
 # CS2's defaults for footage settings, used when the player's files do not

@@ -66,7 +66,7 @@ def test_load_demo_waits_for_the_game_then_cleans_the_view(controller):
     controller.load_demo("match_one", settle_seconds=4.0)
     sent = controller.test_console.sent
     assert sent[:2] == ["playdemo replays/match_one", "demoui"]
-    assert "cl_draw_only_deathnotices 1" in sent
+    assert "spec_show_xray 0" in sent
     assert controller.test_sleeper.waits == [4.0]
 
 
@@ -162,3 +162,13 @@ def test_play_range_points_the_camera_after_the_seek(controller):
     sent = controller.test_console.sent
     assert sent.index('spec_player "臻咘踔"') > sent.index("demo_gototick 10000")
     assert sent[-1] == "demo_step_tick 320"
+
+
+def test_load_demo_keeps_the_full_hud_unless_told_otherwise(controller):
+    controller.test_console.output = ["received full update"]
+    controller.load_demo("match_one", settle_seconds=0)
+    assert "cl_draw_only_deathnotices 0" in controller.test_console.sent
+    controller.full_hud = False
+    controller.test_console.output = ["received full update"]
+    controller.load_demo("match_one", settle_seconds=0)
+    assert controller.test_console.sent[-1] == "hud_showtargetid 0"

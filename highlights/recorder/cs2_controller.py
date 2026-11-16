@@ -82,6 +82,7 @@ class Cs2Controller:
         sleeper: Sleeper | None = None,
         tickrate: int = CS2_TICKRATE,
         command_runner: CommandRunner | None = None,
+        full_hud: bool = True,
     ) -> None:
         self.cs2_root = Path(cs2_root)
         self.console_port = console_port
@@ -90,6 +91,8 @@ class Cs2Controller:
         self._sleep = sleeper or time.sleep
         self._run_command = command_runner or _run_command
         self.tickrate = tickrate
+        # Keep the player's normal HUD in footage (False strips it to the kill feed).
+        self.full_hud = full_hud
         self._process: subprocess.Popen[bytes] | None = None
 
     @property
@@ -199,7 +202,7 @@ class Cs2Controller:
             raise Cs2Error(f"Demo {demo_name} never finished loading")
         self._sleep(settle_seconds)
         self.console.send(commands.toggle_demo_ui())
-        self.console.send_all(list(commands.MOVIE_SETUP))
+        self.console.send_all(commands.movie_setup(self.full_hud))
 
     def spectate(self, name: str, first_person: bool = True) -> None:
         """Lock the camera to one player's point of view, by in-game name."""
