@@ -70,3 +70,9 @@ def test_chronological_keeps_plan_order():
 def test_unknown_order_is_rejected():
     with pytest.raises(ValueError, match="Unknown order"):
         arrange([], [], "random")
+
+
+def test_ordinary_plays_are_not_used_to_pad_the_reel():
+    good, ordinary = moment(12.0, tick=1), moment(1.2, tick=2)
+    assert select_best([good, ordinary], 60) == [good]
+    assert select_best([good, ordinary], 60, min_score=0) == [good, ordinary]

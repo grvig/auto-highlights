@@ -32,7 +32,7 @@ from highlights.engine.multi import (
     players_across,
 )
 from highlights.engine.scoring import moment_kills
-from highlights.engine.selection import ORDERS, arrange, select_best
+from highlights.engine.selection import DEFAULT_MIN_SCORE, ORDERS, arrange, select_best
 from highlights.steam.account import signed_in_account
 from highlights.steam.locate import find_steam_root
 from highlights.recorder.base import RecordedClip
@@ -98,6 +98,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--slowmo",
         action="store_true",
         help="dip into slow motion on each of the player's kills",
+    )
+    parser.add_argument(
+        "--min-score",
+        type=float,
+        default=DEFAULT_MIN_SCORE,
+        help=f"with --best: leave out plays scoring under this (default {DEFAULT_MIN_SCORE:g})",
     )
     parser.add_argument(
         "--best",
@@ -662,7 +668,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Note: {player.name} is not in {label}", file=sys.stderr)
     plan = multi.plan
     if args.best:
-        chosen = select_best(plan.moments, args.best)
+        chosen = select_best(plan.moments, args.best, min_score=args.min_score)
         plan = replace(plan, moments=arrange(chosen, plan.moments, args.order))
         print(f"\nBest {args.best:g}s, {args.order} order")
     print_clip_plan(plan, player.name)

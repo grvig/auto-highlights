@@ -25,16 +25,26 @@ def _adjusted(moment: Moment, types: Counter, demos: Counter, variety: bool) -> 
     return moment.score * VARIETY_DECAY**repeats
 
 
+# Below this a play is ordinary (a sprayed single kill, a plain trade) and is
+# left out rather than used to pad the reel to its length.
+DEFAULT_MIN_SCORE = 2.0
+
+
 def select_best(
-    moments: list[Moment], target_seconds: float, *, variety: bool = True
+    moments: list[Moment],
+    target_seconds: float,
+    *,
+    variety: bool = True,
+    min_score: float = DEFAULT_MIN_SCORE,
 ) -> list[Moment]:
     """Pick the strongest moments until their footage fills target_seconds.
 
-    Moments scoring nothing (deaths, routine frags) are never chosen. A moment
-    longer than the time left is skipped in favour of shorter ones, but the
-    first pick is always taken so a short target still yields a reel.
+    Moments under min_score are never chosen, so a match with few good plays
+    makes a shorter reel instead of a padded one. A moment longer than the
+    time left is skipped in favour of shorter ones, but the first pick is
+    always taken so a short target still yields a reel.
     """
-    pool = [m for m in moments if m.score > 0]
+    pool = [m for m in moments if m.score > 0 and m.score >= min_score]
     chosen: list[Moment] = []
     types: Counter = Counter()
     demos: Counter = Counter()
