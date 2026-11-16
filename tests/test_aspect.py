@@ -76,3 +76,30 @@ def test_export_levels_loudness_for_upload():
     assert args[args.index("-af") + 1].startswith("loudnorm=I=-14")
     plain = convert_args(Path("in.mp4"), Path("out.mp4"), PROFILES["stretched"], normalise=False)
     assert "-af" not in plain and plain[plain.index("-c:a") + 1] == "copy"
+
+
+SAMPLE_MEASUREMENT = """[Parsed_loudnorm_0 @ 0x1]
+{
+	"input_i" : "-33.52",
+	"input_tp" : "-17.60",
+	"input_lra" : "9.10",
+	"input_thresh" : "-44.01",
+	"output_i" : "-14.20",
+	"target_offset" : "0.20"
+}"""
+
+
+def test_measured_loudness_becomes_one_steady_gain():
+    from highlights.stitcher.aspect import linear_loudness, parse_measurement
+
+    measured = parse_measurement(SAMPLE_MEASUREMENT)
+    assert measured["input_i"] == "-33.52"
+    chain = linear_loudness(measured)
+    assert ":linear=true:" in chain and "measured_I=-33.52" in chain and "offset=0.20" in chain
+
+
+def test_without_a_measurement_the_single_pass_filter_is_used():
+    from highlights.stitcher.aspect import LOUDNESS, linear_loudness, parse_measurement
+
+    assert parse_measurement("no json here") is None
+    assert linear_loudness(None) == LOUDNESS

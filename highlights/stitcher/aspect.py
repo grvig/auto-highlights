@@ -8,6 +8,7 @@ into native 16:9. Each profile is one ffmpeg video filter chain; capture at the
 
 from __future__ import annotations
 
+import json
 import logging
 import subprocess
 from dataclasses import dataclass
@@ -62,14 +63,46 @@ def video_filter(profile: ExportProfile) -> str:
 # Loudness target for the finished reel: what YouTube and most platforms
 # normalise to, so the reel is neither quieter nor squashed after upload.
 LOUDNESS = "loudnorm=I=-14:TP=-1.5:LRA=11"
+LOUDNESS_TARGET = {"I": -14.0, "TP": -1.5, "LRA": 11.0}
+
+
+def measure_args(source: Path, ffmpeg: str = "ffmpeg") -> list[str]:
+    """ffmpeg arguments for loudnorm's measuring pass (stats go to stderr)."""
+    return [ffmpeg, "-hide_banner", "-i", str(source), "-vn",
+            "-af", f"{LOUDNESS}:print_format=json", "-f", "null", "-"]
+
+
+def parse_measurement(stderr: str) -> dict[str, str] | None:
+    """The measured_* values loudnorm printed, or None if it printed none."""
+    start, end = stderr.rfind("{"), stderr.rfind("}")
+    if start == -1 or end < start:
+        return None
+    try:
+        data = json.loads(stderr[start:end + 1])
+        return {key: str(data[key]) for key in
+                ("input_i", "input_tp", "input_lra", "input_thresh", "target_offset")}
+    except (ValueError, KeyError):
+        return None
+
+
+def linear_loudness(measured: dict[str, str] | None) -> str:
+    """One steady gain to the target (linear mode), so gunshots keep their
+    punch; without a measurement, the single-pass filter is the fallback."""
+    if not measured:
+        return LOUDNESS
+    return (
+        f"{LOUDNESS}:linear=true:measured_I={measured['input_i']}:"
+        f"measured_TP={measured['input_tp']}:measured_LRA={measured['input_lra']}:"
+        f"measured_thresh={measured['input_thresh']}:offset={measured['target_offset']}"
+    )
 
 
 def convert_args(
     source: Path, output: Path, profile: ExportProfile, ffmpeg: str = "ffmpeg",
-    normalise: bool = True,
+    normalise: bool = True, loudness: str = LOUDNESS,
 ) -> list[str]:
     """ffmpeg arguments that reshape a video and, by default, level its loudness."""
-    audio = ["-af", LOUDNESS, "-ar", "48000", "-c:a", "aac", "-b:a", "192k"] if normalise else ["-c:a", "copy"]
+    audio = ["-af", loudness, "-ar", "48000", "-c:a", "aac", "-b:a", "192k"] if normalise else ["-c:a", "copy"]
     return [
         ffmpeg, "-y", "-i", str(source),
         "-vf", video_filter(profile),
@@ -84,7 +117,11 @@ def convert(
 ) -> Path:
     """Re-encode a video into the profile's shape, levelling its loudness."""
     output.parent.mkdir(parents=True, exist_ok=True)
-    args = convert_args(source, output, profile, ffmpeg, normalise)
+    loudness = LOUDNESS
+    if normalise:
+        measured = subprocess.run(measure_args(source, ffmpeg), capture_output=True, text=True)
+        loudness = linear_loudness(parse_measurement(measured.stderr))
+    args = convert_args(source, output, profile, ffmpeg, normalise, loudness)
     logger.info("Exporting %s as %s", source.name, profile.name)
     result = subprocess.run(args, capture_output=True, text=True, check=False)
     if result.returncode != 0 or not output.exists():
