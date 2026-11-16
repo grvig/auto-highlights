@@ -42,7 +42,7 @@ class MultiPlan:
 def match_from_source(source: DemoSource, timing: ClipConfig | None = None) -> Match:
     """A demo ready to plan from, padded with the configured clip timing."""
     label = f"{source.info.map_name} ({source.path.name})"
-    timing = timing or ClipConfig(3.0, 2.0)
+    timing = timing or ClipConfig()
     return Match(
         label=label,
         players=source.players(),

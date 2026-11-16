@@ -481,7 +481,7 @@ def clip_timing() -> ClipConfig:
     try:
         return load_config().clips
     except ConfigError:
-        return ClipConfig(3.0, 2.0)
+        return ClipConfig()
 
 
 def editing_style(args: argparse.Namespace, defaults: EditingConfig | None = None) -> EditingConfig:

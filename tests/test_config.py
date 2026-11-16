@@ -171,6 +171,15 @@ def test_hud_defaults_to_clean_and_rejects_unknown_values(tmp_path):
 
 def test_merge_gap_is_read_from_clips(tmp_path):
     path = write_config(tmp_path)
-    assert load_config(path).clips.merge_gap_seconds == 2.0
+    assert load_config(path).clips.merge_gap_seconds == 10.0  # whole engagements by default
     path.write_text(path.read_text() + "\n[clips]\nmerge_gap_seconds = 8.0\n")
     assert load_config(path).clips.merge_gap_seconds == 8.0
+
+
+def test_clip_timing_defaults_keep_whole_engagements(tmp_path):
+    clips = load_config(write_config(tmp_path)).clips
+    assert (clips.pre_roll_seconds, clips.post_roll_seconds) == (6.0, 2.5)
+
+
+def test_editing_defaults_to_hard_cuts(tmp_path):
+    assert load_config(write_config(tmp_path)).editing.transition == "cut"

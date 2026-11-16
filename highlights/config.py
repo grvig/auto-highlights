@@ -29,10 +29,12 @@ class ConfigError(Exception):
 
 @dataclass(frozen=True)
 class ClipConfig:
-    pre_roll_seconds: float
-    post_roll_seconds: float
+    # Whole engagements by default: the walk-up before the first kill and a
+    # beat after the last, the way players clip their own plays.
+    pre_roll_seconds: float = 6.0
+    post_roll_seconds: float = 2.5
     # Kills closer than this stay in one continuous clip instead of two.
-    merge_gap_seconds: float = 2.0
+    merge_gap_seconds: float = 10.0
 
 
 # Recording backends: HLAE renders frame-perfect footage with synced audio;
@@ -187,9 +189,9 @@ def load_config(
         output_dir=_resolve(base, str(paths.get("output_dir", "./output"))),
         clips_dir=_resolve(base, str(paths.get("clips_dir", "./clips"))),
         clips=ClipConfig(
-            pre_roll_seconds=float(clips.get("pre_roll_seconds", 3.0)),
-            post_roll_seconds=float(clips.get("post_roll_seconds", 2.0)),
-            merge_gap_seconds=float(clips.get("merge_gap_seconds", 2.0)),
+            pre_roll_seconds=float(clips.get("pre_roll_seconds", ClipConfig.pre_roll_seconds)),
+            post_roll_seconds=float(clips.get("post_roll_seconds", ClipConfig.post_roll_seconds)),
+            merge_gap_seconds=float(clips.get("merge_gap_seconds", ClipConfig.merge_gap_seconds)),
         ),
         ffmpeg_path=locate_ffmpeg(str(paths.get("ffmpeg", "ffmpeg"))),
         cs2_root_detected=not configured_cs2 and cs2_root is not None,
@@ -207,7 +209,7 @@ def load_config(
         editing=EditingConfig(
             music=_resolve(base, str(editing["music"])) if editing.get("music") else None,
             music_start=float(editing.get("music_start", 0.0)),
-            transition=str(editing.get("transition", "fade")),
+            transition=str(editing.get("transition", EditingConfig.transition)),
             pro=bool(editing.get("pro", False)),
         ),
     )
