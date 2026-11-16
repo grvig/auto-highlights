@@ -19,6 +19,7 @@ from highlights.engine.detectors.utility_damage import UtilityDamageDetector
 from highlights.engine.detectors.utility_flash import FlashUtilityDetector
 from highlights.engine.detectors.utility_smoke import SmokeUtilityDetector
 from highlights.engine.moments import HighlightType, Moment, Segment
+from highlights.engine.fights import extend_to_fights
 from highlights.engine.ramps import add_kill_ramps, mark_kills
 from highlights.engine.replays import add_victim_replays
 from highlights.engine.scoring import score_moments
@@ -194,6 +195,7 @@ def build_clip_plan(
     moments.sort(key=lambda m: (m.core_tick, m.highlight_type))
     if merge:
         moments = merge_overlaps(moments)
+    moments = extend_to_fights(moments, ctx)
     if score:
         moments = score_moments(moments, ctx)
     if replays:
