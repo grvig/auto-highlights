@@ -50,6 +50,9 @@ class RecordingConfig:
     framerate: int = 60
     # Export shape for finished reels; see highlights.stitcher.aspect.
     aspect: str = "stretched"
+    # "full" keeps the normal game HUD (radar, ammo, chat, crosshair) in
+    # footage; "clean" strips it down to the kill feed.
+    hud: str = "full"
     # Fetch a newer HLAE before recording; CS2 updates break old ones.
     auto_update: bool = True
 
@@ -131,6 +134,8 @@ class Config:
             problems.append(f"recording.recorder must be one of {', '.join(RECORDERS)}")
         if rec.width < 320 or rec.height < 240:
             problems.append(f"recording size {rec.width}x{rec.height} is too small")
+        if rec.hud not in ("full", "clean"):
+            problems.append('recording.hud must be "full" or "clean"')
         if not (24 <= rec.framerate <= 240):
             problems.append(f"recording.framerate {rec.framerate} is not in 24-240")
 
@@ -192,6 +197,7 @@ def load_config(
             height=int(recording.get("height", 1080)),
             framerate=int(recording.get("framerate", 60)),
             aspect=str(recording.get("aspect", "stretched")),
+            hud=str(recording.get("hud", "full")),
             auto_update=bool(recording.get("auto_update", True)),
         ),
         editing=EditingConfig(

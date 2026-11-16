@@ -100,3 +100,12 @@ def test_recorder_restores_the_signed_in_players_settings(tmp_path):
     (cfg / "cs2_user_convars_0_slot0.vcfg").write_text('\t\t"hud_showtargetid"\t\t"true"\n')
     recorder = factory.build_live_recorder(make_config(tmp_path), steam_root=steam)
     assert "hud_showtargetid 1" in recorder.restore_commands
+
+
+def test_recordings_keep_the_full_hud_unless_config_says_clean(tmp_path):
+    from dataclasses import replace
+
+    config = make_config(tmp_path)
+    assert factory.build_live_recorder(config).cs2.full_hud
+    clean = replace(config, recording=replace(config.recording, hud="clean"))
+    assert not factory.build_live_recorder(clean).cs2.full_hud

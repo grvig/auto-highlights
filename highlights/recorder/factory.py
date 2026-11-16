@@ -38,7 +38,7 @@ def build_live_recorder(config: Config, steam_root: Path | None = None) -> HlaeR
     """The recorder config asks for, falling back to window capture."""
     config.verify_cs2_install()
     rec = config.recording
-    cs2 = Cs2Controller(config.cs2_root)
+    cs2 = Cs2Controller(config.cs2_root, full_hud=rec.hud != "clean")
     common = dict(output_dir=config.clips_dir, framerate=rec.framerate, ffmpeg=config.ffmpeg_path,
                   restore_commands=player_restore_commands(steam_root))
 

@@ -159,3 +159,11 @@ def test_editing_defaults_are_read(tmp_path):
     editing = load_config(path).editing
     assert editing.music.name == "track.mp3" and editing.music.is_absolute()
     assert editing.pro and editing.transition == "cut" and editing.music_start == 0.0
+
+
+def test_hud_defaults_to_full_and_rejects_unknown_values(tmp_path):
+    path = write_config(tmp_path)
+    assert load_config(path).recording.hud == "full"
+    path.write_text(path.read_text() + '\n[recording]\nhud = "minimal"\n')
+    with pytest.raises(ConfigError, match="recording.hud"):
+        load_config(path).validate()

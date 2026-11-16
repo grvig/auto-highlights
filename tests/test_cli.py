@@ -253,3 +253,8 @@ def test_flags_override_the_configs_editing_style(tmp_path):
         ["m.dem", "--music", "other.mp3", "--music-start", "0", "--transition", "cut"]), saved)
     assert flagged.music.name == "other.mp3" and flagged.music_start == 0.0
     assert flagged.transition == "cut" and flagged.pro
+
+
+def test_parser_reads_clean_hud():
+    assert build_parser().parse_args(["m.dem", "--clean-hud"]).clean_hud
+    assert not build_parser().parse_args(["m.dem"]).clean_hud
