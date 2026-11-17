@@ -16,7 +16,8 @@ from highlights.app.demos import default_folders, find_demos
 from highlights.app.jobs import JobRunner
 from highlights.app.serialize import match_summary, plan_view, player_table
 from highlights.app.settings import SettingsError, apply_changes
-from highlights.config import CONFIG_FILENAME, Config, ConfigError, load_config, repo_root
+from highlights.appdirs import config_location
+from highlights.config import Config, ConfigError, load_config
 from highlights.editor.reel import EditOptions
 from highlights.engine.clip_plan import ClipPlan
 from highlights.engine.demo_source import DemoError
@@ -50,7 +51,7 @@ class AppApi:
         config_path: Path | None = None,
     ) -> None:
         self._load_config = config_loader
-        self.config_path = config_path or repo_root() / CONFIG_FILENAME
+        self.config_path = config_path or config_location()
         self.jobs = runner or JobRunner()
         self._you = you or _signed_in_steamid
         self._loaded: tuple[tuple[str, ...], Matches] | None = None

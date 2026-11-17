@@ -166,12 +166,18 @@ def load_config(
     path: Path | str | None = None,
     locate_cs2: Callable[[], Path | None] = find_cs2_root,
 ) -> Config:
-    """Load and validate config, defaulting to config.toml at the repo root.
+    """Load and validate config: the given file, else the one in use.
 
-    cs2_root is optional: when it is left out, the CS2 install is found through
-    Steam's library list instead.
+    That is config.toml beside the code in a source checkout, else the
+    installed app's own (see highlights.appdirs). cs2_root is optional: when
+    it is left out, the CS2 install is found through Steam's library list.
     """
-    config_path = Path(path) if path else repo_root() / CONFIG_FILENAME
+    if path:
+        config_path = Path(path)
+    else:
+        from highlights.appdirs import config_location  # appdirs imports this module
+
+        config_path = config_location()
 
     if not config_path.is_file():
         raise ConfigError(
