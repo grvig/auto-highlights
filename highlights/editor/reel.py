@@ -25,6 +25,7 @@ from highlights.editor.captions import caption_filter, caption_for, headline_for
 from highlights.editor.music import check_music, music_command
 from highlights.editor.probe import MediaInfo, probe
 from highlights.editor.transitions import join_command, transition_seconds
+from highlights.progress import CancelToken, Progress, ProgressFn, ignore
 from highlights.recorder.base import RecordedClip
 
 logger = logging.getLogger(__name__)
@@ -89,7 +90,14 @@ class ReelBuilder:
             lambda path: beat_tools.beat_times(beat_tools.load_samples(path, ffmpeg))
         )
 
-    def build(self, clips: list[RecordedClip], output: Path) -> Path:
+    def build(
+        self,
+        clips: list[RecordedClip],
+        output: Path,
+        progress: ProgressFn = ignore,
+        cancel: CancelToken | None = None,
+    ) -> Path:
+        """Edit the clips into one reel. Reports each step and stops on cancel."""
         usable = [c for c in clips if c.succeeded and c.output_path.is_file()]
         if not usable:
             raise ValueError("No recorded clips to edit")
@@ -114,7 +122,14 @@ class ReelBuilder:
                 [TRIMMABLE_SECONDS] * len(durations), lead_in,
             )
 
-        parts = [self._prepare(n, c, d) for n, (c, d) in enumerate(zip(usable, durations), 1)]
+        # preparing every clip, then joining, then the music bed when there is one
+        steps = len(usable) + 1 + int(bool(self.options.music))
+        parts = []
+        for number, (clip, duration) in enumerate(zip(usable, durations), start=1):
+            if cancel is not None:
+                cancel.check()
+            progress(Progress("edit", number - 1, steps, f"Preparing {clip.request.label}"))
+            parts.append(self._prepare(number, clip, duration))
         if self.options.cards:
             maps = sorted({m for m in self.options.maps.values() if m})
             parts.insert(0, self._card("title", title_lines(self.options.player_name, maps, len(
@@ -129,12 +144,19 @@ class ReelBuilder:
             durations = [TEASER_FOOTAGE_SECONDS / TEASER_SPEED, *durations]
         self.chapters = self._chapters(usable, durations, fade, teaser=frame is not None)
         joined = self.work_dir / "joined.mp4" if self.options.music else output
+        if cancel is not None:
+            cancel.check()
+        progress(Progress("edit", len(usable), steps, "Joining the clips"))
         self._run(join_command(parts, durations, joined, width, height, fps,
                                self.options.transition if fade else "fade", self.ffmpeg, fade))
         if self.options.music:
+            if cancel is not None:
+                cancel.check()
+            progress(Progress("edit", len(usable) + 1, steps, "Mixing the music"))
             total = sum(durations) - fade * (len(durations) - 1)
             self._run(music_command(joined, self.options.music, output, total,
                                     start=self.options.music_start, ffmpeg=self.ffmpeg))
+        progress(Progress("edit", steps, steps, "Edited"))
         logger.info("Edited reel written to %s", output)
         return output
 

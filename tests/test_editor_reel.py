@@ -183,3 +183,28 @@ def test_plain_is_the_default_hard_cuts_and_no_text(tmp_path):
     assert all("-vf" not in r for r in runs[:2])
     graph = runs[-1][runs[-1].index("-filter_complex") + 1]
     assert "xfade" not in graph and "concat" in graph
+
+
+def test_editing_reports_each_step(tmp_path):
+    runs, events = [], []
+    builder(tmp_path, runs, cards=False).build(
+        [recorded(tmp_path, 1), recorded(tmp_path, 2)], tmp_path / "reel.mp4", progress=events.append)
+    assert [e.message for e in events] == ["Preparing #001.1/2", "Preparing #002.1/2", "Joining the clips", "Edited"]
+    assert events[-1].fraction == 1.0
+
+
+def test_a_cancelled_edit_stops_before_the_next_clip(tmp_path):
+    from highlights.progress import CancelToken, Cancelled
+
+    token = CancelToken()
+    runs = []
+
+    def runner(args):
+        runs.append(args)
+        token.cancel()
+
+    reel = builder(tmp_path, [], cards=False)
+    reel._run = runner
+    with pytest.raises(Cancelled):
+        reel.build([recorded(tmp_path, 1), recorded(tmp_path, 2)], tmp_path / "reel.mp4", cancel=token)
+    assert len(runs) == 1  # the first clip, nothing after the cancel
