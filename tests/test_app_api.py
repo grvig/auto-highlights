@@ -143,3 +143,20 @@ def test_settings_say_when_nothing_is_set_up_yet(tmp_path):
         raise ConfigError("No config")
 
     assert AppApi(config_loader=no_config, you=lambda: None).settings() == {"configured": False}
+
+
+def test_show_in_folder_only_opens_reels_in_the_output_folder(tmp_path):
+    out = tmp_path / "out"
+    out.mkdir()
+    reel = out / "semi_highlights_2026-11-17_1015.mp4"
+    reel.write_bytes(b"x")
+    elsewhere = tmp_path / "secret.txt"
+    elsewhere.write_text("x")
+    opened = []
+    config = Config(cs2_root=None, output_dir=out, clips_dir=tmp_path / "clips", clips=ClipConfig())
+    app = AppApi(config_loader=lambda: config, you=lambda: None, opener=opened.append)
+    assert app.show_in_folder(str(reel))["shown"] == str(reel.resolve())
+    assert opened == [["explorer", f"/select,{reel.resolve()}"]]
+    assert "error" in app.show_in_folder(str(elsewhere))
+    assert "error" in app.show_in_folder(str(out / ".." / "secret.txt"))
+    assert len(opened) == 1

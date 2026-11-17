@@ -9,6 +9,7 @@ does not parse the demos again.
 from __future__ import annotations
 
 import logging
+import subprocess
 from collections.abc import Callable
 from pathlib import Path
 
@@ -51,9 +52,11 @@ class AppApi:
         runner: JobRunner | None = None,
         you: Callable[[], str | None] | None = None,
         config_path: Path | None = None,
+        opener: Callable[[list[str]], object] | None = None,
     ) -> None:
         self._load_config = config_loader
         self.config_path = config_path or config_location()
+        self._open = opener or (lambda args: subprocess.Popen(args))
         self.jobs = runner or JobRunner()
         self._you = you or _signed_in_steamid
         self._loaded: tuple[tuple[str, ...], Matches] | None = None
@@ -83,6 +86,22 @@ class AppApi:
     def reels(self) -> dict:
         config = self._config()
         return {"reels": list_reels(config.output_dir) if config else []}
+
+    def show_in_folder(self, path: str) -> dict:
+        """Open Explorer with a finished reel selected.
+
+        Only files inside the output folder, so the window cannot be used to
+        open anything else on the PC.
+        """
+        config = self._config()
+        if config is None:
+            return _error("No config.")
+        target = Path(path).resolve()
+        root = Path(config.output_dir).resolve()
+        if root not in target.parents or not target.is_file():
+            return _error("That file is not one of your reels.")
+        self._open(["explorer", f"/select,{target}"])
+        return {"shown": str(target)}
 
     # --- settings ----------------------------------------------------------
 
