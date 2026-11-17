@@ -15,7 +15,8 @@ from pathlib import Path
 from highlights.app.demos import default_folders, find_demos
 from highlights.app.jobs import JobRunner
 from highlights.app.serialize import match_summary, plan_view, player_table
-from highlights.config import Config, ConfigError, load_config
+from highlights.app.settings import SettingsError, apply_changes
+from highlights.config import CONFIG_FILENAME, Config, ConfigError, load_config, repo_root
 from highlights.editor.reel import EditOptions
 from highlights.engine.clip_plan import ClipPlan
 from highlights.engine.demo_source import DemoError
@@ -46,8 +47,10 @@ class AppApi:
         config_loader: Callable[[], Config] = load_config,
         runner: JobRunner | None = None,
         you: Callable[[], str | None] | None = None,
+        config_path: Path | None = None,
     ) -> None:
         self._load_config = config_loader
+        self.config_path = config_path or repo_root() / CONFIG_FILENAME
         self.jobs = runner or JobRunner()
         self._you = you or _signed_in_steamid
         self._loaded: tuple[tuple[str, ...], Matches] | None = None
@@ -60,6 +63,41 @@ class AppApi:
         except ConfigError as error:
             logger.warning("No usable config: %s", error)
             return None
+
+    # --- settings ----------------------------------------------------------
+
+    def settings(self) -> dict:
+        """The settings the app shows, with where its files go."""
+        config = self._config()
+        if config is None:
+            return {"configured": False}
+        return {
+            "configured": True,
+            "output_dir": str(config.output_dir),
+            "clips_dir": str(config.clips_dir),
+            "aspect": config.recording.aspect,
+            "hud": config.recording.hud,
+            "recorder": config.recording.recorder,
+            "music": str(config.editing.music) if config.editing.music else None,
+            "music_start": config.editing.music_start,
+            "transition": config.editing.transition,
+            "target_seconds": config.editing.target_seconds,
+        }
+
+    def save_settings(self, changes: dict) -> dict:
+        """Apply "section.key": value changes and return the new settings."""
+        before = self.config_path.read_bytes() if self.config_path.is_file() else None
+        try:
+            apply_changes(self.config_path, changes)
+            self._load_config().validate()
+        except (SettingsError, ConfigError, OSError) as error:
+            # a value the app rejects must not stay behind in the file
+            if before is None:
+                self.config_path.unlink(missing_ok=True)
+            else:
+                self.config_path.write_bytes(before)
+            return _error(str(error))
+        return self.settings()
 
     # --- choosing demos and a player ---------------------------------------
 

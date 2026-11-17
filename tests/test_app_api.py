@@ -120,3 +120,26 @@ def test_plain_is_the_default_edit():
     edit = _edit_options({}, "semi", loaded)
     assert (edit.captions, edit.cards, edit.transition, edit.music) == (False, False, "cut", None)
     assert _edit_options({"plain": True}, "semi", loaded) is None
+
+
+def test_settings_are_shown_and_saved_through_the_config_file(tmp_path):
+    from highlights.config import load_config
+
+    path = tmp_path / "config.toml"
+    path.write_text('[paths]\noutput_dir = "D:/out"\n', encoding="utf-8")
+    app = AppApi(config_loader=lambda: load_config(path, locate_cs2=lambda: None),
+                 you=lambda: None, config_path=path)
+    assert app.settings()["transition"] == "cut"
+    saved = app.save_settings({"editing.transition": "fade", "editing.target_seconds": 90})
+    assert (saved["transition"], saved["target_seconds"]) == ("fade", 90.0)
+    assert "error" in app.save_settings({"recording.hud": "minimal"})  # fails validation
+    assert "minimal" not in path.read_text(encoding="utf-8")  # and is rolled back
+    assert app.settings()["transition"] == "fade"
+    assert "error" in app.save_settings({"paths.cs2_root": "C:/"})  # not editable here
+
+
+def test_settings_say_when_nothing_is_set_up_yet(tmp_path):
+    def no_config():
+        raise ConfigError("No config")
+
+    assert AppApi(config_loader=no_config, you=lambda: None).settings() == {"configured": False}
