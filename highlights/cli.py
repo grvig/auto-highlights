@@ -32,6 +32,7 @@ from highlights.pipeline.planning import (
     open_cache,
     plan_reel,
 )
+from highlights.pipeline.production import ProductionError, produce_reel
 from highlights.pipeline.types import parse_types
 from highlights.engine.selection import DEFAULT_MIN_SCORE, ORDERS
 from highlights.steam.account import signed_in_account
@@ -39,20 +40,15 @@ from highlights.steam.locate import find_steam_root
 from highlights.recorder.base import RecordedClip
 from highlights.recorder.cs2_controller import Cs2Error
 from highlights.recorder.dry_run import DryRunRecorder
-from highlights.recorder.naming import build_clip_requests, reel_filename
+from highlights.recorder.naming import build_clip_requests
 from highlights.recorder.factory import build_live_recorder, settings_guard, update_hlae
 from highlights.recorder.hlae import BUNDLED_DIR as HLAE_BUNDLED_DIR
 from highlights.recorder.hlae import HlaeError
 from highlights.recorder.session import already_recorded, record_requests
 from highlights.editor.beats import beat_times, load_samples, tempo_of
-from highlights.editor.fonts import FontError
 from highlights.editor.preview import describe_edit
-from highlights.editor.probe import ProbeError
-from highlights.editor.reel import EditOptions, ReelBuilder
-from highlights.editor.thumbnail import best_frame, thumbnail_command
-from highlights.stitcher.runner import StitchError
-from highlights.stitcher.aspect import PROFILES, convert
-from highlights.stitcher.stitch import stitch_clips
+from highlights.editor.reel import EditOptions
+from highlights.stitcher.aspect import PROFILES
 
 
 
@@ -494,34 +490,18 @@ def stitch_recorded(
     aspect: str | None = None,
     edit: EditOptions | None = None,
 ) -> int:
-    """Edit (or just join) recorded clips into a reel in the chosen shape."""
-    profile = PROFILES.get(aspect or config.recording.aspect, PROFILES["stretched"])
-    reel_name = reel_filename(player_name, config.output_dir)
-    reel_path = config.clips_dir / f"_joined_{reel_name}"
-    print(f"\n{'Editing' if edit else 'Stitching'} {len(clips)} clip(s) into {reel_name}")
+    """Edit (or just join) recorded clips into a reel and say where it went."""
+    print(f"\n{'Editing' if edit else 'Stitching'} {len(clips)} clip(s)")
     try:
-        if edit:
-            builder = ReelBuilder(edit, config.clips_dir / "edit", config.ffmpeg_path)
-            output = builder.build(clips, reel_path)
-        else:
-            output = stitch_clips(clips, reel_path, config.ffmpeg_path, work_dir=config.clips_dir)
-        final = convert(output, config.output_dir / reel_name, profile, config.ffmpeg_path)
-        if edit and builder.chapters:
-            chapters = final.with_suffix(".chapters.txt")
-            chapters.write_text("\n".join(builder.chapters) + "\n", encoding="utf-8")
-            print(f"Chapters for the video description: {chapters}")
-            frame = best_frame(clips)
-            if frame:
-                thumb = final.with_suffix(".thumbnail.png")
-                subprocess.run(thumbnail_command(frame[0], frame[1], player_name, thumb,
-                                                 config.clips_dir / "edit", config.ffmpeg_path),
-                               check=True, capture_output=True)
-                print(f"Thumbnail: {thumb}")
-    except (StitchError, RuntimeError, ValueError, OSError,
-            subprocess.CalledProcessError, FontError, ProbeError) as error:
+        result = produce_reel(clips, player_name, config, aspect, edit)
+    except ProductionError as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
-    print(f"Reel written ({profile.name}): {final}")
+    if result.chapters:
+        print(f"Chapters for the video description: {result.chapters}")
+    if result.thumbnail:
+        print(f"Thumbnail: {result.thumbnail}")
+    print(f"Reel written ({result.shape}): {result.video}")
     return 0
 
 
