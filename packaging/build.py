@@ -1,9 +1,10 @@
 """Build the standalone Windows app with PyInstaller.
 
-    python packaging/build.py [--out D:/auto-highlights/build]
+    python packaging/build.py [--out D:/auto-highlights/build] [--installer]
 
 Produces <out>/dist/auto-highlights/auto-highlights.exe with Python and every
-dependency inside, so users install nothing else. ffmpeg and HLAE are not
+dependency inside, so users install nothing else. With --installer it also
+compiles <out>/installer/auto-highlights-<version>-setup.exe (Inno Setup). ffmpeg and HLAE are not
 bundled: the app downloads them on first run (highlights.setup), which keeps
 the installer small and lets HLAE update itself when CS2 changes.
 """
@@ -44,10 +45,42 @@ def pyinstaller_args(out: Path) -> list[str]:
     ]
 
 
+INNO_LOCATIONS = (
+    Path("C:/Program Files/Inno Setup 7/ISCC.exe"),
+    Path("C:/Program Files (x86)/Inno Setup 6/ISCC.exe"),
+    Path("C:/Program Files/Inno Setup 6/ISCC.exe"),
+)
+
+
+def find_iscc() -> Path | None:
+    on_path = shutil.which("ISCC")
+    if on_path:
+        return Path(on_path)
+    return next((p for p in INNO_LOCATIONS if p.is_file()), None)
+
+
+def app_version() -> str:
+    from highlights import __version__
+
+    return __version__
+
+
+def installer_args(iscc: Path, dist: Path, out: Path, version: str) -> list[str]:
+    return [
+        str(iscc), "/Q",
+        f"/DAppVersion={version}",
+        f"/DSourceDir={dist}",
+        f"/DOutputDir={out}",
+        str(ROOT / "packaging" / "installer.iss"),
+    ]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", type=Path, default=ROOT / "build")
-    out = parser.parse_args().out
+    parser.add_argument("--installer", action="store_true", help="also compile the setup .exe")
+    options = parser.parse_args()
+    out = options.out
     shutil.rmtree(out / "dist" / NAME, ignore_errors=True)
     result = subprocess.run(pyinstaller_args(out))
     exe = out / "dist" / NAME / f"{NAME}.exe"
@@ -55,6 +88,19 @@ def main() -> int:
         print("Build failed", file=sys.stderr)
         return 1
     print(f"Built {exe}")
+    if not options.installer:
+        return 0
+    iscc = find_iscc()
+    if iscc is None:
+        print("Inno Setup (ISCC.exe) not found; install it to build the installer", file=sys.stderr)
+        return 1
+    version = app_version()
+    result = subprocess.run(installer_args(iscc, exe.parent, out / "installer", version))
+    setup = out / "installer" / f"{NAME}-{version}-setup.exe"
+    if result.returncode != 0 or not setup.is_file():
+        print("Installer build failed", file=sys.stderr)
+        return 1
+    print(f"Built {setup}")
     return 0
 
 
