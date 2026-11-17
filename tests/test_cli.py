@@ -296,3 +296,14 @@ def test_progress_lines_are_short(capsys):
 
 def test_parser_reads_setup():
     assert build_parser().parse_args(["--setup"]).setup
+
+
+def test_ctrl_c_stops_with_a_short_message_not_a_traceback(monkeypatch, capsys):
+    from highlights import cli
+
+    def interrupted():
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(cli, "run_check", interrupted)
+    assert cli.main(["--check"]) == 130
+    assert "Stopped." in capsys.readouterr().err

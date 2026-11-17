@@ -562,8 +562,18 @@ def use_utf8_output() -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the command line. Ctrl+C stops cleanly: the game is closed and
+    CS2 settings are put back on the way out, then exit code 130."""
     args = build_parser().parse_args(argv)
     use_utf8_output()
+    try:
+        return run(args)
+    except KeyboardInterrupt:
+        print("\nStopped.", file=sys.stderr)
+        return 130
+
+
+def run(args: argparse.Namespace) -> int:
 
     level = args.log_level or ("info" if args.verbose else "warning")
     configure_logging(level=level, log_file=args.log_file)
