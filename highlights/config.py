@@ -169,15 +169,16 @@ def load_config(
     """Load and validate config: the given file, else the one in use.
 
     That is config.toml beside the code in a source checkout, else the
-    installed app's own (see highlights.appdirs). cs2_root is optional: when
+    installed app's own (see highlights.appdirs), created on first run. cs2_root is optional: when
     it is left out, the CS2 install is found through Steam's library list.
     """
     if path:
         config_path = Path(path)
     else:
-        from highlights.appdirs import config_location  # appdirs imports this module
+        from highlights.appdirs import ensure_config  # appdirs imports this module
 
-        config_path = config_location()
+        # an installed copy's first run gets a starter config, not an error
+        config_path = ensure_config()
 
     if not config_path.is_file():
         raise ConfigError(

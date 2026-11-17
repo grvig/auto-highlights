@@ -64,7 +64,7 @@ def run_preflight(config: Config) -> list[Check]:
 
     if config.recording.recorder == "hlae":
         hlae_dir = find_hlae(config.recording.hlae_path)
-        detail = str(hlae_dir) if hlae_dir else "not found - run --update-hlae"
+        detail = str(hlae_dir) if hlae_dir else "not found - run --setup"
         version = installed_version(hlae_dir) if hlae_dir else None
         if version:
             detail += f" (v{'.'.join(map(str, version))})"
