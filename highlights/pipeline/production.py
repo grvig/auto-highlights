@@ -9,16 +9,22 @@ from __future__ import annotations
 
 import contextlib
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from highlights.config import Config
+from highlights.engine.clip_plan import ClipPlan
 from highlights.editor.fonts import FontError
 from highlights.editor.probe import ProbeError
 from highlights.editor.reel import EditOptions, ReelBuilder
 from highlights.editor.thumbnail import best_frame, thumbnail_command
-from highlights.recorder.base import RecordedClip
-from highlights.recorder.naming import reel_filename
+from highlights.recorder.base import ClipRequest, RecordedClip
+from highlights.recorder.cs2_controller import Cs2Error
+from highlights.recorder.dry_run import DryRunRecorder
+from highlights.recorder.factory import build_live_recorder, settings_guard
+from highlights.recorder.hlae import HlaeError
+from highlights.recorder.naming import build_clip_requests, reel_filename
+from highlights.recorder.session import already_recorded, record_requests
 from highlights.stitcher.aspect import PROFILES, convert
 from highlights.stitcher.runner import StitchError
 from highlights.stitcher.stitch import stitch_clips
@@ -26,6 +32,52 @@ from highlights.stitcher.stitch import stitch_clips
 
 class ProductionError(Exception):
     """Raised when a reel cannot be made; the message explains why."""
+
+
+def clip_requests(
+    plan: ClipPlan,
+    player_name: str,
+    config: Config,
+    fallback_demo: Path,
+    names: dict[str, str] | None = None,
+) -> list[ClipRequest]:
+    """One numbered clip to film per window of the plan."""
+    return build_clip_requests(
+        plan=plan, demo_path=fallback_demo, player_name=player_name,
+        output_dir=config.clips_dir, extension="mp4", names=names,
+    )
+
+
+def clips_on_disk(requests: list[ClipRequest]) -> list[RecordedClip]:
+    """The clips an earlier run already recorded, for editing again."""
+    return [
+        RecordedClip(r, r.output_path, succeeded=already_recorded(r),
+                     error=None if already_recorded(r) else "not recorded yet")
+        for r in requests
+    ]
+
+
+def record_clips(
+    requests: list[ClipRequest],
+    config: Config,
+    *,
+    live: bool,
+    resume: bool = False,
+    spectator_hud: bool = False,
+) -> list[RecordedClip]:
+    """Film every request (or log them, when not live), guarding CS2 settings.
+
+    One failed clip never stops the run; a game that cannot be started or
+    reached raises ProductionError.
+    """
+    if spectator_hud:
+        config = replace(config, recording=replace(config.recording, hud="full"))
+    try:
+        recorder = build_live_recorder(config) if live else DryRunRecorder()
+        with settings_guard(config) if live else contextlib.nullcontext():
+            return record_requests(recorder, requests, skip_existing=resume and live)
+    except (HlaeError, Cs2Error) as error:
+        raise ProductionError(str(error)) from error
 
 
 @dataclass(frozen=True)

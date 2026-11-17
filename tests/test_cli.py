@@ -218,7 +218,8 @@ def test_edit_only_reuses_clips_on_disk_without_recording(tmp_path, monkeypatch)
     (tmp_path / "clips" / "001_r01_kill_semi.mp4").write_bytes(b"video")
     seen = {}
     monkeypatch.setattr(cli, "load_config", lambda: config)
-    monkeypatch.setattr(cli, "build_live_recorder", lambda c: pytest.fail("must not record"))
+    monkeypatch.setattr("highlights.pipeline.production.build_live_recorder",
+                        lambda c: pytest.fail("must not record"))
     monkeypatch.setattr(cli, "stitch_recorded", lambda clips, *a: seen.setdefault("clips", clips) and 0)
     assert cli.run_recording(plan, "semi", fallback_demo=tmp_path / "m.dem", pov_demos=[],
                              live=False, edit_only=True) == 0

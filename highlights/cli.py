@@ -9,10 +9,9 @@ Parses a demo, reports players and a highlight plan, and optionally records
 from __future__ import annotations
 
 import argparse
-import contextlib
 import subprocess
 import sys
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
@@ -32,19 +31,20 @@ from highlights.pipeline.planning import (
     open_cache,
     plan_reel,
 )
-from highlights.pipeline.production import ProductionError, produce_reel
+from highlights.pipeline.production import (
+    ProductionError,
+    clip_requests,
+    clips_on_disk,
+    produce_reel,
+    record_clips,
+)
 from highlights.pipeline.types import parse_types
 from highlights.engine.selection import DEFAULT_MIN_SCORE, ORDERS
 from highlights.steam.account import signed_in_account
 from highlights.steam.locate import find_steam_root
 from highlights.recorder.base import RecordedClip
-from highlights.recorder.cs2_controller import Cs2Error
-from highlights.recorder.dry_run import DryRunRecorder
-from highlights.recorder.naming import build_clip_requests
-from highlights.recorder.factory import build_live_recorder, settings_guard, update_hlae
+from highlights.recorder.factory import update_hlae
 from highlights.recorder.hlae import BUNDLED_DIR as HLAE_BUNDLED_DIR
-from highlights.recorder.hlae import HlaeError
-from highlights.recorder.session import already_recorded, record_requests
 from highlights.editor.beats import beat_times, load_samples, tempo_of
 from highlights.editor.preview import describe_edit
 from highlights.editor.reel import EditOptions
@@ -397,36 +397,15 @@ def run_recording(
         return 0
 
     config = load_config()
-    requests = build_clip_requests(
-        plan=plan,
-        demo_path=fallback_demo,
-        player_name=player_name,
-        output_dir=config.clips_dir,
-        extension="mp4",
-        names=names,
-    )
+    requests = clip_requests(plan, player_name, config, fallback_demo, names)
 
     if edit_only:
-        clips = [
-            RecordedClip(r, r.output_path, succeeded=already_recorded(r),
-                         error=None if already_recorded(r) else "not recorded yet")
-            for r in requests
-        ]
-        return stitch_recorded(clips, player_name, config, aspect, edit)
+        return stitch_recorded(clips_on_disk(requests), player_name, config, aspect, edit)
 
+    print(f"\nRecording {len(requests)} clip(s) {'live' if live else 'as a dry run'}")
     try:
-        if spectator_hud:
-            config = replace(config, recording=replace(config.recording, hud="full"))
-        recorder = build_live_recorder(config) if live else DryRunRecorder()
-    except HlaeError as error:
-        print(f"Error: {error}", file=sys.stderr)
-        return 1
-
-    print(f"\nRecording {len(requests)} clip(s) with the {recorder.name} backend")
-    try:
-        with settings_guard(config) if live else contextlib.nullcontext():
-            clips = record_requests(recorder, requests, skip_existing=resume and live)
-    except Cs2Error as error:
+        clips = record_clips(requests, config, live=live, resume=resume, spectator_hud=spectator_hud)
+    except ProductionError as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
 

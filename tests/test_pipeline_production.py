@@ -1,5 +1,6 @@
 """Tests for producing the finished reel, with ffmpeg faked out."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -77,3 +78,33 @@ def test_an_edited_reel_gets_chapters_beside_it(tmp_path, fake_ffmpeg, monkeypat
     assert result.chapters.read_text(encoding="utf-8").splitlines()[1] == "00:03 ACE (Round 5)"
     assert result.thumbnail is None
     assert Path(result.video).read_bytes() == b"edited"
+
+
+def test_clips_already_on_disk_are_reused_and_missing_ones_flagged(tmp_path):
+    from tests.test_hlae_backend import make_request
+
+    present = make_request(tmp_path)
+    present.output_path.write_bytes(b"clip")
+    missing = replace(present, output_path=tmp_path / "missing.mp4")
+    clips = production.clips_on_disk([present, missing])
+    assert [c.succeeded for c in clips] == [True, False]
+    assert clips[1].error == "not recorded yet"
+
+
+def test_a_game_that_cannot_start_is_one_readable_error(tmp_path, monkeypatch):
+    from highlights.recorder.hlae import HlaeError
+
+    def no_hlae(config):
+        raise HlaeError("ffmpeg not found: ffmpeg")
+
+    monkeypatch.setattr(production, "build_live_recorder", no_hlae)
+    with pytest.raises(ProductionError, match="ffmpeg not found"):
+        production.record_clips([], make_config(tmp_path), live=True)
+
+
+def test_dry_runs_log_without_touching_the_game(tmp_path, monkeypatch):
+    from tests.test_hlae_backend import make_request
+
+    monkeypatch.setattr(production, "build_live_recorder", lambda c: pytest.fail("no game"))
+    clips = production.record_clips([make_request(tmp_path)], make_config(tmp_path), live=False)
+    assert len(clips) == 1 and clips[0].succeeded
