@@ -30,7 +30,35 @@ Layer 2 sits behind a `Recorder` interface with three backends:
   started.
 - **Dry run**: logs exactly what would be recorded and launches nothing.
 
-## Setup
+## Install
+
+Download `auto-highlights-<version>-setup.exe` from the Releases page and run
+it. It installs for your Windows account only (no admin prompt) and offers to
+fetch the two tools recording needs: ffmpeg (the official Windows build,
+checked against its published checksum) and HLAE (from its official GitHub
+releases, kept up to date because CS2 updates break old builds). Running
+`auto-highlights --setup` later does the same.
+
+Where things live once installed:
+
+| What | Where |
+|---|---|
+| Settings | `%LOCALAPPDATA%\auto-highlights\config.toml` (written on first run) |
+| ffmpeg, HLAE | `%LOCALAPPDATA%\auto-highlights\tools` |
+| Parse cache, raw clips, run logs | `%LOCALAPPDATA%\auto-highlights` |
+| Finished reels | `Videos\auto-highlights` |
+
+Every recording, edit and setup run keeps a log in the `logs` folder next to
+the cache (the last 20), with every console command sent to CS2: the first
+thing to look at when a recording goes wrong.
+
+Check everything at once:
+
+```powershell
+auto-highlights --check
+```
+
+## Running from source
 
 Windows, Python 3.11+ (required by awpy).
 
@@ -40,36 +68,26 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-Then copy the config template and adjust it if needed:
+A `config.toml` beside the code takes precedence over the installed app's
+settings; copy `config.template.toml` to start one. It is git-ignored.
+
+Build the standalone app and its installer (needs PyInstaller and Inno
+Setup):
 
 ```powershell
-copy config.template.toml config.toml
+pip install pyinstaller
+python packaging\build.py --out D:\auto-highlights\build --installer
 ```
 
-`config.toml` is git-ignored and holds machine-specific paths;
-`config.template.toml` is the committed shape. The CS2 install and your Steam
-account are found automatically.
-
-### External dependencies
-
-- **CS2** — only needed for recording. Parsing works without it.
-- **HLAE** — only needed for recording. Point `paths.hlae` at the folder
-  holding `HLAE.exe` (the app installer bundles it).
-- **ffmpeg** — needed for recording and stitching; on PATH, or its path set in
-  `config.toml`.
-
-Check everything at once:
-
-```powershell
-python -m highlights.cli --check
-```
+This makes `dist\auto-highlights\auto-highlights.exe` (Python and every
+dependency inside) and `installer\auto-highlights-<version>-setup.exe`.
 
 ## Usage
 
 The whole thing in one line, for the Steam account signed in on this PC:
 
 ```powershell
-python -m highlights.cli "match1.dem" "match2.dem" --me --record --stitch
+auto-highlights "match1.dem" "match2.dem" --me --record --stitch
 ```
 
 That plans your best plays across the demos, records them in CS2, and writes
@@ -81,9 +99,9 @@ in 4:3 stretched to 16:9. Each reel gets its own timestamped name in
 ### Planning
 
 ```powershell
-python -m highlights.cli "path\to\match.dem"                # players and stats
-python -m highlights.cli "path\to\match.dem" --me           # every play, scored
-python -m highlights.cli "path\to\match.dem" --me --best 90 # the best 90 seconds
+auto-highlights "path\to\match.dem"                # players and stats
+auto-highlights "path\to\match.dem" --me           # every play, scored
+auto-highlights "path\to\match.dem" --me --best 90 # the best 90 seconds
 ```
 
 - Highlights are your frags: kills, multi-kills, aces and clutches.
@@ -99,8 +117,8 @@ python -m highlights.cli "path\to\match.dem" --me --best 90 # the best 90 second
 ### Recording
 
 ```powershell
-python -m highlights.cli "match.dem" --me --dry-run --stitch    # preview, launches nothing
-python -m highlights.cli "match.dem" --me --record --stitch      # the real thing
+auto-highlights "match.dem" --me --dry-run --stitch    # preview, launches nothing
+auto-highlights "match.dem" --me --record --stitch      # the real thing
 ```
 
 CS2 is launched through HLAE at 1440x1080, each clip is rendered frame by
