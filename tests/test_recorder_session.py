@@ -125,3 +125,29 @@ def test_clips_are_filmed_demo_by_demo_but_returned_in_reel_order():
     results = record_requests(recorder, [nuke1, cache, nuke2])
     assert recorder.events == ["open", "record:2", "record:3", "record:1", "close"]
     assert [c.index for c in results] == [3, 1, 2]
+
+
+def test_progress_is_reported_per_clip():
+    from highlights.progress import Progress
+
+    events: list[Progress] = []
+    record_requests(ScriptedRecorder(), [make_request(i) for i in (1, 2)], progress=events.append)
+    assert [(e.done, e.total) for e in events] == [(0, 2), (0, 2), (1, 2), (2, 2)]
+    assert events[1].message == "Recording #001" and events[-1].message == "Closing the game"
+
+
+def test_cancelling_stops_between_clips_and_marks_the_rest():
+    from highlights.progress import CancelToken
+
+    token = CancelToken()
+
+    class CancelAfterFirst(ScriptedRecorder):
+        def record_clip(self, request):
+            token.cancel()
+            return super().record_clip(request)
+
+    recorder = CancelAfterFirst()
+    results = record_requests(recorder, [make_request(i) for i in (1, 2, 3)], cancel=token)
+    assert recorder.events == ["open", "record:1", "close"]
+    assert [c.succeeded for c in results] == [True, False, False]
+    assert results[2].error == "cancelled"
