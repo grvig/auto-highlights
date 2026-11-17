@@ -14,6 +14,7 @@ from pathlib import Path
 
 from highlights.app.demos import default_folders, find_demos
 from highlights.app.jobs import JobRunner
+from highlights.app.reels import list_reels
 from highlights.app.serialize import match_summary, plan_view, player_table
 from highlights.app.settings import SettingsError, apply_changes
 from highlights.appdirs import config_location, ensure_config
@@ -76,6 +77,12 @@ class AppApi:
 
         ensure_config()
         return {"job": self.jobs.start("Setting up", work)}
+
+    # --- finished reels ----------------------------------------------------
+
+    def reels(self) -> dict:
+        config = self._config()
+        return {"reels": list_reels(config.output_dir) if config else []}
 
     # --- settings ----------------------------------------------------------
 
