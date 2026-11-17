@@ -24,7 +24,6 @@ from highlights.engine.cache import DemoCache
 from highlights.engine.clip_plan import ClipPlan
 from highlights.engine.demo_source import DemoError, DemoSource, Player
 from highlights.engine.models import deaths_of_player, kills_by_player
-from highlights.engine.moments import HighlightType
 from highlights.engine.multi import (
     Match,
     build_multi_plan,
@@ -32,6 +31,7 @@ from highlights.engine.multi import (
     players_across,
 )
 from highlights.engine.scoring import moment_kills
+from highlights.pipeline.types import FRAG_TYPES, parse_types  # noqa: F401  (re-exported)
 from highlights.engine.selection import DEFAULT_MIN_SCORE, ORDERS, arrange, select_best
 from highlights.steam.account import signed_in_account
 from highlights.steam.locate import find_steam_root
@@ -53,15 +53,6 @@ from highlights.stitcher.runner import StitchError
 from highlights.stitcher.aspect import PROFILES, convert
 from highlights.stitcher.stitch import stitch_clips
 
-# CLI-friendly aliases on top of the HighlightType values.
-_TYPE_ALIASES = {
-    "multikill": HighlightType.MULTI_KILL,
-    "kills": HighlightType.KILL,
-    "deaths": HighlightType.DEATH,
-    "clutches": HighlightType.CLUTCH,
-    "aces": HighlightType.ACE,
-    "util": HighlightType.UTILITY,
-}
 
 
 # xfade transitions offered on the command line, plus hard cuts.
@@ -229,29 +220,6 @@ def build_parser() -> argparse.ArgumentParser:
     edit.add_argument("--flashes", action="store_true", help="flash the screen on every kill")
     edit.add_argument("--plain", action="store_true", help="just join the clips, no editing")
     return parser
-
-
-# The player's own plays: what a highlight reel shows by default. Deaths and
-# utility are there for anyone who asks, but nobody clips their own deaths.
-FRAG_TYPES = (HighlightType.KILL, HighlightType.MULTI_KILL, HighlightType.ACE, HighlightType.CLUTCH)
-
-
-def parse_types(spec: str) -> list[HighlightType]:
-    """Turn a --types string into HighlightType values."""
-    if spec.strip().lower() == "all":
-        return list(HighlightType)
-    if spec.strip().lower() in ("", "frags"):
-        return list(FRAG_TYPES)
-    result: list[HighlightType] = []
-    for token in spec.split(","):
-        key = token.strip().lower()
-        if not key:
-            continue
-        if key in _TYPE_ALIASES:
-            result.append(_TYPE_ALIASES[key])
-        else:
-            result.append(HighlightType(key))  # raises ValueError if unknown
-    return result
 
 
 class HasPlayers(Protocol):
