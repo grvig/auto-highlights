@@ -17,28 +17,29 @@ from pathlib import Path
 from typing import Protocol
 
 from highlights import __version__
-from highlights.config import ClipConfig, Config, ConfigError, EditingConfig, load_config
+from highlights.config import Config, ConfigError, EditingConfig, load_config
 from highlights.logging_setup import LEVELS, configure_logging
 from highlights.preflight import all_passed, run_preflight
-from highlights.engine.cache import DemoCache
 from highlights.engine.clip_plan import ClipPlan
 from highlights.engine.demo_source import DemoError, DemoSource, Player
 from highlights.engine.models import deaths_of_player, kills_by_player
-from highlights.engine.multi import (
-    Match,
-    build_multi_plan,
-    match_from_source,
-    players_across,
+from highlights.engine.multi import Match, players_across
+from highlights.pipeline.planning import (
+    PlanOptions,
+    clip_timing,
+    kills_in_plan,
+    load_matches,
+    open_cache,
+    plan_reel,
 )
-from highlights.engine.scoring import moment_kills
-from highlights.pipeline.types import FRAG_TYPES, parse_types  # noqa: F401  (re-exported)
-from highlights.engine.selection import DEFAULT_MIN_SCORE, ORDERS, arrange, select_best
+from highlights.pipeline.types import parse_types
+from highlights.engine.selection import DEFAULT_MIN_SCORE, ORDERS
 from highlights.steam.account import signed_in_account
 from highlights.steam.locate import find_steam_root
 from highlights.recorder.base import RecordedClip
 from highlights.recorder.cs2_controller import Cs2Error
 from highlights.recorder.dry_run import DryRunRecorder
-from highlights.recorder.naming import build_clip_requests, reel_filename, sanitise_part
+from highlights.recorder.naming import build_clip_requests, reel_filename
 from highlights.recorder.factory import build_live_recorder, settings_guard, update_hlae
 from highlights.recorder.hlae import BUNDLED_DIR as HLAE_BUNDLED_DIR
 from highlights.recorder.hlae import HlaeError
@@ -451,25 +452,6 @@ def run_recording(
     return 1 if failed else 0
 
 
-def kills_in_plan(plan: ClipPlan, sources: list[DemoSource], matches: list[Match]) -> int:
-    """How many of the player's kills the planned moments contain."""
-    by_demo = {source.path: match.context for source, match in zip(sources, matches)}
-    total = 0
-    for moment in plan.moments:
-        context = by_demo.get(Path(moment.source_demo)) if moment.source_demo else None
-        context = context or matches[0].context
-        total += len(moment_kills(moment, context.kills))
-    return total
-
-
-def clip_timing() -> ClipConfig:
-    """How much of each engagement to keep, from config (defaults if none)."""
-    try:
-        return load_config().clips
-    except ConfigError:
-        return ClipConfig()
-
-
 def editing_style(args: argparse.Namespace, defaults: EditingConfig | None = None) -> EditingConfig:
     """Flags given on the command line, else the config's [editing] defaults."""
     if defaults is None:
@@ -591,17 +573,6 @@ def use_utf8_output() -> None:
             stream.reconfigure(encoding="utf-8", errors="replace")
 
 
-def open_cache() -> DemoCache | None:
-    """The parse cache from config, or None when there is no usable config.
-
-    Parsing still works without a config file; it just is not cached.
-    """
-    try:
-        return DemoCache(load_config().resolved_cache_dir)
-    except ConfigError:
-        return None
-
-
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     use_utf8_output()
@@ -620,13 +591,11 @@ def main(argv: list[str] | None = None) -> int:
 
     cache = None if args.no_cache else open_cache()
     try:
-        sources = [DemoSource(path, cache=cache) for path in args.demos]
+        loaded = load_matches(args.demos, cache, clip_timing())
     except DemoError as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
-
-    timing = clip_timing()
-    matches = [match_from_source(source, timing) for source in sources]
+    sources, matches = loaded.sources, loaded.matches
     if len(sources) == 1:
         print_match_summary(sources[0])
         print_players(sources[0])
@@ -647,20 +616,21 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     style = editing_style(args)
-    multi = build_multi_plan(matches, player.steamid, types, slowmo=args.slowmo or style.pro,
-                             replays=args.victim_cams)
-    for label in multi.missing_from:
-        print(f"Note: {player.name} is not in {label}", file=sys.stderr)
-    plan = multi.plan
     best = reel_target(args, style)
+    options = PlanOptions(
+        types=tuple(types), best_seconds=best, min_score=args.min_score, order=args.order,
+        slowmo=args.slowmo or style.pro, victim_cams=args.victim_cams,
+    )
+    reel = plan_reel(loaded, player.steamid, options)
+    for label in reel.missing_from:
+        print(f"Note: {player.name} is not in {label}", file=sys.stderr)
+    plan = reel.plan
     if best:
-        chosen = select_best(plan.moments, best, min_score=args.min_score)
-        plan = replace(plan, moments=arrange(chosen, plan.moments, args.order))
         print(f"\nBest {best:g}s, {args.order} order")
     print_clip_plan(plan, player.name)
 
     if args.dry_run or args.record or args.edit_only:
-        pov = [s.path.name for s in sources if not s.info.is_gotv]
+        pov = loaded.pov_demos()
         try:
             return run_recording(
                 plan,
@@ -673,7 +643,7 @@ def main(argv: list[str] | None = None) -> int:
                 preview_edit=args.stitch and args.dry_run,
                 spectator_hud=args.spectator_hud,
                 stitch=args.stitch and args.record,
-                names={p.steamid: p.name for s in sources for p in s.players()},
+                names=loaded.player_names(),
                 aspect=args.aspect,
                 edit=None if args.plain else EditOptions(
                     player_name=player.name,
@@ -681,8 +651,8 @@ def main(argv: list[str] | None = None) -> int:
                     cards=args.cards,
                     transition=style.transition,
                     music=style.music,
-                    maps={s.path: s.info.map_name for s in sources},
-                    kills_shown=kills_in_plan(plan, sources, matches),
+                    maps=loaded.map_names(),
+                    kills_shown=kills_in_plan(plan, loaded),
                     punch_ins=args.punch_ins or style.pro,
                     centred_captions=args.aspect == "vertical",
                     music_start=max(style.music_start, 0.0),
