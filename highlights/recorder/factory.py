@@ -52,9 +52,28 @@ def build_live_recorder(config: Config, steam_root: Path | None = None) -> HlaeR
             return HlaeRecorder(cs2, launch_args=args, **common)
         logger.warning("HLAE not found; falling back to window capture")
 
-    # Window capture films a game the player has already started with
-    # -netconport, at whatever size it is running.
-    return WindowRecorder(cs2, audio_device=rec.audio_device, **common)
+    # Window capture: start CS2 through Steam at the render size so the
+    # settings backup is taken before CS2 saves anything (it writes its video
+    # settings at startup); a CS2 already running is filmed as it is.
+    launch = None
+    if not cs2.game_running():
+        steam = steam_exe(steam_root)
+        if steam is not None:
+            launch = window_launch_args(steam, rec.width, rec.height, cs2.console_port)
+            cs2 = Cs2Controller(config.cs2_root, full_hud=rec.hud != "clean", terminate_launcher=False)
+    return WindowRecorder(cs2, audio_device=rec.audio_device, launch_args=launch, **common)
+
+
+def steam_exe(steam_root: Path | None = None) -> Path | None:
+    root = steam_root or find_steam_root()
+    exe = Path(root) / "steam.exe" if root else None
+    return exe if exe and exe.is_file() else None
+
+
+def window_launch_args(steam: Path, width: int, height: int, port: int) -> list[str]:
+    """CS2 through Steam, windowed at the render size, console open to us."""
+    return [str(steam), "-applaunch", "730", "-insecure", "-netconport", str(port), "-novid",
+            "-sw", "-w", str(width), "-h", str(height), "-console"]
 
 
 def player_restore_commands(steam_root: Path | None = None) -> list[str]:

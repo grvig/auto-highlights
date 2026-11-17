@@ -35,7 +35,7 @@ DEMO_READY = r"received full update|Demo Skipping finished"
 DEMO_LOAD_TIMEOUT = 90.0
 
 # Seconds to let the game boot before the console is expected to answer.
-DEFAULT_STARTUP_TIMEOUT = 60.0
+DEFAULT_STARTUP_TIMEOUT = 120.0
 
 # How long to wait for CS2 to confirm a seek, and how often to try one.
 SEEK_TIMEOUT_SECONDS = 12.0
@@ -83,6 +83,7 @@ class Cs2Controller:
         tickrate: int = CS2_TICKRATE,
         command_runner: CommandRunner | None = None,
         full_hud: bool = True,
+        terminate_launcher: bool = True,
     ) -> None:
         self.cs2_root = Path(cs2_root)
         self.console_port = console_port
@@ -93,6 +94,9 @@ class Cs2Controller:
         self.tickrate = tickrate
         # Keep the player's normal HUD in footage (False strips it to the kill feed).
         self.full_hud = full_hud
+        # False when the launcher is Steam itself: closing the game must never
+        # take the player's Steam client down with it.
+        self.terminate_launcher = terminate_launcher
         self._process: subprocess.Popen[bytes] | None = None
 
     @property
@@ -303,7 +307,7 @@ class Cs2Controller:
         if self._process is None:
             return
         self.close_game()
-        if self._process.poll() is None:
+        if self.terminate_launcher and self._process.poll() is None:
             logger.info("Terminating launcher (pid=%s)", self._process.pid)
             self._process.terminate()
         self._process = None

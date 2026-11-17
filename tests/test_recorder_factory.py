@@ -118,3 +118,22 @@ def test_window_capture_records_from_the_configured_sound_device(tmp_path):
     with_sound = replace(config, recording=replace(config.recording, audio_device="virtual-audio-capturer"))
     assert factory.build_live_recorder(with_sound).audio_device == "virtual-audio-capturer"
     assert factory.build_live_recorder(config).audio_device is None
+
+
+def test_window_mode_starts_cs2_through_steam_when_it_is_not_running(tmp_path, monkeypatch):
+    steam = tmp_path / "steam"
+    steam.mkdir()
+    (steam / "steam.exe").write_bytes(b"exe")
+    monkeypatch.setattr(factory.Cs2Controller, "game_running", lambda self: False)
+    recorder = factory.build_live_recorder(make_config(tmp_path, "window"), steam_root=steam)
+    assert recorder.launch_args[:3] == [str(steam / "steam.exe"), "-applaunch", "730"]
+    assert "-netconport" in recorder.launch_args and "1440" in recorder.launch_args
+    assert recorder.cs2.terminate_launcher is False  # never kill the Steam client
+
+
+def test_window_mode_films_a_cs2_that_is_already_running(tmp_path, monkeypatch):
+    steam = tmp_path / "steam"
+    steam.mkdir()
+    (steam / "steam.exe").write_bytes(b"exe")
+    monkeypatch.setattr(factory.Cs2Controller, "game_running", lambda self: True)
+    assert factory.build_live_recorder(make_config(tmp_path, "window"), steam_root=steam).launch_args is None

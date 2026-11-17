@@ -198,3 +198,12 @@ def test_attach_when_ready_gives_up(tmp_path):
     controller = Cs2Controller(make_install(tmp_path), console=DeadConsole(), sleeper=lambda s: None)
     with pytest.raises(Cs2Error, match="never opened"):
         controller.attach_when_ready(timeout=4, poll_seconds=2)
+
+
+def test_quit_never_terminates_steam_when_it_was_the_launcher(tmp_path):
+    launcher = FakeLauncher()
+    controller = Cs2Controller(make_install(tmp_path), launcher=launcher,
+                               command_runner=FakeTasks(running=False), terminate_launcher=False)
+    controller.launch(args=["steam.exe", "-applaunch", "730"])
+    controller.quit()
+    assert not launcher.process.terminated
