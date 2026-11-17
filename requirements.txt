@@ -2,11 +2,10 @@
 awpy>=2.0.0
 # awpy returns polars DataFrames; the engine works with them directly.
 polars>=1.0.0
+# Beat detection in the editor.
+numpy>=1.26
 
 # Layer 2 — Recorder: drives CS2 through HLAE (bundled), no Python packages.
-
-# Layer 4 — GUI.
-customtkinter>=5.2.0
 
 # Dev
 pytest>=8.0.0

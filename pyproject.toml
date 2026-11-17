@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 dependencies = [
     "awpy>=2.0.0",
     "polars>=1.0.0",
-    "customtkinter>=5.2.0",
+    "numpy>=1.26",
 ]
 
 [project.optional-dependencies]
@@ -20,15 +20,8 @@ dev = ["pytest>=8.0.0"]
 [project.scripts]
 highlights = "highlights.cli:main"
 
-[tool.setuptools]
-packages = [
-    "highlights",
-    "highlights.engine",
-    "highlights.engine.detectors",
-    "highlights.recorder",
-    "highlights.steam",
-    "highlights.stitcher",
-]
+[tool.setuptools.packages.find]
+include = ["highlights*"]
 
 [tool.setuptools.package-data]
 highlights = ["py.typed"]
