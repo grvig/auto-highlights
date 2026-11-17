@@ -282,3 +282,13 @@ def test_recordings_aim_for_the_configured_reel_length():
     assert reel_target(parse(["m.dem", "--record", "--best", "45"]), style) == 45
     assert reel_target(parse(["m.dem", "--record", "--all"]), style) is None
     assert reel_target(parse(["m.dem"]), style) is None  # just planning: show everything
+
+
+def test_progress_lines_are_short(capsys):
+    from highlights.cli import print_progress
+    from highlights.progress import Progress
+
+    print_progress(Progress("record", 2, 8, "Recording #003"))
+    print_progress(Progress("export", 0, 1, "Exporting as stretched"))
+    assert capsys.readouterr().out.splitlines() == [
+        "  [record 2/8] Recording #003", "  [export] Exporting as stretched"]

@@ -18,6 +18,7 @@ from highlights.editor.fonts import FontError
 from highlights.editor.probe import ProbeError
 from highlights.editor.reel import EditOptions, ReelBuilder
 from highlights.editor.thumbnail import best_frame, thumbnail_command
+from highlights.progress import CancelToken, Cancelled, Progress, ProgressFn, ignore
 from highlights.recorder.base import ClipRequest, RecordedClip
 from highlights.recorder.cs2_controller import Cs2Error
 from highlights.recorder.dry_run import DryRunRecorder
@@ -64,6 +65,8 @@ def record_clips(
     live: bool,
     resume: bool = False,
     spectator_hud: bool = False,
+    progress: ProgressFn = ignore,
+    cancel: CancelToken | None = None,
 ) -> list[RecordedClip]:
     """Film every request (or log them, when not live), guarding CS2 settings.
 
@@ -75,7 +78,8 @@ def record_clips(
     try:
         recorder = build_live_recorder(config) if live else DryRunRecorder()
         with settings_guard(config) if live else contextlib.nullcontext():
-            return record_requests(recorder, requests, skip_existing=resume and live)
+            return record_requests(recorder, requests, skip_existing=resume and live,
+                                   progress=progress, cancel=cancel)
     except (HlaeError, Cs2Error) as error:
         raise ProductionError(str(error)) from error
 
@@ -94,6 +98,8 @@ def produce_reel(
     config: Config,
     aspect: str | None = None,
     edit: EditOptions | None = None,
+    progress: ProgressFn = ignore,
+    cancel: CancelToken | None = None,
 ) -> ReelResult:
     """Edit (or just join) recorded clips into a reel in the chosen shape.
 
@@ -107,21 +113,28 @@ def produce_reel(
         builder = None
         if edit:
             builder = ReelBuilder(edit, config.clips_dir / "edit", config.ffmpeg_path)
-            output = builder.build(clips, joined)
+            output = builder.build(clips, joined, progress=progress, cancel=cancel)
         else:
+            progress(Progress("edit", 0, 1, "Joining the clips"))
             output = stitch_clips(clips, joined, config.ffmpeg_path, work_dir=config.clips_dir)
+        if cancel is not None:
+            cancel.check()
+        progress(Progress("export", 0, 1, f"Exporting as {profile.name}"))
         final = convert(output, config.output_dir / reel_name, profile, config.ffmpeg_path)
         chapters = thumbnail = None
         if builder and builder.chapters:
             chapters = final.with_suffix(".chapters.txt")
             chapters.write_text("\n".join(builder.chapters) + "\n", encoding="utf-8")
             thumbnail = _thumbnail(clips, player_name, final, config)
+    except Cancelled:
+        raise
     except (StitchError, RuntimeError, ValueError, OSError,
             subprocess.CalledProcessError, FontError, ProbeError) as error:
         raise ProductionError(str(error)) from error
     finally:
         with contextlib.suppress(OSError):
             joined.unlink(missing_ok=True)
+    progress(Progress("export", 1, 1, "Done"))
     return ReelResult(final, profile.name, chapters, thumbnail)
 
 

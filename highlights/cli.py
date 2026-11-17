@@ -39,6 +39,7 @@ from highlights.pipeline.production import (
     record_clips,
 )
 from highlights.pipeline.types import parse_types
+from highlights.progress import Progress
 from highlights.engine.selection import DEFAULT_MIN_SCORE, ORDERS
 from highlights.steam.account import signed_in_account
 from highlights.steam.locate import find_steam_root
@@ -404,7 +405,8 @@ def run_recording(
 
     print(f"\nRecording {len(requests)} clip(s) {'live' if live else 'as a dry run'}")
     try:
-        clips = record_clips(requests, config, live=live, resume=resume, spectator_hud=spectator_hud)
+        clips = record_clips(requests, config, live=live, resume=resume,
+                             spectator_hud=spectator_hud, progress=print_progress)
     except ProductionError as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
@@ -462,6 +464,12 @@ def music_tempo(song: Path, config: Config) -> float | None:
         return None
 
 
+def print_progress(event: Progress) -> None:
+    """One short line per step of a long job."""
+    count = f"{event.done}/{event.total}" if event.total > 1 else ""
+    print(f"  [{event.stage} {count}] {event.message}".replace(" ]", "]"), flush=True)
+
+
 def stitch_recorded(
     clips: list[RecordedClip],
     player_name: str,
@@ -472,7 +480,7 @@ def stitch_recorded(
     """Edit (or just join) recorded clips into a reel and say where it went."""
     print(f"\n{'Editing' if edit else 'Stitching'} {len(clips)} clip(s)")
     try:
-        result = produce_reel(clips, player_name, config, aspect, edit)
+        result = produce_reel(clips, player_name, config, aspect, edit, progress=print_progress)
     except ProductionError as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1

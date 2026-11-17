@@ -67,7 +67,7 @@ def test_an_edited_reel_gets_chapters_beside_it(tmp_path, fake_ffmpeg, monkeypat
         def __init__(self, options, work_dir, ffmpeg):
             self.chapters = ["00:00 Intro", "00:03 ACE (Round 5)"]
 
-        def build(self, clips, output):
+        def build(self, clips, output, progress=None, cancel=None):
             output.parent.mkdir(parents=True, exist_ok=True)
             output.write_bytes(b"edited")
             return output
@@ -108,3 +108,20 @@ def test_dry_runs_log_without_touching_the_game(tmp_path, monkeypatch):
     monkeypatch.setattr(production, "build_live_recorder", lambda c: pytest.fail("no game"))
     clips = production.record_clips([make_request(tmp_path)], make_config(tmp_path), live=False)
     assert len(clips) == 1 and clips[0].succeeded
+
+
+def test_producing_reports_joining_and_export(tmp_path, fake_ffmpeg):
+    events = []
+    produce_reel([], "semi", make_config(tmp_path), progress=events.append)
+    assert [(e.stage, e.message) for e in events] == [
+        ("edit", "Joining the clips"), ("export", "Exporting as stretched"), ("export", "Done")]
+
+
+def test_a_cancelled_reel_stops_before_export(tmp_path, fake_ffmpeg):
+    from highlights.progress import CancelToken, Cancelled
+
+    token = CancelToken()
+    token.cancel()
+    with pytest.raises(Cancelled):
+        produce_reel([], "semi", make_config(tmp_path), cancel=token)
+    assert "convert" not in fake_ffmpeg
