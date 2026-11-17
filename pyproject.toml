@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0.0"]
+dev = ["pytest>=8.0.0", "pyflakes>=3.0"]
 
 [project.scripts]
 highlights = "highlights.cli:main"

@@ -9,6 +9,7 @@ numpy>=1.26
 
 # Dev
 pytest>=8.0.0
+pyflakes>=3.0
 
 # Layer 3 — Stitcher — uses ffmpeg via subprocess, not a Python package.
 # ffmpeg must be installed separately and on PATH. See README.

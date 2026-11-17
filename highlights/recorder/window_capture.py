@@ -15,7 +15,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from highlights.recorder.mirv import atempo_chain, ramp_filter, speed_pieces
+from highlights.recorder.mirv import ramp_filter, speed_pieces
 
 # Measured against weapon_fire ticks: loopback audio arrives this early.
 AUDIO_DELAY_SECONDS = 0.55

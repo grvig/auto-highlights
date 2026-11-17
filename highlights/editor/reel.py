@@ -24,7 +24,7 @@ from highlights.recorder.mirv import atempo_chain
 from highlights.editor.captions import caption_filter, caption_for, headline_for, replay_caption
 from highlights.editor.music import check_music, music_command
 from highlights.editor.probe import MediaInfo, probe
-from highlights.editor.transitions import DEFAULT_TRANSITION, join_command, transition_seconds
+from highlights.editor.transitions import join_command, transition_seconds
 from highlights.recorder.base import RecordedClip
 
 logger = logging.getLogger(__name__)
