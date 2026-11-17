@@ -72,3 +72,51 @@ def test_works_without_any_config_file(monkeypatch, tmp_path):
 
     app = AppApi(config_loader=no_config, you=lambda: None)
     assert app.plan(["D:/demos/nuke.dem"], "P")["count"] >= 1
+
+
+def test_render_runs_in_the_background_and_reports_the_reel(app, monkeypatch):
+    from highlights.pipeline.production import ReelResult
+    from highlights.progress import Progress
+
+    def record(requests, config, live, resume, progress, cancel):
+        progress(Progress("record", 1, 2, "Recording #001"))
+        return [type("Clip", (), {"succeeded": True})() for _ in requests]
+
+    def produce(clips, player, config, aspect, edit, progress, cancel):
+        progress(Progress("export", 0, 1, "Exporting"))
+        return ReelResult(Path("D:/out/semi_highlights.mp4"), "stretched")
+
+    monkeypatch.setattr(api_module, "record_clips", record)
+    monkeypatch.setattr(api_module, "produce_reel", produce)
+    app.plan(["D:/demos/nuke.dem"], "P", {"all": True})
+    job = app.render(["D:/demos/nuke.dem"], "P")["job"]
+    status = app.jobs.wait(job, timeout=10)
+    assert status["state"] == "done", status
+    assert status["result"]["video"].endswith("semi_highlights.mp4")
+    assert status["result"]["failed"] == 0
+
+
+def test_overall_progress_spans_the_stages():
+    from highlights.app.api import overall
+    from highlights.progress import Progress
+
+    seen = []
+    forward = overall(seen.append)
+    forward(Progress("record", 1, 2))
+    forward(Progress("edit", 1, 1))
+    forward(Progress("export", 1, 1))
+    assert [round(e.fraction, 2) for e in seen] == [0.4, 0.95, 1.0]
+
+
+def test_render_needs_plays_to_record(app, monkeypatch):
+    monkeypatch.setattr(api_module, "load_matches", lambda p, c, t: fake_matches(p, c, t))
+    assert "error" in app.render(["D:/demos/nuke.dem"], "NOBODY")
+
+
+def test_plain_is_the_default_edit():
+    from highlights.app.api import _edit_options
+
+    loaded = fake_matches(["D:/demos/nuke.dem"], None, None)
+    edit = _edit_options({}, "semi", loaded)
+    assert (edit.captions, edit.cards, edit.transition, edit.music) == (False, False, "cut", None)
+    assert _edit_options({"plain": True}, "semi", loaded) is None
