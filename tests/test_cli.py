@@ -292,3 +292,7 @@ def test_progress_lines_are_short(capsys):
     print_progress(Progress("export", 0, 1, "Exporting as stretched"))
     assert capsys.readouterr().out.splitlines() == [
         "  [record 2/8] Recording #003", "  [export] Exporting as stretched"]
+
+
+def test_parser_reads_setup():
+    assert build_parser().parse_args(["--setup"]).setup

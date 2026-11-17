@@ -40,6 +40,8 @@ from highlights.pipeline.production import (
 )
 from highlights.pipeline.types import parse_types
 from highlights.progress import Progress
+from highlights.appdirs import ensure_config
+from highlights.setup import SetupError, ensure_tools
 from highlights.engine.selection import DEFAULT_MIN_SCORE, ORDERS
 from highlights.steam.account import signed_in_account
 from highlights.steam.locate import find_steam_root
@@ -119,6 +121,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="report environment readiness (config, CS2, ffmpeg, folders) and "
         "exit; needs no demo and launches nothing",
+    )
+    parser.add_argument(
+        "--setup",
+        action="store_true",
+        help="find or download everything recording needs (ffmpeg, HLAE) and exit",
     )
     parser.add_argument(
         "--update-hlae",
@@ -492,6 +499,20 @@ def stitch_recorded(
     return 0
 
 
+def run_setup() -> int:
+    """Find or fetch the tools recording needs. Returns an exit code."""
+    try:
+        config = load_config(ensure_config())
+        tools = ensure_tools(config, print_progress)
+    except (ConfigError, SetupError) as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+    print(f"ffmpeg: {tools['ffmpeg']}")
+    if "hlae" in tools:
+        print(f"HLAE:   {tools['hlae']} ({tools.get('hlae_version') or 'installed'})")
+    return 0
+
+
 def run_update_hlae() -> int:
     """Install or update HLAE. Returns an exit code."""
     try:
@@ -551,6 +572,8 @@ def main(argv: list[str] | None = None) -> int:
         return run_check()
     if args.update_hlae:
         return run_update_hlae()
+    if args.setup:
+        return run_setup()
 
     if not args.demos:
         print("Error: a demo path is required (or use --check)", file=sys.stderr)

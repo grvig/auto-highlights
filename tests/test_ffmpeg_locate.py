@@ -36,9 +36,15 @@ def test_winget_install_is_found(monkeypatch, tmp_path):
     packages = tmp_path / "Packages"
     exe = touch(packages / "Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe"
                 / "ffmpeg-9.0.1-full_build" / "bin" / "ffmpeg.exe")
-    assert locate_ffmpeg("ffmpeg", tmp_path / "none.exe", packages) == str(exe)
+    assert locate_ffmpeg("ffmpeg", tmp_path / "none.exe", packages, tmp_path / "dl.exe") == str(exe)
 
 
 def test_nothing_found_returns_the_bare_name(monkeypatch, tmp_path):
     no_path(monkeypatch)
-    assert locate_ffmpeg("ffmpeg", tmp_path / "none.exe", tmp_path / "none") == "ffmpeg"
+    assert locate_ffmpeg("ffmpeg", tmp_path / "none.exe", tmp_path / "none", tmp_path / "dl.exe") == "ffmpeg"
+
+
+def test_the_copy_setup_downloaded_is_found(monkeypatch, tmp_path):
+    no_path(monkeypatch)
+    downloaded = touch(tmp_path / "Local" / "ffmpeg.exe")
+    assert locate_ffmpeg("ffmpeg", tmp_path / "none.exe", tmp_path / "winget", downloaded) == str(downloaded)

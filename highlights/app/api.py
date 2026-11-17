@@ -16,7 +16,7 @@ from highlights.app.demos import default_folders, find_demos
 from highlights.app.jobs import JobRunner
 from highlights.app.serialize import match_summary, plan_view, player_table
 from highlights.app.settings import SettingsError, apply_changes
-from highlights.appdirs import config_location
+from highlights.appdirs import config_location, ensure_config
 from highlights.config import Config, ConfigError, load_config
 from highlights.editor.reel import EditOptions
 from highlights.engine.clip_plan import ClipPlan
@@ -32,6 +32,7 @@ from highlights.pipeline.planning import (
 from highlights.pipeline.production import clip_requests, produce_reel, record_clips
 from highlights.pipeline.types import parse_types
 from highlights.progress import Progress
+from highlights.setup import ensure_tools
 from highlights.steam.account import signed_in_account
 from highlights.steam.locate import find_steam_root
 
@@ -64,6 +65,17 @@ class AppApi:
         except ConfigError as error:
             logger.warning("No usable config: %s", error)
             return None
+
+    # --- first run -----------------------------------------------------------
+
+    def setup(self) -> dict:
+        """Find or download ffmpeg and HLAE in the background. Returns a job id."""
+        def work(report, cancel):
+            config = self._load_config()
+            return ensure_tools(config, report)
+
+        ensure_config()
+        return {"job": self.jobs.start("Setting up", work)}
 
     # --- settings ----------------------------------------------------------
 

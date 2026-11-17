@@ -13,20 +13,26 @@ from pathlib import Path
 
 BUNDLED = Path(__file__).resolve().parents[1] / "tools" / "ffmpeg" / "bin" / "ffmpeg.exe"
 WINGET_PACKAGES = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "WinGet" / "Packages"
+# Where an installed copy downloads ffmpeg on first run (see highlights.setup).
+DOWNLOADED = Path(os.environ.get("LOCALAPPDATA", "")) / "auto-highlights" / "tools" / "ffmpeg" / "bin" / "ffmpeg.exe"
 
 
 def locate_ffmpeg(
     configured: str = "ffmpeg",
     bundled: Path = BUNDLED,
     winget_packages: Path = WINGET_PACKAGES,
+    downloaded: Path = DOWNLOADED,
 ) -> str:
-    """The ffmpeg to run: an explicit path as given, else PATH, bundled, winget."""
+    """The ffmpeg to run: an explicit path as given, else PATH, bundled,
+    the copy setup downloaded, then winget."""
     if configured != "ffmpeg":
         return configured
     if shutil.which("ffmpeg"):
         return "ffmpeg"
     if bundled.is_file():
         return str(bundled)
+    if downloaded.is_file():
+        return str(downloaded)
     if winget_packages.is_dir():
         found = sorted(winget_packages.glob("*FFmpeg*/*/bin/ffmpeg.exe"), reverse=True)
         if found:
