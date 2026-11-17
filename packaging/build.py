@@ -1,6 +1,6 @@
 """Build the standalone Windows app with PyInstaller.
 
-    python packaging/build.py [--out D:/auto-highlights/build] [--installer]
+    python packaging/build.py [--out FOLDER] [--installer]
 
 Produces <out>/dist/auto-highlights/auto-highlights.exe with Python and every
 dependency inside, so users install nothing else. With --installer it also
@@ -75,12 +75,25 @@ def installer_args(iscc: Path, dist: Path, out: Path, version: str) -> list[str]
     ]
 
 
+def default_out() -> Path:
+    """Beside the parse cache, where big media already goes (not the repo,
+    which may sit on a small or synced drive); ./build without a config."""
+    sys.path.insert(0, str(ROOT))
+    try:
+        from highlights.config import ConfigError, load_config
+
+        return load_config().resolved_cache_dir.parent / "build"
+    except (ImportError, ConfigError):
+        return ROOT / "build"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--out", type=Path, default=ROOT / "build")
+    parser.add_argument("--out", type=Path, default=None,
+                        help="build folder (default: next to the parse cache, else ./build)")
     parser.add_argument("--installer", action="store_true", help="also compile the setup .exe")
     options = parser.parse_args()
-    out = options.out
+    out = options.out or default_out()
     shutil.rmtree(out / "dist" / NAME, ignore_errors=True)
     result = subprocess.run(pyinstaller_args(out))
     exe = out / "dist" / NAME / f"{NAME}.exe"

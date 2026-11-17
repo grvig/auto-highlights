@@ -29,3 +29,12 @@ def test_entry_and_installer_script_exist():
     assert (ROOT / "packaging" / "entry.py").is_file()
     text = (ROOT / "packaging" / "installer.iss").read_text(encoding="utf-8")
     assert "PrivilegesRequired=lowest" in text and "--setup" in text
+
+
+def test_builds_go_beside_the_parse_cache_by_default(monkeypatch, tmp_path):
+    from highlights.config import ClipConfig, Config
+
+    config = Config(cs2_root=None, output_dir=tmp_path / "out", clips_dir=tmp_path / "media" / "clips",
+                    clips=ClipConfig())
+    monkeypatch.setattr("highlights.config.load_config", lambda: config)
+    assert build.default_out() == tmp_path / "media" / "build"
