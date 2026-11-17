@@ -17,7 +17,7 @@ from typing import Protocol
 
 from highlights import __version__
 from highlights.config import Config, ConfigError, EditingConfig, load_config
-from highlights.logging_setup import LEVELS, configure_logging
+from highlights.logging_setup import LEVELS, configure_logging, run_log_path
 from highlights.preflight import all_passed, run_preflight
 from highlights.engine.clip_plan import ClipPlan
 from highlights.engine.demo_source import DemoError, DemoSource, Player
@@ -573,10 +573,20 @@ def main(argv: list[str] | None = None) -> int:
         return 130
 
 
+def default_run_log(args: argparse.Namespace) -> Path | None:
+    """A log file for long jobs (recording, editing, setup) next to the cache."""
+    if not (args.record or args.edit_only or args.setup):
+        return None
+    try:
+        return run_log_path(load_config().resolved_cache_dir.parent / "logs")
+    except (ConfigError, OSError):
+        return None
+
+
 def run(args: argparse.Namespace) -> int:
 
     level = args.log_level or ("info" if args.verbose else "warning")
-    configure_logging(level=level, log_file=args.log_file)
+    configure_logging(level=level, log_file=args.log_file or default_run_log(args))
 
     if args.check:
         return run_check()

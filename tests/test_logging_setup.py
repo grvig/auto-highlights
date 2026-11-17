@@ -62,3 +62,14 @@ def test_root_passes_through_lowest_level(tmp_path):
     configure_logging(level="error", log_file=tmp_path / "run.log")
     # File wants DEBUG, so the root must not filter above DEBUG.
     assert logging.getLogger().level == logging.DEBUG
+
+
+def test_run_logs_are_stamped_and_old_ones_pruned(tmp_path):
+    from highlights.logging_setup import run_log_path
+
+    for day in range(1, 6):
+        (tmp_path / f"run_2026-11-0{day}_120000.log").write_text("old")
+    path = run_log_path(tmp_path, keep=3)
+    assert path.name.startswith("run_") and path.suffix == ".log"
+    assert sorted(p.name for p in tmp_path.glob("run_*.log")) == [
+        "run_2026-11-04_120000.log", "run_2026-11-05_120000.log"]  # the new one makes 3

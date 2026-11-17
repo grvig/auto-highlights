@@ -57,3 +57,26 @@ def configure_logging(level: str = "warning", log_file: Path | str | None = None
 
     # The root must pass through the most detailed level any handler wants.
     root.setLevel(lowest)
+
+
+# Run logs kept per long job; older ones are deleted beyond this many.
+KEEP_RUN_LOGS = 20
+
+
+def run_log_path(log_dir: Path, keep: int = KEEP_RUN_LOGS) -> Path:
+    """A fresh timestamped log file for this run, pruning the oldest ones.
+
+    Long jobs log every console command sent to CS2, which is what makes a
+    failed recording diagnosable after the fact.
+    """
+    from datetime import datetime
+
+    log_dir = Path(log_dir)
+    log_dir.mkdir(parents=True, exist_ok=True)
+    old = sorted(log_dir.glob("run_*.log"))
+    for stale in old[: max(0, len(old) - (keep - 1))]:
+        try:
+            stale.unlink()
+        except OSError:
+            pass
+    return log_dir / f"run_{datetime.now():%Y-%m-%d_%H%M%S}.log"

@@ -307,3 +307,15 @@ def test_ctrl_c_stops_with_a_short_message_not_a_traceback(monkeypatch, capsys):
     monkeypatch.setattr(cli, "run_check", interrupted)
     assert cli.main(["--check"]) == 130
     assert "Stopped." in capsys.readouterr().err
+
+
+def test_only_long_jobs_get_a_run_log(monkeypatch, tmp_path):
+    from highlights import cli
+    from highlights.config import ClipConfig, Config
+
+    config = Config(cs2_root=None, output_dir=tmp_path / "out", clips_dir=tmp_path / "media" / "clips",
+                    clips=ClipConfig())
+    monkeypatch.setattr(cli, "load_config", lambda: config)
+    assert cli.default_run_log(build_parser().parse_args(["m.dem"])) is None
+    log = cli.default_run_log(build_parser().parse_args(["m.dem", "--record"]))
+    assert log.parent == tmp_path / "media" / "logs"
