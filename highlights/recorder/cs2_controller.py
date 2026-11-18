@@ -21,6 +21,7 @@ from pathlib import Path
 
 from highlights.engine.timing import CS2_TICKRATE
 from highlights.recorder import cs2_commands as commands
+from highlights.recorder.compat import hook_failure_hint, old_demo_hint
 from highlights.recorder.cs2_console import DEFAULT_PORT, ConsoleError, Cs2Console
 
 logger = logging.getLogger(__name__)
@@ -167,7 +168,8 @@ class Cs2Controller:
                 return
             except ConsoleError as error:
                 if waited >= timeout:
-                    raise Cs2Error(f"CS2 never opened its console: {error}") from error
+                    raise Cs2Error(f"CS2 never opened its console: {error}."
+                                   + hook_failure_hint(self.cs2_root)) from error
             self._sleep(poll_seconds)
             waited += poll_seconds
 
@@ -203,7 +205,8 @@ class Cs2Controller:
         self.console.drain()
         self.console.send(commands.play_demo(demo_name))
         if not self.console.wait_for(DEMO_READY, DEMO_LOAD_TIMEOUT):
-            raise Cs2Error(f"Demo {demo_name} never finished loading")
+            raise Cs2Error(f"Demo {demo_name} never finished loading."
+                           + old_demo_hint(self.cs2_root))
         self._sleep(settle_seconds)
         self.console.send(commands.toggle_demo_ui())
         self.console.send_all(commands.movie_setup(self.full_hud))
