@@ -6,7 +6,13 @@ import zipfile
 
 import pytest
 
-from highlights.recorder.hlae_release import HlaeRelease, ReleaseError, installed_version
+from highlights.recorder.hlae_release import (
+    HlaeRelease,
+    ReleaseError,
+    installed_published,
+    installed_version,
+    parse_time,
+)
 from highlights.recorder.hlae_update import ensure_current, install_release, latest_release
 
 
@@ -21,10 +27,12 @@ def make_zip(files: dict[str, bytes]) -> bytes:
 GOOD = make_zip({"HLAE.exe": b"exe", "x64/AfxHookSource2.dll": b"dll"})
 
 
-def fake_github(version="2.193.0", archive=GOOD):
+def fake_github(version="2.193.0", archive=GOOD, published=None):
     name = f"hlae_{version.replace('.', '_')}.zip"
     listing = {"tag_name": f"v{version}", "assets": [
         {"name": name, "size": len(archive), "browser_download_url": f"https://dl/{name}"}]}
+    if published:
+        listing["published_at"] = published
 
     def fetch(url):
         return json.dumps(listing).encode() if "api.github.com" in url else archive
@@ -42,6 +50,19 @@ def test_fresh_install_writes_the_version(tmp_path):
 def test_current_install_is_left_alone(tmp_path):
     ensure_current(tmp_path / "hlae", fake_github())
     assert ensure_current(tmp_path / "hlae", fake_github()) == ("2.193.0", False)
+
+
+def test_install_records_the_release_date(tmp_path):
+    ensure_current(tmp_path / "hlae", fake_github(published="2026-11-07T14:14:48Z"))
+    assert installed_published(tmp_path / "hlae") == parse_time("2026-11-07T14:14:48Z")
+
+
+def test_an_undated_current_install_gets_its_date_filled_in(tmp_path):
+    ensure_current(tmp_path / "hlae", fake_github())
+    assert installed_published(tmp_path / "hlae") is None
+    assert ensure_current(tmp_path / "hlae", fake_github(published="2026-11-07T14:14:48Z"))[1] is False
+    assert installed_published(tmp_path / "hlae") == parse_time("2026-11-07T14:14:48Z")
+    assert installed_version(tmp_path / "hlae") == (2, 193, 0)
 
 
 def test_update_keeps_the_previous_copy(tmp_path):
