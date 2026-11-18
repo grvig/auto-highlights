@@ -91,7 +91,9 @@ installer on GitHub and publishes it as a release.
 Updates can break HLAE's hook until HLAE ships a fix (the app picks the fix
 up by itself), and can stop CS2 playing demos recorded before the update.
 `--check` shows when CS2 last updated, and a recording that fails soon after
-an update says so and suggests `recorder = "window"` meanwhile.
+an update says so and suggests `recorder = "window"` meanwhile. An HLAE older
+than the update is flagged as a warning until it has recorded a clip on the
+new build; after that the app knows it works and stops warning.
 
 ## Usage
 
