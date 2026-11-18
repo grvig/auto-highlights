@@ -82,6 +82,17 @@ python packaging\build.py --out D:\auto-highlights\build --installer
 This makes `dist\auto-highlights\auto-highlights.exe` (Python and every
 dependency inside) and `installer\auto-highlights-<version>-setup.exe`.
 
+GitHub runs the tests on every push to `main`. Pushing a tag that matches the
+version in `highlights/__init__.py` (for example `v0.2.0`) builds the
+installer on GitHub and publishes it as a release.
+
+### When CS2 updates
+
+Updates can break HLAE's hook until HLAE ships a fix (the app picks the fix
+up by itself), and can stop CS2 playing demos recorded before the update.
+`--check` shows when CS2 last updated, and a recording that fails soon after
+an update says so and suggests `recorder = "window"` meanwhile.
+
 ## Usage
 
 The whole thing in one line, for the Steam account signed in on this PC:
@@ -91,9 +102,9 @@ auto-highlights "match1.dem" "match2.dem" --me --record --stitch
 ```
 
 That plans your best plays across the demos, records them in CS2, and writes
-about two minutes of them back to back: whole fights (the walk-up, every kill,
-a beat after), hard cuts, your game sound, no text and no effects, exported
-in 4:3 stretched to 16:9. Each reel gets its own timestamped name in
+about two minutes of them back to back: each fight from just before the
+action to just after the last kill, hard cuts, your game sound, no text and
+no effects, exported in 4:3 stretched to 16:9. Each reel gets its own timestamped name in
 `output_dir`, so nothing is ever overwritten.
 
 ### Planning
@@ -112,7 +123,12 @@ auto-highlights "path\to\match.dem" --me --best 90 # the best 90 seconds
 - An ace that is also a clutch is filmed once, as one fight.
 - `--best SECONDS` sets the reel length (recording defaults to 120 from
   config); `--all` keeps every play; `--order montage|chronological`.
-- How much of each fight to keep is in `[clips]` of `config.toml`.
+- Clips follow the fighting: about 3 seconds before the action (further
+  back if a firefight was already going), 2 seconds after the last kill, and
+  any stretch over 5 seconds with no shots or hits is cut out, so quick
+  multi-kills stay one continuous shot while slow rounds lose their walking.
+  The lead-in and tail are in `[clips]` of `config.toml`;
+  `scripts/dead_time.py` measures how much quiet time a reel would carry.
 
 ### Recording
 
