@@ -14,9 +14,9 @@ from pathlib import Path
 
 from highlights.config import Config, ConfigError
 from highlights.editor.fonts import FontError, find_font
-from highlights.recorder.compat import cs2_updated_at, recent_update
+from highlights.recorder.compat import cs2_updated_at, hlae_older_than_game, recent_update
 from highlights.recorder.hlae import find_hlae
-from highlights.recorder.hlae_release import installed_version
+from highlights.recorder.hlae_release import installed_published, installed_version
 from highlights.stitcher.runner import ffmpeg_available
 
 
@@ -27,6 +27,12 @@ class Check:
     name: str
     ok: bool
     detail: str
+    # Passed, but worth knowing about (it may cause trouble).
+    warning: bool = False
+
+    @property
+    def mark(self) -> str:
+        return "FAIL" if not self.ok else "WARN" if self.warning else "OK"
 
 
 def _writable(directory: Path) -> tuple[bool, str]:
@@ -73,7 +79,10 @@ def run_preflight(config: Config) -> list[Check]:
         version = installed_version(hlae_dir) if hlae_dir else None
         if version:
             detail += f" (v{'.'.join(map(str, version))})"
-        checks.append(Check("HLAE", hlae_dir is not None, detail))
+        older = hlae_dir is not None and hlae_older_than_game(installed_published(hlae_dir), config.cs2_root)
+        if older:
+            detail += " - released before the latest CS2 update; it may not hook it yet"
+        checks.append(Check("HLAE", hlae_dir is not None, detail, warning=older))
 
     try:
         checks.append(Check("caption font", True, str(find_font("semi"))))

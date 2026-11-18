@@ -540,8 +540,7 @@ def run_check() -> int:
     checks = run_preflight(config)
     print("\nEnvironment check:")
     for check in checks:
-        mark = "OK  " if check.ok else "FAIL"
-        print(f"  [{mark}] {check.name:<20} {check.detail}")
+        print(f"  [{check.mark:<4}] {check.name:<20} {check.detail}")
 
     if all_passed(checks):
         print("\nAll checks passed.")
