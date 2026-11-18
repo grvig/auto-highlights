@@ -18,6 +18,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+# the app is imported for its version and config, installed or not
+sys.path.insert(0, str(ROOT))
 NAME = "auto-highlights"
 EXCLUDED = ("matplotlib", "scipy", "PIL", "tkinter", "IPython", "notebook")
 
@@ -78,7 +80,6 @@ def installer_args(iscc: Path, dist: Path, out: Path, version: str) -> list[str]
 def default_out() -> Path:
     """Beside the parse cache, where big media already goes (not the repo,
     which may sit on a small or synced drive); ./build without a config."""
-    sys.path.insert(0, str(ROOT))
     try:
         from highlights.config import ConfigError, load_config
 
