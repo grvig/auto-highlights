@@ -104,3 +104,53 @@ def test_without_a_measurement_the_single_pass_filter_is_used():
 
     assert parse_measurement("no json here") is None
     assert linear_loudness(None) == LOUDNESS
+
+
+EBUR128_SUMMARY = """[Parsed_ebur128_0 @ 0x1] Summary:
+
+  Integrated loudness:
+    I:         -16.2 LUFS
+    Threshold: -26.4 LUFS
+
+  True peak:
+    Peak:       -0.7 dBFS"""
+
+
+def test_the_true_peak_is_read_from_the_summary():
+    from highlights.stitcher.aspect import parse_true_peak
+
+    assert parse_true_peak(EBUR128_SUMMARY) == -0.7
+    assert parse_true_peak("    Peak:       -inf dBFS") == float("-inf")
+    assert parse_true_peak("no summary") is None
+
+
+def test_trimming_copies_the_video_and_turns_only_the_audio_down():
+    from pathlib import Path
+
+    from highlights.stitcher.aspect import trim_args
+
+    args = trim_args(Path("reel.mp4"), Path("reel.trim.mp4"), -0.8)
+    assert args[args.index("-c:v") + 1] == "copy"
+    assert args[args.index("-af") + 1] == "volume=-0.80dB"
+
+
+@pytest.mark.skipif(not HAVE_FFMPEG, reason="ffmpeg not installed")
+def test_a_reel_whose_peak_is_too_hot_is_turned_down(tmp_path):
+    from highlights.stitcher.aspect import (
+        MAX_TRUE_PEAK, keep_peaks_down, parse_true_peak, true_peak_args)
+
+    hot = tmp_path / "hot.mp4"
+    subprocess.run(
+        ["ffmpeg", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x240:rate=30:duration=2",
+         "-f", "lavfi", "-i", "aevalsrc=0.97*sin(1000*2*PI*t):s=48000:d=2",
+         "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "-b:a", "192k", str(hot)],
+        capture_output=True, check=True,
+    )
+    def peak(path):
+        return parse_true_peak(subprocess.run(true_peak_args(path), capture_output=True, text=True).stderr)
+
+    assert peak(hot) > MAX_TRUE_PEAK
+    assert keep_peaks_down(hot) is not None
+    assert peak(hot) <= MAX_TRUE_PEAK
+    assert probe(hot)[:2] == (320, 240) and not list(tmp_path.glob("*.trim.*"))
+    assert keep_peaks_down(hot) is None  # already fine: left alone

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import subprocess
 from dataclasses import dataclass
 from enum import Enum
@@ -68,6 +69,11 @@ LOUDNESS = "loudnorm=I=-16:TP=-2:LRA=11"
 # Limited at 4x the sample rate so peaks between samples are caught too;
 # measured on a real reel: true peak -1.2 dBFS after AAC encoding.
 PEAK_LIMIT = "aresample=192000,alimiter=limit=0.708:level=false,aresample=48000"  # -3 dBFS
+# AAC can still push one very sharp shot back up (a real reel reached -0.7
+# dBFS from a single AWP shot), so the finished file is measured and, only
+# when it is over the ceiling, its audio re-encoded that little bit quieter.
+MAX_TRUE_PEAK = -1.0
+TRIM_TARGET = -1.5
 
 
 def measure_args(source: Path, ffmpeg: str = "ffmpeg") -> list[str]:
@@ -116,6 +122,47 @@ def convert_args(
     ]
 
 
+def true_peak_args(path: Path, ffmpeg: str = "ffmpeg") -> list[str]:
+    return [ffmpeg, "-hide_banner", "-nostats", "-i", str(path), "-vn",
+            "-af", "ebur128=peak=true", "-f", "null", "-"]
+
+
+def parse_true_peak(stderr: str) -> float | None:
+    """The true peak (dBFS) from ebur128's summary, or None without one."""
+    found = re.findall(r"Peak:\s+(-?[\d.]+|-inf)", stderr)
+    if not found:
+        return None
+    return float("-inf") if found[-1] == "-inf" else float(found[-1])
+
+
+def trim_args(source: Path, output: Path, gain_db: float, ffmpeg: str = "ffmpeg") -> list[str]:
+    """Turn the audio down by gain_db, leaving the video stream untouched."""
+    return [ffmpeg, "-y", "-i", str(source), "-c:v", "copy",
+            "-af", f"volume={gain_db:.2f}dB", "-c:a", "aac", "-b:a", "192k", str(output)]
+
+
+def keep_peaks_down(path: Path, ffmpeg: str = "ffmpeg") -> float | None:
+    """Re-encode path's audio quieter if AAC left a peak over the ceiling.
+
+    Returns the gain applied, or None when nothing needed doing (or the
+    measurement or the re-encode failed, which leaves the file as it was).
+    """
+    measured = subprocess.run(true_peak_args(path, ffmpeg), capture_output=True, text=True)
+    peak = parse_true_peak(measured.stderr)
+    if peak is None or peak <= MAX_TRUE_PEAK:
+        return None
+    gain = TRIM_TARGET - peak
+    trimmed = path.with_name(f"{path.stem}.trim{path.suffix}")
+    result = subprocess.run(trim_args(path, trimmed, gain, ffmpeg), capture_output=True, text=True)
+    if result.returncode != 0 or not trimmed.exists():
+        trimmed.unlink(missing_ok=True)
+        logger.warning("True peak is %.1f dBFS but the audio could not be turned down", peak)
+        return None
+    trimmed.replace(path)
+    logger.info("True peak was %.1f dBFS after encoding; audio turned down %.1f dB", peak, -gain)
+    return gain
+
+
 def convert(
     source: Path, output: Path, profile: ExportProfile, ffmpeg: str = "ffmpeg",
     normalise: bool = True,
@@ -132,4 +179,6 @@ def convert(
     if result.returncode != 0 or not output.exists():
         tail = "\n".join(result.stderr.strip().splitlines()[-5:])
         raise RuntimeError(f"ffmpeg could not export {profile.name}:\n{tail}")
+    if normalise:
+        keep_peaks_down(output, ffmpeg)
     return output
