@@ -1,5 +1,8 @@
 # Layer 1 — Engine (parsing). No game or recorder required.
 awpy>=2.0.0
+# The demo parser under awpy; CS2 updates change the demo format, so keep it
+# at least as new as the newest game build we have tested against.
+demoparser2>=0.42.2
 # awpy returns polars DataFrames; the engine works with them directly.
 polars>=1.0.0
 # Beat detection in the editor.
