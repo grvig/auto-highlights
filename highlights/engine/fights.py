@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 from highlights.engine.detection import DetectionContext
-from highlights.engine.moments import Moment
+from highlights.engine.moments import Moment, Segment
 from highlights.engine.scoring import is_gunfire
 from highlights.engine.timing import seconds_to_ticks
 
@@ -27,6 +27,12 @@ BEFORE_FIGHT_SECONDS = 1.5
 # and hold a beat once it stops.
 MAX_TAIL_SECONDS = 4.0
 AFTER_FIGHT_SECONDS = 1.0
+# A stretch with no shots or hits longer than this is cut out of a clip,
+# keeping a beat after the last action and a lead-in before the next. Kills
+# a few seconds apart stay one continuous shot.
+QUIET_GAP_SECONDS = 3.5
+HOLD_AFTER_SECONDS = 1.0
+LEAD_BEFORE_SECONDS = 1.5
 
 
 def fight_ticks(ctx: DetectionContext, player: str) -> list[int]:
@@ -66,8 +72,25 @@ def fight_end(end_tick: int, ticks: list[int], ceiling: int, tickrate: int = 64)
     return min(limit, latest + seconds_to_ticks(AFTER_FIGHT_SECONDS, tickrate))
 
 
+def split_quiet(window: Segment, action: list[int], tickrate: int = 64) -> list[Segment]:
+    """The window with long quiet stretches cut out, as one or more pieces."""
+    gap = seconds_to_ticks(QUIET_GAP_SECONDS, tickrate)
+    hold = seconds_to_ticks(HOLD_AFTER_SECONDS, tickrate)
+    lead = seconds_to_ticks(LEAD_BEFORE_SECONDS, tickrate)
+    inside = sorted(t for t in action if window.start_tick <= t <= window.end_tick)
+    pieces: list[Segment] = []
+    start = window.start_tick
+    for before, after in zip(inside, inside[1:]):
+        if after - before > gap:
+            pieces.append(replace(window, start_tick=start, end_tick=before + hold))
+            start = after - lead
+    pieces.append(replace(window, start_tick=start, end_tick=window.end_tick))
+    return pieces
+
+
 def extend_to_fights(moments: list[Moment], ctx: DetectionContext) -> list[Moment]:
-    """Open each of the player's windows at the start of its fight."""
+    """Fit each of the player's windows to the fighting: open where the
+    exchange starts, run while it carries on, and cut out quiet stretches."""
     result: list[Moment] = []
     for moment in moments:
         ticks = fight_ticks(ctx, moment.player_steamid)
@@ -82,7 +105,12 @@ def extend_to_fights(moments: list[Moment], ctx: DetectionContext) -> list[Momen
                 start = fight_start(start, ticks, previous_end, ctx.tickrate)
                 next_start = own[number + 1].start_tick - 1 if number + 1 < len(own) else ceiling
                 end = fight_end(end, ticks, max(end, next_start), ctx.tickrate)
-            windows.append(replace(window, start_tick=start, end_tick=end))
+            fitted = replace(window, start_tick=start, end_tick=end)
+            if window.pov_steamid is None:
+                action = ticks + [k.tick for k in ctx.kills if k.attacker_steamid == moment.player_steamid]
+                windows.extend(split_quiet(fitted, action, ctx.tickrate))
+            else:
+                windows.append(fitted)
             previous_end = end + 1
         result.append(replace(
             moment,

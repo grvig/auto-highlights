@@ -48,3 +48,32 @@ def test_the_tail_is_capped_and_stops_at_the_ceiling():
     assert fight_end(1000, ticks, ceiling=100_000) == 1000 + 256
     assert fight_end(1000, ticks, ceiling=1100) == 1100
     assert fight_end(1000, [1500], ceiling=100_000) == 1000  # a later, separate fight
+
+
+def test_a_long_quiet_stretch_is_cut_out_of_a_clip():
+    from highlights.engine.fights import split_quiet
+    from highlights.engine.moments import Segment
+
+    # action at 0-2s, nothing for 10s, action again at 12-13s
+    action = [100, 164, 228, 868, 932]
+    pieces = split_quiet(Segment(0, 1000), action)
+    assert [(p.start_tick, p.end_tick) for p in pieces] == [(0, 228 + 64), (868 - 96, 1000)]
+
+
+def test_kills_a_few_seconds_apart_stay_one_shot():
+    from highlights.engine.fights import split_quiet
+    from highlights.engine.moments import Segment
+
+    action = [100, 250, 400, 560]  # never more than 2.5s quiet
+    assert len(split_quiet(Segment(0, 700), action)) == 1
+
+
+def test_plans_keep_fast_multikills_whole_and_split_slow_ones():
+    kills = [make_kill(5000, "P", "a"), make_kill(5150, "P", "b"),       # 2.3s apart
+             make_kill(5150 + 64 * 9, "P", "c")]                           # 9s later
+    ctx = make_context(kills, rounds=[make_round(1, 0, 100_000)])
+    moment = build_clip_plan(ctx, "P", [HighlightType.MULTI_KILL], replays=False).moments[0]
+    windows = moment.windows
+    assert len(windows) == 2
+    first, second = windows
+    assert first.start_tick <= 5000 and 5150 <= first.end_tick < second.start_tick
