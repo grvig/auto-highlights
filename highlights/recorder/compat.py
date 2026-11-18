@@ -14,6 +14,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 CS2_APP_ID = 730
+# Written into HLAE's folder once it has recorded on a CS2 build, so an HLAE
+# that turned out to work on the new build stops being warned about.
+WORKED_FILE = "auto-highlights-cs2-build.txt"
 # An update this recent is worth mentioning when something breaks.
 RECENT = timedelta(days=14)
 
@@ -23,16 +26,43 @@ def manifest_path(cs2_root: Path) -> Path:
     return Path(cs2_root).parent.parent / f"appmanifest_{CS2_APP_ID}.acf"
 
 
-def cs2_updated_at(cs2_root: Path | None) -> datetime | None:
-    """When Steam last updated CS2, or None if it cannot be told."""
+def _manifest_value(cs2_root: Path | None, key: str) -> str | None:
     if cs2_root is None:
         return None
     try:
         text = manifest_path(cs2_root).read_text(encoding="utf-8", errors="replace")
     except OSError:
         return None
-    match = re.search(r'"LastUpdated"\s+"(\d+)"', text)
-    return datetime.fromtimestamp(int(match.group(1))) if match else None
+    match = re.search(rf'"{key}"\s+"(\d+)"', text)
+    return match.group(1) if match else None
+
+
+def cs2_updated_at(cs2_root: Path | None) -> datetime | None:
+    """When Steam last updated CS2, or None if it cannot be told."""
+    stamp = _manifest_value(cs2_root, "LastUpdated")
+    return datetime.fromtimestamp(int(stamp)) if stamp else None
+
+
+def cs2_build(cs2_root: Path | None) -> str | None:
+    """Steam's build id for the installed CS2."""
+    return _manifest_value(cs2_root, "buildid")
+
+
+def mark_hlae_working(hlae_dir: Path, cs2_root: Path | None) -> None:
+    """Note that this HLAE has recorded on the installed CS2 build."""
+    build = cs2_build(cs2_root)
+    if build:
+        (Path(hlae_dir) / WORKED_FILE).write_text(build + "\n", encoding="utf-8")
+
+
+def hlae_worked_on(hlae_dir: Path | None) -> str | None:
+    """The CS2 build this HLAE last recorded on, if any."""
+    if hlae_dir is None:
+        return None
+    try:
+        return (Path(hlae_dir) / WORKED_FILE).read_text(encoding="utf-8").strip() or None
+    except OSError:
+        return None
 
 
 def recent_update(cs2_root: Path | None, now: datetime | None = None) -> datetime | None:
@@ -44,8 +74,11 @@ def recent_update(cs2_root: Path | None, now: datetime | None = None) -> datetim
 
 
 def hlae_older_than_game(hlae_published: datetime | None, cs2_root: Path | None,
-                         now: datetime | None = None) -> bool:
-    """Whether the installed HLAE came out before CS2's latest (recent) update."""
+                         now: datetime | None = None, worked_on: str | None = None) -> bool:
+    """Whether the installed HLAE came out before CS2's latest (recent) update
+    and has not yet been seen recording on that build."""
+    if worked_on and worked_on == cs2_build(cs2_root):
+        return False
     updated = recent_update(cs2_root, now)
     return bool(updated and hlae_published and hlae_published < updated)
 

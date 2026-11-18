@@ -24,7 +24,7 @@ from highlights.recorder.hlae import (
     resolve_ffmpeg,
     write_ffmpeg_ini,
 )
-from highlights.recorder.compat import hlae_older_than_game
+from highlights.recorder.compat import hlae_older_than_game, hlae_worked_on, mark_hlae_working
 from highlights.recorder.hlae_release import ReleaseError, installed_published, installed_version
 from highlights.recorder.hlae_update import ensure_current
 from highlights.recorder.hlae_backend import HlaeRecorder
@@ -47,7 +47,8 @@ def build_live_recorder(config: Config, steam_root: Path | None = None) -> HlaeR
         if rec.auto_update:
             update_hlae(rec.hlae_path or BUNDLED_DIR)
         hlae_dir = find_hlae(rec.hlae_path)
-        if hlae_dir is not None and hlae_older_than_game(installed_published(hlae_dir), config.cs2_root):
+        if hlae_dir is not None and hlae_older_than_game(
+                installed_published(hlae_dir), config.cs2_root, worked_on=hlae_worked_on(hlae_dir)):
             logger.warning(
                 "HLAE %s was released before this CS2 update; if CS2 fails to start or "
                 "record, set recorder = \"window\" until HLAE catches up",
@@ -56,7 +57,8 @@ def build_live_recorder(config: Config, steam_root: Path | None = None) -> HlaeR
         if hlae_dir is not None:
             write_ffmpeg_ini(hlae_dir, resolve_ffmpeg(config.ffmpeg_path))
             args = launch_args(hlae_dir, cs2.executable, rec.width, rec.height, cs2.console_port)
-            return HlaeRecorder(cs2, launch_args=args, **common)
+            return HlaeRecorder(cs2, launch_args=args,
+                                on_working=lambda: mark_hlae_working(hlae_dir, config.cs2_root), **common)
         logger.warning("HLAE not found; falling back to window capture")
 
     # Window capture: start CS2 through Steam at the render size so the

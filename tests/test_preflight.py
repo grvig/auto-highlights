@@ -106,7 +106,7 @@ def test_the_last_cs2_update_is_reported_when_steam_knows_it(tmp_path, monkeypat
 
 def test_an_hlae_older_than_the_cs2_update_is_a_warning_not_a_failure(tmp_path, monkeypatch):
     monkeypatch.setattr("highlights.preflight.ffmpeg_available", lambda p: True)
-    monkeypatch.setattr("highlights.preflight.hlae_older_than_game", lambda published, root: True)
+    monkeypatch.setattr("highlights.preflight.hlae_older_than_game", lambda published, root, **_: True)
     check = find(run_preflight(make_config(tmp_path)), "HLAE")
     assert check.ok and check.warning and check.mark == "WARN"
     assert "before the latest CS2 update" in check.detail

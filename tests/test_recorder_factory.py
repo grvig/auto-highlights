@@ -143,7 +143,7 @@ def test_window_mode_films_a_cs2_that_is_already_running(tmp_path, monkeypatch):
 def test_an_hlae_older_than_the_latest_cs2_update_is_warned_about(tmp_path, monkeypatch, caplog):
     config = make_config(tmp_path)
     (tmp_path / "hlae" / VERSION_FILE).write_text("2.193.0\n2026-11-07T19:44:48\n", encoding="utf-8")
-    monkeypatch.setattr(factory, "hlae_older_than_game", lambda published, root: published is not None)
+    monkeypatch.setattr(factory, "hlae_older_than_game", lambda published, root, **_: published is not None)
     with caplog.at_level("WARNING"):
         recorder = factory.build_live_recorder(config)
     assert type(recorder) is HlaeRecorder  # still records, only warns
@@ -151,7 +151,7 @@ def test_an_hlae_older_than_the_latest_cs2_update_is_warned_about(tmp_path, monk
 
 
 def test_no_warning_when_hlae_is_newer_than_the_game(tmp_path, monkeypatch, caplog):
-    monkeypatch.setattr(factory, "hlae_older_than_game", lambda published, root: False)
+    monkeypatch.setattr(factory, "hlae_older_than_game", lambda published, root, **_: False)
     with caplog.at_level("WARNING"):
         factory.build_live_recorder(make_config(tmp_path))
     assert "CS2 update" not in caplog.text

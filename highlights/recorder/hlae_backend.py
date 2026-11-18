@@ -54,6 +54,7 @@ class HlaeRecorder:
         sleeper: Callable[[float], None] = time.sleep,
         keep_takes: bool = False,
         restore_commands: Sequence[str] = (),
+        on_working: Callable[[], None] | None = None,
     ) -> None:
         self.cs2 = cs2
         self.output_dir = Path(output_dir)
@@ -67,6 +68,8 @@ class HlaeRecorder:
         self.keep_takes = keep_takes
         # Put the player's own settings back before the game saves them.
         self.restore_commands = list(restore_commands)
+        # Called once, after the first clip records, to note HLAE works here.
+        self._on_working = on_working
         self._loaded: Path | None = None
         # Takes started in this game session; numbers each take's preset.
         self._takes = 0
@@ -104,7 +107,17 @@ class HlaeRecorder:
             return RecordedClip(request, request.output_path, succeeded=False, error=str(error))
         if not self.keep_takes:
             self._remove_takes(request)
+        self._report_working()
         return RecordedClip(request, request.output_path, succeeded=True)
+
+    def _report_working(self) -> None:
+        callback, self._on_working = self._on_working, None
+        if callback is None:
+            return
+        try:
+            callback()
+        except OSError as error:  # a note for later, never worth failing a clip
+            logger.debug("[%s] could not note that HLAE works: %s", self.name, error)
 
     def _remove_takes(self, request: ClipRequest) -> None:
         """Delete this clip's raw take folders (only ones this app created)."""

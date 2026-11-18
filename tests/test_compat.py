@@ -43,3 +43,24 @@ def test_an_hlae_released_before_the_latest_update_is_flagged(tmp_path):
     assert hlae_older_than_game(datetime(2026, 11, 7), root, soon)
     assert not hlae_older_than_game(datetime.fromtimestamp(1794976532 + 60), root, soon)
     assert not hlae_older_than_game(None, root, soon)
+
+
+def test_the_build_id_comes_from_steams_manifest(tmp_path):
+    from highlights.recorder.compat import cs2_build
+
+    assert cs2_build(install(tmp_path)) == "26748068"
+    assert cs2_build(None) is None
+
+
+def test_an_hlae_seen_working_on_this_build_is_not_flagged(tmp_path):
+    from highlights.recorder.compat import hlae_older_than_game, hlae_worked_on, mark_hlae_working
+
+    root, hlae = install(tmp_path), tmp_path / "hlae"
+    hlae.mkdir()
+    soon = datetime.fromtimestamp(1794976532 + 3600)
+    assert hlae_worked_on(hlae) is None
+    mark_hlae_working(hlae, root)
+    assert hlae_worked_on(hlae) == "26748068"
+    assert not hlae_older_than_game(datetime(2026, 11, 7), root, soon, worked_on=hlae_worked_on(hlae))
+    # A later CS2 build brings the warning back.
+    assert hlae_older_than_game(datetime(2026, 11, 7), root, soon, worked_on="26700000")

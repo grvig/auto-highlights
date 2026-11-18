@@ -208,3 +208,28 @@ def test_close_puts_the_players_settings_back_before_quitting(tmp_path):
     HlaeRecorder(cs2, tmp_path, restore_commands=["hud_showtargetid 1"]).close()
     assert cs2.console.sent[-1] == "hud_showtargetid 1"
     assert cs2.log[-1] == ("quit",)
+
+
+def test_hlae_is_noted_as_working_after_its_first_good_clip_only(tmp_path):
+    cs2, runs, calls = FakeCs2(landings=[26527, 26527]), [], []
+    rec = HlaeRecorder(cs2, tmp_path, runner=runs.append, sleeper=lambda s: None,
+                       on_working=lambda: calls.append(1))
+    rec.record_clip(make_request(tmp_path))
+    rec.record_clip(make_request(tmp_path))
+    assert calls == [1]
+
+
+def test_a_failed_clip_does_not_note_hlae_as_working(tmp_path):
+    calls = []
+    rec = HlaeRecorder(FakeCs2(seek_ok=False), tmp_path, runner=[].append, sleeper=lambda s: None,
+                       on_working=lambda: calls.append(1))
+    assert not rec.record_clip(make_request(tmp_path)).succeeded
+    assert calls == []
+
+
+def test_failing_to_note_hlae_works_does_not_fail_the_clip(tmp_path):
+    def broken():
+        raise OSError("read-only")
+    rec = HlaeRecorder(FakeCs2(landings=[26527]), tmp_path, runner=[].append, sleeper=lambda s: None,
+                       on_working=broken)
+    assert rec.record_clip(make_request(tmp_path)).succeeded
