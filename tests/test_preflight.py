@@ -92,3 +92,13 @@ def test_missing_caption_font_is_reported(tmp_path, monkeypatch):
     monkeypatch.setattr("highlights.preflight.ffmpeg_available", lambda p: True)
     monkeypatch.setattr("highlights.preflight.find_font", no_font)
     assert not find(run_preflight(make_config(tmp_path)), "caption font").ok
+
+
+def test_the_last_cs2_update_is_reported_when_steam_knows_it(tmp_path, monkeypatch):
+    monkeypatch.setattr("highlights.preflight.ffmpeg_available", lambda p: True)
+    config = make_config(tmp_path)
+    (tmp_path / "appmanifest_730.acf").write_text('"AppState" { "LastUpdated" "1794976532" }')
+    monkeypatch.setattr("highlights.preflight.cs2_updated_at",
+                        lambda root: __import__("datetime").datetime(2026, 11, 18, 10, 5))
+    check = find(run_preflight(config), "CS2 updated")
+    assert check.ok and check.detail.startswith("18 Nov 2026 10:05")

@@ -14,6 +14,7 @@ from pathlib import Path
 
 from highlights.config import Config, ConfigError
 from highlights.editor.fonts import FontError, find_font
+from highlights.recorder.compat import cs2_updated_at, recent_update
 from highlights.recorder.hlae import find_hlae
 from highlights.recorder.hlae_release import installed_version
 from highlights.stitcher.runner import ffmpeg_available
@@ -57,6 +58,10 @@ def run_preflight(config: Config) -> list[Check]:
     else:
         source = " (auto-detected)" if config.cs2_root_detected else ""
         checks.append(Check("CS2 install", exe.is_file(), f"{exe}{source}"))
+        updated = cs2_updated_at(config.cs2_root)
+        if updated is not None:
+            note = " - recent: HLAE may lag behind it" if recent_update(config.cs2_root) else ""
+            checks.append(Check("CS2 updated", True, f"{updated:%d %b %Y %H:%M}{note}"))
 
     checks.append(
         Check("ffmpeg", ffmpeg_available(config.ffmpeg_path), config.ffmpeg_path)
