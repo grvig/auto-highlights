@@ -57,7 +57,7 @@ def test_a_long_quiet_stretch_is_cut_out_of_a_clip():
     # action at 0-2s, nothing for 10s, action again at 12-13s
     action = [100, 164, 228, 868, 932]
     pieces = split_quiet(Segment(0, 1000), action)
-    assert [(p.start_tick, p.end_tick) for p in pieces] == [(0, 228 + 64), (868 - 96, 1000)]
+    assert [(p.start_tick, p.end_tick) for p in pieces] == [(0, 228 + 80), (868 - 128, 1000)]
 
 
 def test_kills_a_few_seconds_apart_stay_one_shot():

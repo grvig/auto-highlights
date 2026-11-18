@@ -30,9 +30,9 @@ AFTER_FIGHT_SECONDS = 1.0
 # A stretch with no shots or hits longer than this is cut out of a clip,
 # keeping a beat after the last action and a lead-in before the next. Kills
 # a few seconds apart stay one continuous shot.
-QUIET_GAP_SECONDS = 3.5
-HOLD_AFTER_SECONDS = 1.0
-LEAD_BEFORE_SECONDS = 1.5
+QUIET_GAP_SECONDS = 5.0
+HOLD_AFTER_SECONDS = 1.25
+LEAD_BEFORE_SECONDS = 2.0
 
 
 def fight_ticks(ctx: DetectionContext, player: str) -> list[int]:

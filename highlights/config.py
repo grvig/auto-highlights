@@ -29,10 +29,11 @@ class ConfigError(Exception):
 
 @dataclass(frozen=True)
 class ClipConfig:
-    # Whole engagements by default: the walk-up before the first kill and a
-    # beat after the last, the way players clip their own plays.
-    pre_roll_seconds: float = 6.0
-    post_roll_seconds: float = 2.5
+    # Tight by default: a short lead-in before the action (reaching further
+    # back when a firefight was already on) and a beat after the last kill.
+    # Measured on real demos, longer leads were mostly walking.
+    pre_roll_seconds: float = 3.0
+    post_roll_seconds: float = 2.0
     # Kills closer than this stay in one continuous clip instead of two.
     merge_gap_seconds: float = 10.0
 

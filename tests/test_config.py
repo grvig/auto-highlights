@@ -178,7 +178,7 @@ def test_merge_gap_is_read_from_clips(tmp_path):
 
 def test_clip_timing_defaults_keep_whole_engagements(tmp_path):
     clips = load_config(write_config(tmp_path)).clips
-    assert (clips.pre_roll_seconds, clips.post_roll_seconds) == (6.0, 2.5)
+    assert (clips.pre_roll_seconds, clips.post_roll_seconds) == (3.0, 2.0)
 
 
 def test_editing_defaults_to_hard_cuts(tmp_path):

@@ -48,9 +48,10 @@ hud = "clean"
 # audio_device = "virtual-audio-capturer"
 
 [clips]
-# Seconds kept before the first kill (the walk-up) and after the last.
-pre_roll_seconds = 6.0
-post_roll_seconds = 2.5
+# Seconds kept before the action and after the last kill. A firefight that
+# was already going is followed further back, and quiet stretches are cut.
+pre_roll_seconds = 3.0
+post_roll_seconds = 2.0
 # Kills closer together than this stay in one continuous clip.
 merge_gap_seconds = 10.0
 
