@@ -6,7 +6,7 @@ import zipfile
 
 import pytest
 
-from highlights.recorder.hlae_release import VERSION_FILE, HlaeRelease, ReleaseError
+from highlights.recorder.hlae_release import HlaeRelease, ReleaseError, installed_version
 from highlights.recorder.hlae_update import ensure_current, install_release, latest_release
 
 
@@ -35,7 +35,7 @@ def test_fresh_install_writes_the_version(tmp_path):
     label, changed = ensure_current(tmp_path / "hlae", fake_github())
     assert (label, changed) == ("2.193.0", True)
     assert (tmp_path / "hlae" / "HLAE.exe").read_bytes() == b"exe"
-    assert (tmp_path / "hlae" / VERSION_FILE).read_text() == "2.193.0"
+    assert installed_version(tmp_path / "hlae") == (2, 193, 0)
     assert not list(tmp_path.glob("*.zip"))  # download cleaned up
 
 
@@ -47,15 +47,15 @@ def test_current_install_is_left_alone(tmp_path):
 def test_update_keeps_the_previous_copy(tmp_path):
     ensure_current(tmp_path / "hlae", fake_github("2.192.0"))
     ensure_current(tmp_path / "hlae", fake_github("2.193.0"))
-    assert (tmp_path / "hlae" / VERSION_FILE).read_text() == "2.193.0"
-    assert (tmp_path / "hlae.previous" / VERSION_FILE).read_text() == "2.192.0"
+    assert installed_version(tmp_path / "hlae") == (2, 193, 0)
+    assert installed_version(tmp_path / "hlae.previous") == (2, 192, 0)
 
 
 def test_broken_archive_leaves_the_working_copy(tmp_path):
     ensure_current(tmp_path / "hlae", fake_github("2.192.0"))
     with pytest.raises(ReleaseError, match="no HLAE.exe"):
         ensure_current(tmp_path / "hlae", fake_github("2.193.0", make_zip({"readme.txt": b"x"})))
-    assert (tmp_path / "hlae" / VERSION_FILE).read_text() == "2.192.0"
+    assert installed_version(tmp_path / "hlae") == (2, 192, 0)
 
 
 def test_truncated_download_is_rejected(tmp_path):

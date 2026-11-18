@@ -21,7 +21,9 @@ from highlights.recorder.hlae_release import (
     VERSION_FILE,
     HlaeRelease,
     ReleaseError,
+    installed_published,
     installed_version,
+    marker_text,
     needs_update,
     release_from_listing,
 )
@@ -76,7 +78,7 @@ def install_release(release: HlaeRelease, hlae_dir: Path, fetch: Fetcher = _fetc
             _safe_extract(archive, staging)
         if not (staging / HLAE_EXE).is_file():
             raise ReleaseError(f"HLAE {release.label} archive has no {HLAE_EXE}")
-        (staging / VERSION_FILE).write_text(release.label, encoding="utf-8")
+        (staging / VERSION_FILE).write_text(marker_text(release), encoding="utf-8")
         if hlae_dir.exists():
             if previous.exists():
                 shutil.rmtree(previous)
@@ -92,6 +94,9 @@ def ensure_current(hlae_dir: Path, fetch: Fetcher = _fetch) -> tuple[str, bool]:
     """Install or update HLAE if a newer release exists. Returns (version, changed)."""
     release = latest_release(fetch)
     if not needs_update(installed_version(hlae_dir), release):
+        marker = Path(hlae_dir) / VERSION_FILE
+        if installed_published(hlae_dir) is None and marker.parent.is_dir():
+            marker.write_text(marker_text(release), encoding="utf-8")  # older markers had no date
         return release.label, False
     install_release(release, hlae_dir, fetch)
     return release.label, True

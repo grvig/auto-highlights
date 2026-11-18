@@ -54,3 +54,19 @@ def test_update_needed_only_for_newer_releases():
     assert needs_update((2, 192, 9), latest)
     assert not needs_update((2, 193, 0), latest)
     assert not needs_update((3, 0, 0), latest)
+
+
+def test_the_publish_date_is_kept_and_read_back(tmp_path):
+    from highlights.recorder.hlae_release import installed_published, marker_text
+
+    release = release_from_listing({**LISTING, "published_at": "2026-11-07T14:14:48Z"})
+    assert release.published is not None
+    (tmp_path / VERSION_FILE).write_text(marker_text(release), encoding="utf-8")
+    assert installed_version(tmp_path) == (2, 193, 0)
+    assert installed_published(tmp_path) == release.published
+
+
+def test_old_markers_without_a_date_still_read():
+    from highlights.recorder.hlae_release import parse_time
+
+    assert parse_time("") is None and parse_time(None) is None

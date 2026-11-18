@@ -43,6 +43,13 @@ def recent_update(cs2_root: Path | None, now: datetime | None = None) -> datetim
     return updated if (now or datetime.now()) - updated <= RECENT else None
 
 
+def hlae_older_than_game(hlae_published: datetime | None, cs2_root: Path | None,
+                         now: datetime | None = None) -> bool:
+    """Whether the installed HLAE came out before CS2's latest (recent) update."""
+    updated = recent_update(cs2_root, now)
+    return bool(updated and hlae_published and hlae_published < updated)
+
+
 def hook_failure_hint(cs2_root: Path | None, now: datetime | None = None) -> str:
     updated = recent_update(cs2_root, now)
     if updated is None:

@@ -33,3 +33,13 @@ def test_an_old_update_or_missing_manifest_says_nothing(tmp_path):
     assert hook_failure_hint(root, months_later) == ""
     assert hook_failure_hint(install(tmp_path / "other", manifest=None)) == ""
     assert hook_failure_hint(None) == ""
+
+
+def test_an_hlae_released_before_the_latest_update_is_flagged(tmp_path):
+    from highlights.recorder.compat import hlae_older_than_game
+
+    root = install(tmp_path)
+    soon = datetime.fromtimestamp(1794976532 + 3600)
+    assert hlae_older_than_game(datetime(2026, 11, 7), root, soon)
+    assert not hlae_older_than_game(datetime.fromtimestamp(1794976532 + 60), root, soon)
+    assert not hlae_older_than_game(None, root, soon)

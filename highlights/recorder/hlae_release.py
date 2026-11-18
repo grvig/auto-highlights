@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 RELEASES_API = "https://api.github.com/repos/advancedfx/advancedfx/releases/latest"
@@ -29,6 +30,9 @@ class HlaeRelease:
     version: tuple[int, int, int]
     zip_url: str
     size: int
+    # When GitHub published it: an HLAE older than the newest CS2 update may
+    # not hook that build yet.
+    published: datetime | None = None
 
     @property
     def label(self) -> str:
@@ -50,8 +54,32 @@ def release_from_listing(listing: dict) -> HlaeRelease:
                 version=tuple(int(part) for part in match.groups()),  # type: ignore[arg-type]
                 zip_url=str(asset["browser_download_url"]),
                 size=int(asset.get("size", 0)),
+                published=parse_time(listing.get("published_at")),
             )
     raise ReleaseError(f"No HLAE zip in release {listing.get('tag_name', '?')}")
+
+
+def parse_time(text: object) -> datetime | None:
+    """GitHub's "2026-11-07T14:14:48Z" as a local, naive datetime."""
+    try:
+        moment = datetime.fromisoformat(str(text).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return moment.astimezone().replace(tzinfo=None) if moment.tzinfo else moment
+
+
+def marker_text(release: HlaeRelease) -> str:
+    """The installed-version marker: version, then when it was published."""
+    published = release.published.isoformat(timespec="seconds") if release.published else ""
+    return f"{release.label}\n{published}\n"
+
+
+def installed_published(hlae_dir: Path) -> datetime | None:
+    try:
+        lines = (Path(hlae_dir) / VERSION_FILE).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
+    return parse_time(lines[1]) if len(lines) > 1 and lines[1].strip() else None
 
 
 def installed_version(hlae_dir: Path) -> tuple[int, int, int] | None:
