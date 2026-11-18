@@ -160,3 +160,14 @@ def test_show_in_folder_only_opens_reels_in_the_output_folder(tmp_path):
     assert "error" in app.show_in_folder(str(elsewhere))
     assert "error" in app.show_in_folder(str(out / ".." / "secret.txt"))
     assert len(opened) == 1
+
+
+def test_readiness_comes_back_as_data(tmp_path, monkeypatch):
+    from highlights.preflight import Check
+
+    monkeypatch.setattr(api_module, "run_preflight", lambda config: [
+        Check("ffmpeg", True, "ffmpeg"), Check("HLAE", True, "v2.193.0 - older", warning=True)])
+    config = Config(cs2_root=None, output_dir=tmp_path / "out", clips_dir=tmp_path / "clips", clips=ClipConfig())
+    status = AppApi(config_loader=lambda: config, you=lambda: None).check()
+    assert status["ready"] and status["warnings"] == 1
+    assert status["checks"][1] == {"name": "HLAE", "state": "WARN", "detail": "v2.193.0 - older"}

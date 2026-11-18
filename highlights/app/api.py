@@ -23,6 +23,7 @@ from highlights.config import Config, ConfigError, load_config
 from highlights.editor.reel import EditOptions
 from highlights.engine.clip_plan import ClipPlan
 from highlights.engine.demo_source import DemoError
+from highlights.preflight import all_passed, run_preflight
 from highlights.pipeline.planning import (
     Matches,
     PlanOptions,
@@ -69,6 +70,20 @@ class AppApi:
         except ConfigError as error:
             logger.warning("No usable config: %s", error)
             return None
+
+    # --- readiness -----------------------------------------------------------
+
+    def check(self) -> dict:
+        """Whether recording is ready: the same checks as --check, as data."""
+        config = self._config()
+        if config is None:
+            return {"ready": False, "checks": [], "error": "No config yet: run setup first."}
+        checks = run_preflight(config)
+        return {
+            "ready": all_passed(checks),
+            "warnings": sum(1 for c in checks if c.ok and c.warning),
+            "checks": [{"name": c.name, "state": c.mark, "detail": c.detail} for c in checks],
+        }
 
     # --- first run -----------------------------------------------------------
 
