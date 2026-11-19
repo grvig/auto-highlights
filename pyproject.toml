@@ -13,6 +13,7 @@ dependencies = [
     "demoparser2>=0.42.2",
     "polars>=1.0.0",
     "numpy>=1.26",
+    "pywebview>=6.0",
 ]
 
 [project.optional-dependencies]

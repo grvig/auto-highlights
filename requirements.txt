@@ -8,6 +8,9 @@ polars>=1.0.0
 # Beat detection in the editor.
 numpy>=1.26
 
+# The desktop window (Edge WebView2, built into Windows 11).
+pywebview>=6.0
+
 # Layer 2 — Recorder: drives CS2 through HLAE (bundled), no Python packages.
 
 # Dev
