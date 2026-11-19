@@ -48,11 +48,14 @@ test("stopping says the current clip is finished first", async () => {
 });
 
 test("a failed render says why and can be tried again", async () => {
-  installFakeBridge({ job: async () => job("failed", { error: "CS2 never opened its console" }) });
+  const bridge = installFakeBridge({ job: async () => job("failed", { error: "CS2 never opened its console" }) });
   setup();
   await userEvent.click(screen.getByRole("button", { name: "Record and make the reel" }));
   expect(await screen.findByText(/CS2 never opened its console/)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
+  const logs = vi.spyOn(bridge, "open_logs");
+  await userEvent.click(screen.getByRole("button", { name: "Open logs folder" }));
+  expect(logs).toHaveBeenCalled();
 });
 
 test("a render that cannot start shows the reason", async () => {

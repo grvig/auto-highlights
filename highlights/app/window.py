@@ -97,6 +97,9 @@ class Bridge:
     def play(self, path: str) -> dict:
         return self._api.play(path)
 
+    def open_logs(self) -> dict:
+        return self._api.open_logs()
+
     # --- native pickers ------------------------------------------------------
 
     def pick_demos(self) -> dict:

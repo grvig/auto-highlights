@@ -70,7 +70,12 @@ export function RenderStep({ paths, steamid, playerName, options, onBack, onAnot
       )}
 
       {startError && <p className="notice fail">{startError}</p>}
-      {job?.state === "failed" && <p className="notice fail">The reel could not be made: {job.error}</p>}
+      {job?.state === "failed" && (
+        <div className="notice fail">
+          <p>The reel could not be made: {job.error}</p>
+          <button onClick={() => api.openLogs().catch(() => {})}>Open logs folder</button>
+        </div>
+      )}
       {job?.state === "cancelled" && <p className="notice">Stopped. Nothing was left running.</p>}
 
       <footer className="page-foot">

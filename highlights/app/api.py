@@ -136,6 +136,17 @@ class AppApi:
         self._open(["explorer", str(target)])
         return {"playing": str(target)}
 
+    def open_logs(self) -> dict:
+        """Open the folder of run logs, the first thing to read after a failure."""
+        config = self._config()
+        if config is None:
+            return _error("No config.")
+        logs = config.resolved_cache_dir.parent / "logs"
+        if not logs.is_dir():
+            return _error("No logs yet.")
+        self._open(["explorer", str(logs)])
+        return {"opened": str(logs)}
+
     def thumbnail(self, path: str) -> dict:
         """A reel's thumbnail as a data URL the page can show directly."""
         target = self._output_file(path, (".png",))

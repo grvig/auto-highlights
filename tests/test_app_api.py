@@ -177,6 +177,18 @@ def test_play_opens_only_reels_in_the_default_player(tmp_path):
     assert len(opened) == 1
 
 
+def test_open_logs_opens_the_run_log_folder(tmp_path):
+    out = tmp_path / "out"
+    config = Config(cs2_root=None, output_dir=out, clips_dir=tmp_path / "media" / "clips",
+                    clips=ClipConfig(), cache_dir=tmp_path / "media" / "cache")
+    opened = []
+    app = AppApi(config_loader=lambda: config, you=lambda: None, opener=opened.append)
+    assert "error" in app.open_logs()  # nothing logged yet
+    (tmp_path / "media" / "logs").mkdir(parents=True)
+    assert app.open_logs() == {"opened": str(tmp_path / "media" / "logs")}
+    assert opened == [["explorer", str(tmp_path / "media" / "logs")]]
+
+
 def test_thumbnails_come_back_as_data_urls_for_reels_only(tmp_path):
     out = tmp_path / "out"
     out.mkdir()

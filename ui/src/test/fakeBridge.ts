@@ -30,6 +30,7 @@ export function installFakeBridge(overrides: Partial<Bridge> = {}): Bridge {
     show_in_folder: async (path) => ({ shown: path }),
     thumbnail: async () => ({ error: "No thumbnail" }),
     play: async (path) => ({ playing: path }),
+    open_logs: async () => ({ opened: "D:/auto-highlights/logs" }),
     pick_demos: async () => ({ paths: [] }),
     pick_music: async () => ({ path: null }),
     pick_folder: async () => ({ path: null }),

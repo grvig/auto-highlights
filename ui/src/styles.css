@@ -573,3 +573,7 @@ select {
 .path-field input {
   flex: 1;
 }
+
+.notice p {
+  margin: 0 0 8px;
+}
