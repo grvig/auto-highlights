@@ -17,6 +17,11 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
       - name: Install dependencies and build tools
         run: |
           pip install -r requirements.txt pyinstaller
@@ -26,7 +31,7 @@ jobs:
         run: |
           version=$(python -c "import highlights; print(highlights.__version__)")
           test "v$version" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} does not match version $version"; exit 1; }
-      - name: Build the app and its installer
+      - name: Build the interface, the app and its installer
         run: python packaging/build.py --out build --installer
       - name: Publish the release
         shell: bash
