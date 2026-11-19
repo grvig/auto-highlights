@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
+import { NewReel } from "./NewReel";
 import { ReadinessPage, StatusButton } from "./Readiness";
 import { Shell, type View } from "./Shell";
 import type { Readiness } from "./types";
@@ -18,7 +19,9 @@ export function App() {
       onNavigate={setView}
       status={<StatusButton readiness={readiness} onOpen={() => setView("ready")} />}
     >
-      {view === "ready" ? <ReadinessPage onChanged={setReadiness} /> : <h1>{TITLES[view]}</h1>}
+      {view === "ready" && <ReadinessPage onChanged={setReadiness} />}
+      {view === "new" && <NewReel />}
+      {(view === "reels" || view === "settings") && <h1>{TITLES[view]}</h1>}
     </Shell>
   );
 }
