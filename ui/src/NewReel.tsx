@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { DemosStep } from "./Demos";
 import { PlayerStep } from "./Player";
 import { PlaysStep } from "./Plays";
+import { RenderStep } from "./Render";
 import type { PlanOptions } from "./types";
 
 const STEPS = ["Demos", "Player", "Plays", "Make it"] as const;
@@ -50,7 +51,20 @@ export function NewReel() {
           onNext={() => setStep(3)}
         />
       )}
-      {step === 3 && <p className="muted">{player?.name}</p>}
+      {step === 3 && player && (
+        <RenderStep
+          paths={paths}
+          steamid={player.steamid}
+          playerName={player.name}
+          options={options}
+          onBack={() => setStep(2)}
+          onAnother={() => {
+            setPaths([]);
+            setPlayer(null);
+            setStep(0);
+          }}
+        />
+      )}
     </div>
   );
 }
