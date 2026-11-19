@@ -128,6 +128,14 @@ class AppApi:
         self._open(["explorer", f"/select,{target}"])
         return {"shown": str(target)}
 
+    def play(self, path: str) -> dict:
+        """Open a finished reel in the PC's default video player."""
+        target = self._output_file(path, (".mp4",))
+        if isinstance(target, dict):
+            return target
+        self._open(["explorer", str(target)])
+        return {"playing": str(target)}
+
     def thumbnail(self, path: str) -> dict:
         """A reel's thumbnail as a data URL the page can show directly."""
         target = self._output_file(path, (".png",))

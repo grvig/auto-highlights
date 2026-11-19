@@ -94,6 +94,9 @@ class Bridge:
     def thumbnail(self, path: str) -> dict:
         return self._api.thumbnail(path)
 
+    def play(self, path: str) -> dict:
+        return self._api.play(path)
+
     # --- native pickers ------------------------------------------------------
 
     def pick_demos(self) -> dict:

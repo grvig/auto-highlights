@@ -162,6 +162,21 @@ def test_show_in_folder_only_opens_reels_in_the_output_folder(tmp_path):
     assert len(opened) == 1
 
 
+def test_play_opens_only_reels_in_the_default_player(tmp_path):
+    out = tmp_path / "out"
+    out.mkdir()
+    reel = out / "semi_highlights_2026-11-17_1015.mp4"
+    reel.write_bytes(b"x")
+    (out / "run.bat").write_text("x")
+    opened = []
+    config = Config(cs2_root=None, output_dir=out, clips_dir=tmp_path / "clips", clips=ClipConfig())
+    app = AppApi(config_loader=lambda: config, you=lambda: None, opener=opened.append)
+    assert app.play(str(reel)) == {"playing": str(reel.resolve())}
+    assert opened == [["explorer", str(reel.resolve())]]
+    assert "error" in app.play(str(out / "run.bat"))  # never anything that could run
+    assert len(opened) == 1
+
+
 def test_thumbnails_come_back_as_data_urls_for_reels_only(tmp_path):
     out = tmp_path / "out"
     out.mkdir()
