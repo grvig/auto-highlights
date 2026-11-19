@@ -152,3 +152,54 @@ button.primary {
 .dot.fail {
   background: var(--fail);
 }
+
+/* --- pages ---------------------------------------------------------------- */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  max-width: 960px;
+}
+
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+}
+
+.notice {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.notice.fail {
+  border-color: var(--fail);
+}
+
+.notice.warn {
+  border-color: var(--warn);
+}
+
+.checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.checks li {
+  display: grid;
+  grid-template-columns: 12px 160px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border-radius: 6px;
+}

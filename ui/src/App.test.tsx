@@ -1,8 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useBridge } from "./api";
 import { App } from "./App";
+import { installFakeBridge } from "./test/fakeBridge";
+
+afterEach(() => useBridge(null));
 
 test("opens on a new reel and switches pages from the side bar", async () => {
+  installFakeBridge();
   render(<App />);
   expect(screen.getByRole("heading", { name: "New reel" })).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Your reels" }));
