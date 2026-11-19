@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "./api";
 import { NewReel } from "./NewReel";
 import { ReadinessPage, StatusButton } from "./Readiness";
+import { ReelsPage } from "./Reels";
 import { Shell, type View } from "./Shell";
 import type { Readiness } from "./types";
 
@@ -24,7 +25,8 @@ export function App() {
       <div hidden={view !== "new"}>
         <NewReel />
       </div>
-      {(view === "reels" || view === "settings") && <h1>{TITLES[view]}</h1>}
+      {view === "reels" && <ReelsPage />}
+      {view === "settings" && <h1>{TITLES[view]}</h1>}
     </Shell>
   );
 }

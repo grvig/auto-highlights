@@ -464,3 +464,70 @@ button.primary {
   background: var(--accent);
   transition: width 0.4s ease;
 }
+
+/* --- reels ------------------------------------------------------------------ */
+
+.reels {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reel {
+  display: flex;
+  gap: 16px;
+  padding: 12px;
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+
+.thumb {
+  flex: none;
+  width: 192px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--surface-2);
+}
+
+.reel-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reel-body > strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reel-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+details summary {
+  cursor: pointer;
+}
+
+.selectable {
+  user-select: text;
+  margin: 6px 0 0;
+  padding: 10px;
+  border-radius: 6px;
+  background: var(--bg);
+  font: 12px/1.5 Consolas, monospace;
+  white-space: pre-wrap;
+}
+
+.buttons {
+  display: flex;
+  gap: 8px;
+}

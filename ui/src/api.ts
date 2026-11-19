@@ -21,6 +21,8 @@ export interface Bridge {
   cancel(id: string): Promise<{ cancelled: boolean }>;
   reels(): Promise<{ reels: Reel[] }>;
   show_in_folder(path: string): Promise<{ shown: string } | Failed>;
+  thumbnail(path: string): Promise<{ url: string } | Failed>;
+  play(path: string): Promise<{ playing: string } | Failed>;
   pick_demos(): Promise<{ paths: string[] }>;
   pick_music(): Promise<{ path: string | null }>;
   pick_folder(): Promise<{ path: string | null }>;
@@ -89,6 +91,8 @@ export const api = {
   cancel: async (id: string) => (await (await bridge()).cancel(id)).cancelled,
   reels: async () => (await (await bridge()).reels()).reels,
   showInFolder: async (path: string) => unwrap(await (await bridge()).show_in_folder(path)),
+  thumbnail: async (path: string) => unwrap(await (await bridge()).thumbnail(path)).url,
+  play: async (path: string) => unwrap(await (await bridge()).play(path)),
   pickDemos: async () => (await (await bridge()).pick_demos()).paths,
   pickMusic: async () => (await (await bridge()).pick_music()).path,
   pickFolder: async () => (await (await bridge()).pick_folder()).path,

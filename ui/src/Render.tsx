@@ -93,13 +93,16 @@ export function RenderStep({ paths, steamid, playerName, options, onBack, onAnot
 
 function Finished({ result, onAnother }: { result: RenderResult; onAnother: () => void }) {
   const [error, setError] = useState<string | null>(null);
-  const show = async () => {
+  const run = (action: (video: string) => Promise<unknown>) => async () => {
+    setError(null);
     try {
-      if (result.video) await api.showInFolder(result.video);
+      if (result.video) await action(result.video);
     } catch (e) {
       setError(message(e));
     }
   };
+  const show = run(api.showInFolder);
+  const play = run(api.play);
   return (
     <section className="page">
       <header className="page-head">
@@ -117,9 +120,14 @@ function Finished({ result, onAnother }: { result: RenderResult; onAnother: () =
       {error && <p className="notice fail">{error}</p>}
       <footer className="page-foot">
         <button onClick={onAnother}>Make another</button>
-        <button className="primary" onClick={show} disabled={!result.video}>
-          Show in folder
-        </button>
+        <span className="buttons">
+          <button onClick={show} disabled={!result.video}>
+            Show in folder
+          </button>
+          <button className="primary" onClick={play} disabled={!result.video}>
+            Play
+          </button>
+        </span>
       </footer>
     </section>
   );
