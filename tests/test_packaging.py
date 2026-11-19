@@ -38,3 +38,13 @@ def test_builds_go_beside_the_parse_cache_by_default(monkeypatch, tmp_path):
                     clips=ClipConfig())
     monkeypatch.setattr("highlights.config.load_config", lambda: config)
     assert build.default_out() == tmp_path / "media" / "build"
+
+
+def test_the_packaged_exe_opens_the_window_without_arguments():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("entry", ROOT / "packaging" / "entry.py")
+    entry = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(entry)
+    assert entry.arguments([]) == ["--app"]
+    assert entry.arguments(["--check"]) == ["--check"]

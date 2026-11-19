@@ -128,6 +128,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="find or download everything recording needs (ffmpeg, HLAE) and exit",
     )
     parser.add_argument(
+        "--app",
+        action="store_true",
+        help="open the desktop app window instead of working on the command line",
+    )
+    parser.add_argument(
+        "--app-dev",
+        metavar="URL",
+        help=argparse.SUPPRESS,  # point the window at `npm run dev` while working on the UI
+    )
+    parser.add_argument(
         "--update-hlae",
         action="store_true",
         help="download the newest HLAE release (recording does this automatically)",
@@ -582,6 +592,17 @@ def default_run_log(args: argparse.Namespace) -> Path | None:
         return None
 
 
+def run_app(dev_url: str | None = None, debug: bool = False) -> int:
+    from highlights.app.window import WindowError, open_window  # noqa: PLC0415 - pulls in pywebview
+
+    try:
+        open_window(dev_url=dev_url, debug=debug)
+    except WindowError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def run(args: argparse.Namespace) -> int:
 
     level = args.log_level or ("info" if args.verbose else "warning")
@@ -593,6 +614,8 @@ def run(args: argparse.Namespace) -> int:
         return run_update_hlae()
     if args.setup:
         return run_setup()
+    if args.app or args.app_dev:
+        return run_app(args.app_dev, debug=bool(args.app_dev))
 
     if not args.demos:
         print("Error: a demo path is required (or use --check)", file=sys.stderr)

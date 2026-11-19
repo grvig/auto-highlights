@@ -319,3 +319,23 @@ def test_only_long_jobs_get_a_run_log(monkeypatch, tmp_path):
     assert cli.default_run_log(build_parser().parse_args(["m.dem"])) is None
     log = cli.default_run_log(build_parser().parse_args(["m.dem", "--record"]))
     assert log.parent == tmp_path / "media" / "logs"
+
+
+def test_app_flag_opens_the_window(monkeypatch):
+    from highlights import cli
+
+    opened = []
+    monkeypatch.setattr("highlights.app.window.open_window", lambda **kw: opened.append(kw))
+    assert cli.main(["--app"]) == 0
+    assert opened == [{"dev_url": None, "debug": False}]
+
+
+def test_app_without_a_built_interface_explains_itself(monkeypatch, capsys):
+    from highlights import cli
+    from highlights.app.window import WindowError
+
+    def missing(**kw):
+        raise WindowError("The app's interface is not built")
+    monkeypatch.setattr("highlights.app.window.open_window", missing)
+    assert cli.main(["--app"]) == 1
+    assert "not built" in capsys.readouterr().err
