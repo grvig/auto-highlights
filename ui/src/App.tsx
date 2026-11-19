@@ -20,7 +20,10 @@ export function App() {
       status={<StatusButton readiness={readiness} onOpen={() => setView("ready")} />}
     >
       {view === "ready" && <ReadinessPage onChanged={setReadiness} />}
-      {view === "new" && <NewReel />}
+      {/* Kept mounted so picks and a running render survive a look at other pages. */}
+      <div hidden={view !== "new"}>
+        <NewReel />
+      </div>
       {(view === "reels" || view === "settings") && <h1>{TITLES[view]}</h1>}
     </Shell>
   );
