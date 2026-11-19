@@ -68,3 +68,18 @@ def test_building_without_node_explains_what_is_missing(monkeypatch):
     monkeypatch.setattr(build.shutil, "which", lambda name: None)
     with pytest.raises(SystemExit, match="Node.js"):
         build.npm()
+
+
+def test_the_exe_is_windowed_but_keeps_output_streams(monkeypatch):
+    import importlib.util as util
+
+    assert "--windowed" in build.pyinstaller_args(Path("out")) and "--console" not in build.pyinstaller_args(Path("out"))
+    spec = util.spec_from_file_location("entry", ROOT / "packaging" / "entry.py")
+    entry = util.module_from_spec(spec)
+    spec.loader.exec_module(entry)
+    monkeypatch.setattr(entry.sys, "stdout", None)
+    monkeypatch.setattr(entry.sys, "stderr", None)
+    monkeypatch.setattr(entry, "attach_console", lambda: False)
+    entry.ensure_streams([])
+    print("nowhere")  # a windowed exe must not crash on output
+    assert entry.sys.stdout is not None and entry.sys.stderr is not None

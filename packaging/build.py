@@ -34,7 +34,7 @@ def pyinstaller_args(out: Path) -> list[str]:
         str(ROOT / "packaging" / "entry.py"),
         "--name", NAME,
         "--onedir",
-        "--console",
+        "--windowed",  # no console behind the app window; see entry.py
         "--noconfirm",
         "--clean",
         "--distpath", str(out / "dist"),
