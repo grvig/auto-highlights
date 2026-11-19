@@ -18,7 +18,7 @@ game installed.
 | 1 | Engine | Parses demos into a scored, ordered **clip plan** of highlight moments | Nothing but Python |
 | 2 | Recorder | Plays each moment in CS2 and renders it to a clip with game audio | CS2 + HLAE |
 | 3 | Stitcher | Joins clips into the reel and exports it in the chosen shape | ffmpeg |
-| 4 | App | Desktop front end over layers 1–3 | — |
+| 4 | App | Desktop window over layers 1–3 (React in pywebview) | Edge WebView2 (built into Windows 11) |
 
 Layer 2 sits behind a `Recorder` interface with three backends:
 
@@ -33,11 +33,18 @@ Layer 2 sits behind a `Recorder` interface with three backends:
 ## Install
 
 Download `auto-highlights-<version>-setup.exe` from the Releases page and run
-it. It installs for your Windows account only (no admin prompt) and offers to
+it. It installs for your Windows account only (no admin prompt) and adds
+auto-highlights to the Start menu. The app opens on four steps: pick demos
+(it finds the ones in CS2's replays folder and your Downloads), pick whose
+plays, look over the plays it chose, then record and make the reel. "Your
+reels" lists what it has made; "Settings" holds the output folder, reel
+shape, usual length and music.
+
+The side bar says whether recording is ready. The first time, it offers to
 fetch the two tools recording needs: ffmpeg (the official Windows build,
 checked against its published checksum) and HLAE (from its official GitHub
-releases, kept up to date because CS2 updates break old builds). Running
-`auto-highlights --setup` later does the same.
+releases, kept up to date because CS2 updates break old builds).
+`auto-highlights --setup` from a prompt does the same.
 
 Where things live once installed:
 
@@ -71,8 +78,24 @@ pip install -r requirements.txt
 A `config.toml` beside the code takes precedence over the installed app's
 settings; copy `config.template.toml` to start one. It is git-ignored.
 
-Build the standalone app and its installer (needs PyInstaller and Inno
-Setup):
+The window's interface lives in `ui/` (React, TypeScript, Vite) and needs
+Node.js 22 or newer:
+
+```powershell
+cd ui
+npm install
+npm test            # interface tests, no window needed
+npm run build       # writes highlights\app\web, which the window loads
+cd ..
+python -m highlights --app
+```
+
+While working on the interface, `npm run dev` serves it with live reload and
+`python -m highlights --app-dev http://localhost:5173` points the window at
+it (with the WebView developer tools on).
+
+Build the standalone app and its installer (needs PyInstaller, Inno Setup
+and Node.js; the interface is built first):
 
 ```powershell
 pip install pyinstaller
@@ -81,8 +104,10 @@ python packaging\build.py --out D:\auto-highlights\build --installer
 
 This makes `dist\auto-highlights\auto-highlights.exe` (Python and every
 dependency inside) and `installer\auto-highlights-<version>-setup.exe`.
+Started with no arguments the exe opens the window; from a prompt with
+arguments it is the command line below.
 
-GitHub runs the tests on every push to `main`. Pushing a tag that matches the
+GitHub runs the Python and interface tests on every push to `main`. Pushing a tag that matches the
 version in `highlights/__init__.py` (for example `v0.2.0`) builds the
 installer on GitHub and publishes it as a release.
 
@@ -182,4 +207,6 @@ description) and a 1280x720 `.thumbnail.png`. Loudness is levelled to
 - **Editor**: plain hard-cut reels by default; captions, cards, transitions,
   music, effects, chapters and thumbnails available as options. All checked
   on real footage.
-- **App**: not started.
+- **App**: desktop window with the whole flow (demos, player, plays, record
+  with progress and stop, your reels, settings, readiness and setup), tested
+  headlessly; the first look on screen is still to come.
