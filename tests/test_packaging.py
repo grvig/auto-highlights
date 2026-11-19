@@ -48,3 +48,23 @@ def test_the_packaged_exe_opens_the_window_without_arguments():
     spec.loader.exec_module(entry)
     assert entry.arguments([]) == ["--app"]
     assert entry.arguments(["--check"]) == ["--check"]
+
+
+def test_the_built_interface_is_bundled(tmp_path):
+    args = build.pyinstaller_args(tmp_path)
+    data = [args[i + 1] for i, arg in enumerate(args) if arg == "--add-data"]
+    assert any(d.endswith("highlights/app/web") and "web" in d.split(build.SEP)[0] for d in data)
+
+
+def test_the_interface_installs_its_dependencies_only_when_missing(monkeypatch):
+    monkeypatch.setattr(build.shutil, "which", lambda name: "npm")
+    assert build.ui_commands(install=True) == [["npm", "ci"], ["npm", "run", "build"]]
+    assert build.ui_commands(install=False) == [["npm", "run", "build"]]
+
+
+def test_building_without_node_explains_what_is_missing(monkeypatch):
+    import pytest
+
+    monkeypatch.setattr(build.shutil, "which", lambda name: None)
+    with pytest.raises(SystemExit, match="Node.js"):
+        build.npm()

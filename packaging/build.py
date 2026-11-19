@@ -3,7 +3,8 @@
     python packaging/build.py [--out FOLDER] [--installer]
 
 Produces <out>/dist/auto-highlights/auto-highlights.exe with Python and every
-dependency inside, so users install nothing else. With --installer it also
+dependency inside, so users install nothing else. The window's interface is
+built from ui/ first (needs Node.js) and bundled as highlights/app/web. With --installer it also
 compiles <out>/installer/auto-highlights-<version>-setup.exe (Inno Setup). ffmpeg and HLAE are not
 bundled: the app downloads them on first run (highlights.setup), which keeps
 the installer small and lets HLAE update itself when CS2 changes.
@@ -22,6 +23,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 NAME = "auto-highlights"
 EXCLUDED = ("matplotlib", "scipy", "PIL", "tkinter", "IPython", "notebook")
+UI = ROOT / "ui"
+WEB = ROOT / "highlights" / "app" / "web"
+SEP = ";" if sys.platform == "win32" else ":"
 
 
 def pyinstaller_args(out: Path) -> list[str]:
@@ -43,8 +47,29 @@ def pyinstaller_args(out: Path) -> list[str]:
         "--collect-submodules", "highlights",
         # awpy's plotting and navmesh extras, never used by the app (~95 MB)
         *[arg for module in EXCLUDED for arg in ("--exclude-module", module)],
-        "--add-data", f"{ROOT / 'config.template.toml'}{';' if sys.platform == 'win32' else ':'}.",
+        "--add-data", f"{ROOT / 'config.template.toml'}{SEP}.",
+        "--add-data", f"{WEB}{SEP}highlights/app/web",
     ]
+
+
+def npm() -> str:
+    found = shutil.which("npm")
+    if found is None:
+        raise SystemExit("Node.js (npm) is needed to build the app's interface: https://nodejs.org")
+    return found
+
+
+def ui_commands(install: bool) -> list[list[str]]:
+    """npm ci when the dependencies are missing, then the production build."""
+    commands = [[npm(), "ci"]] if install else []
+    return commands + [[npm(), "run", "build"]]
+
+
+def build_ui() -> None:
+    for command in ui_commands(install=not (UI / "node_modules").exists()):
+        subprocess.run(command, cwd=UI, check=True)
+    if not (WEB / "index.html").is_file():
+        raise SystemExit(f"The interface build left no {WEB / 'index.html'}")
 
 
 INNO_LOCATIONS = (
@@ -93,8 +118,12 @@ def main() -> int:
     parser.add_argument("--out", type=Path, default=None,
                         help="build folder (default: next to the parse cache, else ./build)")
     parser.add_argument("--installer", action="store_true", help="also compile the setup .exe")
+    parser.add_argument("--skip-ui", action="store_true",
+                        help="bundle the interface already in highlights/app/web as it is")
     options = parser.parse_args()
     out = options.out or default_out()
+    if not options.skip_ui:
+        build_ui()
     shutil.rmtree(out / "dist" / NAME, ignore_errors=True)
     result = subprocess.run(pyinstaller_args(out))
     exe = out / "dist" / NAME / f"{NAME}.exe"
