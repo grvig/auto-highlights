@@ -1,0 +1,5 @@
+# Text files are stored and checked out with LF, whatever the editor writes.
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.dem binary
