@@ -30,3 +30,8 @@ desktop.ini
 # Builds
 /build/
 /dist/
+
+# The app interface: dependencies (a junction to D: on the dev PC) and the
+# built files, which packaging and CI build from ui/.
+ui/node_modules
+highlights/app/web/
