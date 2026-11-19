@@ -583,8 +583,12 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def default_run_log(args: argparse.Namespace) -> Path | None:
-    """A log file for long jobs (recording, editing, setup) next to the cache."""
-    if not (args.record or args.edit_only or args.setup):
+    """A log file for long jobs (recording, editing, setup) next to the cache.
+
+    The app window gets one too: it has no console, and it records and sets
+    up just like the command line does.
+    """
+    if not (args.record or args.edit_only or args.setup or args.app or args.app_dev):
         return None
     try:
         return run_log_path(load_config().resolved_cache_dir.parent / "logs")

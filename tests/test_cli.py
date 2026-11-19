@@ -319,10 +319,14 @@ def test_only_long_jobs_get_a_run_log(monkeypatch, tmp_path):
     assert cli.default_run_log(build_parser().parse_args(["m.dem"])) is None
     log = cli.default_run_log(build_parser().parse_args(["m.dem", "--record"]))
     assert log.parent == tmp_path / "media" / "logs"
+    window = cli.default_run_log(build_parser().parse_args(["--app"]))
+    assert window.parent == tmp_path / "media" / "logs"
 
 
 def test_app_flag_opens_the_window(monkeypatch):
     from highlights import cli
+
+    monkeypatch.setattr(cli, "default_run_log", lambda args: None)  # no log files from tests
 
     opened = []
     monkeypatch.setattr("highlights.app.window.open_window", lambda **kw: opened.append(kw))
@@ -332,6 +336,8 @@ def test_app_flag_opens_the_window(monkeypatch):
 
 def test_app_without_a_built_interface_explains_itself(monkeypatch, capsys):
     from highlights import cli
+
+    monkeypatch.setattr(cli, "default_run_log", lambda args: None)  # no log files from tests
     from highlights.app.window import WindowError
 
     def missing(**kw):
