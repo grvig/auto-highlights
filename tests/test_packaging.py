@@ -28,7 +28,10 @@ def test_the_installer_is_given_the_version_and_folders(tmp_path):
 def test_entry_and_installer_script_exist():
     assert (ROOT / "packaging" / "entry.py").is_file()
     text = (ROOT / "packaging" / "installer.iss").read_text(encoding="utf-8")
-    assert "PrivilegesRequired=lowest" in text and "--setup" in text
+    assert "PrivilegesRequired=lowest" in text
+    # the shortcuts open the window: the exe itself, no prompt and no arguments
+    shortcut = next(line for line in text.splitlines() if line.startswith('Name: "{group}\\auto-highlights"'))
+    assert 'Filename: "{app}\\auto-highlights.exe"' in shortcut and "Parameters" not in shortcut
 
 
 def test_builds_go_beside_the_parse_cache_by_default(monkeypatch, tmp_path):

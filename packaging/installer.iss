@@ -3,8 +3,9 @@
 ;   ISCC.exe /DSourceDir=<dist\auto-highlights> /DOutputDir=<folder> packaging\installer.iss
 ;
 ; Installs per user (no admin prompt) into %LOCALAPPDATA%\Programs. ffmpeg and
-; HLAE are not inside: the app downloads them on first run (--setup), which
-; keeps this installer small and lets HLAE update when CS2 changes.
+; HLAE are not inside: the app downloads them on first run (the window's
+; readiness page, or --setup), which keeps this installer small and lets HLAE
+; update when CS2 changes.
 
 #ifndef AppVersion
   #define AppVersion "0.1.0"
@@ -36,13 +37,18 @@ WizardStyle=modern
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
+[Tasks]
+Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
+
 [Icons]
-; Until the window app lands, the shortcut opens a prompt in the app folder.
-Name: "{group}\auto-highlights"; Filename: "{cmd}"; Parameters: "/K ""cd /d ""{app}"" && auto-highlights.exe --help"""; WorkingDir: "{app}"
+; Started without arguments the exe opens the app window.
+Name: "{group}\auto-highlights"; Filename: "{app}\auto-highlights.exe"; WorkingDir: "{app}"
+Name: "{autodesktop}\auto-highlights"; Filename: "{app}\auto-highlights.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 Name: "{group}\Uninstall auto-highlights"; Filename: "{uninstallexe}"
 
 [Run]
-Filename: "{app}\auto-highlights.exe"; Parameters: "--setup"; Description: "Download ffmpeg and HLAE now (about 125 MB)"; Flags: postinstall skipifsilent
+; The window checks what is missing and offers to download ffmpeg and HLAE.
+Filename: "{app}\auto-highlights.exe"; Description: "Open auto-highlights"; Flags: postinstall nowait skipifsilent
 
 [UninstallDelete]
 ; settings, downloaded tools and caches; finished reels in Videos are kept
