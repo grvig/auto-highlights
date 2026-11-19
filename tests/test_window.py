@@ -67,7 +67,7 @@ def test_the_page_only_sees_the_bridge_methods():
     public = {name for name in dir(Bridge(FakeApi())) if not name.startswith("_")}
     assert public == {
         "version", "check", "setup", "settings", "save_settings", "find_demos", "analyze",
-        "plan", "render", "job", "cancel", "reels", "show_in_folder",
+        "plan", "render", "job", "cancel", "reels", "show_in_folder", "thumbnail",
         "pick_demos", "pick_music", "pick_folder",
     }
 

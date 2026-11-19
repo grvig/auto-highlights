@@ -8,6 +8,7 @@ does not parse the demos again.
 
 from __future__ import annotations
 
+import base64
 import logging
 import subprocess
 from collections.abc import Callable
@@ -102,11 +103,11 @@ class AppApi:
         config = self._config()
         return {"reels": list_reels(config.output_dir) if config else []}
 
-    def show_in_folder(self, path: str) -> dict:
-        """Open Explorer with a finished reel selected.
+    def _output_file(self, path: str, suffixes: tuple[str, ...] = ()) -> Path | dict:
+        """path resolved, if it is a file inside the output folder; else an error.
 
-        Only files inside the output folder, so the window cannot be used to
-        open anything else on the PC.
+        The window may only reach the app's own output, so it cannot be used
+        to open or read anything else on the PC.
         """
         config = self._config()
         if config is None:
@@ -115,8 +116,25 @@ class AppApi:
         root = Path(config.output_dir).resolve()
         if root not in target.parents or not target.is_file():
             return _error("That file is not one of your reels.")
+        if suffixes and target.suffix.lower() not in suffixes:
+            return _error("That file is not one of your reels.")
+        return target
+
+    def show_in_folder(self, path: str) -> dict:
+        """Open Explorer with a finished reel selected."""
+        target = self._output_file(path)
+        if isinstance(target, dict):
+            return target
         self._open(["explorer", f"/select,{target}"])
         return {"shown": str(target)}
+
+    def thumbnail(self, path: str) -> dict:
+        """A reel's thumbnail as a data URL the page can show directly."""
+        target = self._output_file(path, (".png",))
+        if isinstance(target, dict):
+            return target
+        data = base64.b64encode(target.read_bytes()).decode("ascii")
+        return {"url": f"data:image/png;base64,{data}"}
 
     # --- settings ----------------------------------------------------------
 

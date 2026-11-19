@@ -91,6 +91,9 @@ class Bridge:
     def show_in_folder(self, path: str) -> dict:
         return self._api.show_in_folder(path)
 
+    def thumbnail(self, path: str) -> dict:
+        return self._api.thumbnail(path)
+
     # --- native pickers ------------------------------------------------------
 
     def pick_demos(self) -> dict:

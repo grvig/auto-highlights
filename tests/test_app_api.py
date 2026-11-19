@@ -162,6 +162,20 @@ def test_show_in_folder_only_opens_reels_in_the_output_folder(tmp_path):
     assert len(opened) == 1
 
 
+def test_thumbnails_come_back_as_data_urls_for_reels_only(tmp_path):
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "semi_highlights_2026-11-17_1015.thumbnail.png").write_bytes(b"PNG")
+    (out / "notes.txt").write_text("x")
+    (tmp_path / "other.png").write_bytes(b"PNG")
+    config = Config(cs2_root=None, output_dir=out, clips_dir=tmp_path / "clips", clips=ClipConfig())
+    app = AppApi(config_loader=lambda: config, you=lambda: None)
+    answer = app.thumbnail(str(out / "semi_highlights_2026-11-17_1015.thumbnail.png"))
+    assert answer == {"url": "data:image/png;base64,UE5H"}
+    assert "error" in app.thumbnail(str(out / "notes.txt"))
+    assert "error" in app.thumbnail(str(tmp_path / "other.png"))
+
+
 def test_readiness_comes_back_as_data(tmp_path, monkeypatch):
     from highlights.preflight import Check
 
