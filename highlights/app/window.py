@@ -22,6 +22,8 @@ TITLE = "auto-highlights"
 SIZE = (1180, 780)
 MIN_SIZE = (900, 620)
 BACKGROUND = "#101216"  # the page's own background, so opening never flashes white
+DEMO_FILES = ("CS2 demos (*.dem)", "All files (*.*)")
+MUSIC_FILES = ("Music (*.mp3;*.wav;*.flac;*.ogg;*.m4a)", "All files (*.*)")
 
 
 class WindowError(RuntimeError):
@@ -88,6 +90,30 @@ class Bridge:
 
     def show_in_folder(self, path: str) -> dict:
         return self._api.show_in_folder(path)
+
+    # --- native pickers ------------------------------------------------------
+
+    def pick_demos(self) -> dict:
+        """Let the player browse for demos that were not found automatically."""
+        return {"paths": self._dialog("OPEN", allow_multiple=True, file_types=DEMO_FILES)}
+
+    def pick_music(self) -> dict:
+        chosen = self._dialog("OPEN", file_types=MUSIC_FILES)
+        return {"path": chosen[0] if chosen else None}
+
+    def pick_folder(self) -> dict:
+        chosen = self._dialog("FOLDER")
+        return {"path": chosen[0] if chosen else None}
+
+    def _dialog(self, kind: str, **options: Any) -> list[str]:
+        if self._window is None:
+            return []
+        from webview import FileDialog  # noqa: PLC0415 - only when a window exists
+
+        chosen = self._window.create_file_dialog(getattr(FileDialog, kind), **options)
+        if isinstance(chosen, str):  # some platforms answer a single pick as a string
+            chosen = [chosen]
+        return [str(path) for path in chosen or ()]
 
 
 def open_window(api: AppApi | None = None, webview: Any = None, web_dir: Path = WEB_DIR,

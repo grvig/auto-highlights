@@ -68,4 +68,40 @@ def test_the_page_only_sees_the_bridge_methods():
     assert public == {
         "version", "check", "setup", "settings", "save_settings", "find_demos", "analyze",
         "plan", "render", "job", "cancel", "reels", "show_in_folder",
+        "pick_demos", "pick_music", "pick_folder",
     }
+
+
+class FakeDialogWindow:
+    def __init__(self, answer):
+        self.answer, self.asked = answer, []
+
+    def create_file_dialog(self, kind, **options):
+        self.asked.append((kind, options))
+        return self.answer
+
+
+def test_demos_are_picked_with_a_dem_filter():
+    from webview import FileDialog
+
+    bridge = Bridge(FakeApi())
+    window = FakeDialogWindow(("C:/a.dem", "C:/b.dem"))
+    bridge._attach(window)
+    assert bridge.pick_demos() == {"paths": ["C:/a.dem", "C:/b.dem"]}
+    kind, options = window.asked[0]
+    assert kind == FileDialog.OPEN and options["allow_multiple"]
+    assert "*.dem" in options["file_types"][0]
+
+
+def test_cancelled_or_windowless_pickers_answer_nothing():
+    bridge = Bridge(FakeApi())
+    assert bridge.pick_music() == {"path": None}  # no window yet
+    bridge._attach(FakeDialogWindow(None))
+    assert bridge.pick_folder() == {"path": None}
+    assert bridge.pick_demos() == {"paths": []}
+
+
+def test_a_single_pick_given_as_text_still_works():
+    bridge = Bridge(FakeApi())
+    bridge._attach(FakeDialogWindow("D:/music/track.mp3"))
+    assert bridge.pick_music() == {"path": "D:/music/track.mp3"}
