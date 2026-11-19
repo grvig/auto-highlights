@@ -3,6 +3,7 @@ import { api } from "./api";
 import { NewReel } from "./NewReel";
 import { ReadinessPage, StatusButton } from "./Readiness";
 import { ReelsPage } from "./Reels";
+import { SettingsPage } from "./SettingsPage";
 import { Shell, type View } from "./Shell";
 import type { Readiness } from "./types";
 
@@ -26,14 +27,7 @@ export function App() {
         <NewReel />
       </div>
       {view === "reels" && <ReelsPage />}
-      {view === "settings" && <h1>{TITLES[view]}</h1>}
+      {view === "settings" && <SettingsPage />}
     </Shell>
   );
 }
-
-const TITLES: Record<View, string> = {
-  new: "New reel",
-  reels: "Your reels",
-  settings: "Settings",
-  ready: "Recording readiness",
-};

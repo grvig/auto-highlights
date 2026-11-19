@@ -531,3 +531,45 @@ details summary {
   display: flex;
   gap: 8px;
 }
+
+/* --- forms ------------------------------------------------------------------ */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.form label {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border-radius: 6px;
+}
+
+input,
+select {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  min-width: 0;
+}
+
+select {
+  cursor: pointer;
+}
+
+.path-field {
+  display: flex;
+  gap: 8px;
+}
+
+.path-field input {
+  flex: 1;
+}
