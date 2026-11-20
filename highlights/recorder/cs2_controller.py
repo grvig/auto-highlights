@@ -21,7 +21,12 @@ from pathlib import Path
 
 from highlights.engine.timing import CS2_TICKRATE
 from highlights.recorder import cs2_commands as commands
-from highlights.recorder.compat import hook_failure_hint, old_demo_hint
+from highlights.recorder.compat import (
+    HOOK_BROKEN,
+    hook_failure_hint,
+    hook_unsupported_message,
+    old_demo_hint,
+)
 from highlights.recorder.cs2_console import DEFAULT_PORT, ConsoleError, Cs2Console
 
 logger = logging.getLogger(__name__)
@@ -60,6 +65,11 @@ CLOSE_GRACE_SECONDS = 20.0
 
 class Cs2Error(Exception):
     """Raised when CS2 cannot be launched or reached."""
+
+
+class HookUnsupported(Cs2Error):
+    """HLAE's hook does not match the installed CS2 build: nothing will load
+    until HLAE ships an update, so the rest of the run should not try."""
 
 
 def _default_launcher(args: Sequence[str]) -> subprocess.Popen[bytes]:
@@ -204,7 +214,10 @@ class Cs2Controller:
         logger.info("Loading demo %s", demo_name)
         self.console.drain()
         self.console.send(commands.play_demo(demo_name))
-        if not self.console.wait_for(DEMO_READY, DEMO_LOAD_TIMEOUT):
+        loaded = self.console.wait_for(f"(?P<ready>{DEMO_READY})|(?P<broken>{HOOK_BROKEN})", DEMO_LOAD_TIMEOUT)
+        if loaded and loaded.group("broken"):
+            raise HookUnsupported(hook_unsupported_message(self.cs2_root))
+        if not loaded:
             raise Cs2Error(f"Demo {demo_name} never finished loading."
                            + old_demo_hint(self.cs2_root))
         self._sleep(settle_seconds)

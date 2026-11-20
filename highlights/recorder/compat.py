@@ -83,6 +83,18 @@ def hlae_older_than_game(hlae_published: datetime | None, cs2_root: Path | None,
     return bool(updated and hlae_published and hlae_published < updated)
 
 
+# HLAE's hook prints this when a CS2 update moved the code it patches; from
+# then on demos never load, so waiting for one is pointless.
+HOOK_BROKEN = r"Could not find address for pattern"
+
+
+def hook_unsupported_message(cs2_root: Path | None) -> str:
+    build = cs2_build(cs2_root)
+    which = f"CS2 build {build}" if build else "this CS2 build"
+    return (f"HLAE cannot hook {which} yet: it needs an HLAE update for the latest CS2 patch. "
+            "Window capture still records; set recorder = \"window\" until HLAE is updated.")
+
+
 def hook_failure_hint(cs2_root: Path | None, now: datetime | None = None) -> str:
     updated = recent_update(cs2_root, now)
     if updated is None:

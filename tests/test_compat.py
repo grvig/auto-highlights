@@ -64,3 +64,11 @@ def test_an_hlae_seen_working_on_this_build_is_not_flagged(tmp_path):
     assert not hlae_older_than_game(datetime(2026, 11, 7), root, soon, worked_on=hlae_worked_on(hlae))
     # A later CS2 build brings the warning back.
     assert hlae_older_than_game(datetime(2026, 11, 7), root, soon, worked_on="26700000")
+
+
+def test_the_hook_message_names_the_build_and_the_way_out(tmp_path):
+    from highlights.recorder.compat import hook_unsupported_message
+
+    message = hook_unsupported_message(install(tmp_path))
+    assert "CS2 build 26748068" in message and 'recorder = "window"' in message
+    assert "this CS2 build" in hook_unsupported_message(None)

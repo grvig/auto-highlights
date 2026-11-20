@@ -9,7 +9,7 @@ import re
 import pytest
 
 from highlights.recorder.cs2_console import Cs2Console
-from highlights.recorder.cs2_controller import Cs2Controller, Cs2Error
+from highlights.recorder.cs2_controller import Cs2Controller, Cs2Error, HookUnsupported
 
 
 class RecordingConsole(Cs2Console):
@@ -73,6 +73,19 @@ def test_load_demo_waits_for_the_game_then_cleans_the_view(controller):
 def test_load_demo_fails_when_the_demo_never_loads(controller):
     with pytest.raises(Cs2Error, match="never finished loading"):
         controller.load_demo("match_one")
+
+
+def test_load_demo_stops_at_once_when_hlae_cannot_hook_this_build(controller):
+    # what HLAE 2.193.0 printed on CS2 build 26798866 (2026-11-20)
+    controller.test_console.output = [
+        "Initialized Embree v4.04.00.",
+        "Could not find address for pattern: 40 55 53 56 41 56 41 57 48 8B EC",
+        "CL:  CL_ProcessPacketEntities: received full update",
+    ]
+    with pytest.raises(HookUnsupported, match="HLAE cannot hook") as raised:
+        controller.load_demo("match_one")
+    assert isinstance(raised.value, Cs2Error)
+    assert "window" in str(raised.value)
 
 
 def test_stage_demo_copies_into_replays_with_a_safe_name(controller, tmp_path):
