@@ -90,7 +90,7 @@ def test_demos_are_picked_with_a_dem_filter():
     assert bridge.pick_demos() == {"paths": ["C:/a.dem", "C:/b.dem"]}
     kind, options = window.asked[0]
     assert kind == FileDialog.OPEN and options["allow_multiple"]
-    assert "*.dem" in options["file_types"][0]
+    assert "*.dem;" in options["file_types"][0] and "*.dem.zst" in options["file_types"][0]
 
 
 def test_cancelled_or_windowless_pickers_answer_nothing():

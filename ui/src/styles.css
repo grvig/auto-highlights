@@ -432,3 +432,11 @@ details summary {
 .fail-text {
   color: var(--fail);
 }
+
+.tag {
+  margin-left: 6px;
+  padding: 0 4px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}

@@ -36,6 +36,14 @@ test("browsed demos are added and picked", async () => {
   expect(screen.getByText("2 selected")).toBeInTheDocument();
 });
 
+test("packed FACEIT demos are marked", async () => {
+  installFakeBridge({
+    find_demos: async () => ({ demos: [{ ...DEMOS[0], name: "1-abc.dem.zst", path: "C:/dl/1-abc.dem.zst", compressed: true }] }),
+  });
+  render(<NewReel />);
+  expect(await screen.findByText("packed")).toBeInTheDocument();
+});
+
 test("an empty search says so", async () => {
   installFakeBridge();
   render(<NewReel />);

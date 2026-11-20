@@ -71,7 +71,10 @@ export function DemosStep({ selected, onChange, onNext }: Props) {
                         onClick={(e) => e.stopPropagation()}
                       />
                     </td>
-                    <td>{demo.name}</td>
+                    <td>
+                      {demo.name}
+                      {(demo.compressed ?? /\.dem\.(zst|gz)$/i.test(demo.name)) && <span className="tag">packed</span>}
+                    </td>
                     <td>{demo.modified ? formatWhen(demo.modified) : ""}</td>
                     <td className="num">{demo.megabytes ? `${demo.megabytes} MB` : ""}</td>
                     <td className="wide muted">{demo.folder}</td>

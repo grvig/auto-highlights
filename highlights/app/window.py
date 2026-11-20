@@ -23,7 +23,7 @@ TITLE = "auto-highlights"
 SIZE = (1180, 780)
 MIN_SIZE = (900, 620)
 BACKGROUND = "#101216"  # the page's own background, so opening never flashes white
-DEMO_FILES = ("CS2 demos (*.dem)", "All files (*.*)")
+DEMO_FILES = ("CS2 demos (*.dem;*.dem.zst;*.dem.gz)", "All files (*.*)")
 MUSIC_FILES = ("Music (*.mp3;*.wav;*.flac;*.ogg;*.m4a)", "All files (*.*)")
 
 
