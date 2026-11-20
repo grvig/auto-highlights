@@ -67,6 +67,10 @@ class Cs2Error(Exception):
     """Raised when CS2 cannot be launched or reached."""
 
 
+class DemoLoadError(Cs2Error):
+    """A demo never finished loading."""
+
+
 class HookUnsupported(Cs2Error):
     """HLAE's hook does not match the installed CS2 build: nothing will load
     until HLAE ships an update, so the rest of the run should not try."""
@@ -218,8 +222,8 @@ class Cs2Controller:
         if loaded and loaded.group("broken"):
             raise HookUnsupported(hook_unsupported_message(self.cs2_root))
         if not loaded:
-            raise Cs2Error(f"Demo {demo_name} never finished loading."
-                           + old_demo_hint(self.cs2_root))
+            raise DemoLoadError(f"Demo {demo_name} never finished loading."
+                                + old_demo_hint(self.cs2_root))
         self._sleep(settle_seconds)
         self.console.send(commands.toggle_demo_ui())
         self.console.send_all(commands.movie_setup(self.full_hud))

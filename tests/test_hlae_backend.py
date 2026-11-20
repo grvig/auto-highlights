@@ -260,3 +260,22 @@ def test_a_game_that_drops_the_console_ends_the_run_cleanly(tmp_path):
     clip = rec.record_clip(make_request(tmp_path))  # no exception escapes
     assert not clip.succeeded and "stopped answering" in clip.error
     assert rec.unusable == clip.error
+
+
+def test_a_silent_load_failure_with_an_old_hlae_is_blamed_on_the_hook(tmp_path):
+    from highlights.recorder.cs2_controller import DemoLoadError
+
+    class NeverLoads(FakeCs2):
+        cs2_root = None
+
+        def load_demo(self, name, settle_seconds=3.0):
+            raise DemoLoadError("Demo nuke never finished loading.")
+
+    old = HlaeRecorder(NeverLoads(), tmp_path, runner=[].append, sleeper=lambda s: None,
+                       hlae_predates_game=True)
+    clip = old.record_clip(make_request(tmp_path))
+    assert "HLAE cannot hook" in clip.error and old.unusable
+
+    current = HlaeRecorder(NeverLoads(), tmp_path, runner=[].append, sleeper=lambda s: None)
+    clip = current.record_clip(make_request(tmp_path))
+    assert "never finished loading" in clip.error and current.unusable is None

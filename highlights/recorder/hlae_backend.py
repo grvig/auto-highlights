@@ -19,7 +19,8 @@ from pathlib import Path
 from highlights.recorder import mirv
 from highlights.recorder.base import ClipRequest, RecordedClip
 from highlights.recorder.cs2_console import ConsoleError
-from highlights.recorder.cs2_controller import Cs2Controller, Cs2Error, HookUnsupported
+from highlights.recorder.compat import hook_unsupported_message
+from highlights.recorder.cs2_controller import Cs2Controller, Cs2Error, DemoLoadError, HookUnsupported
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,7 @@ class HlaeRecorder:
         restore_commands: Sequence[str] = (),
         on_working: Callable[[], None] | None = None,
         on_unusable: Callable[[], None] | None = None,
+        hlae_predates_game: bool = False,
     ) -> None:
         self.cs2 = cs2
         self.output_dir = Path(output_dir)
@@ -74,6 +76,9 @@ class HlaeRecorder:
         self._on_working = on_working
         # Called when HLAE cannot hook this CS2 build, to remember that.
         self._on_unusable = on_unusable
+        # An HLAE older than the latest CS2 update often fails without saying
+        # so: the game just never loads the demo. Then that is the likely cause.
+        self.hlae_predates_game = hlae_predates_game
         self._loaded: Path | None = None
         # Set when this backend cannot record at all on this machine.
         self.unusable: str | None = None
@@ -100,7 +105,12 @@ class HlaeRecorder:
     def record_clip(self, request: ClipRequest) -> RecordedClip:
         logger.info("[%s] recording %s", self.name, request)
         try:
-            self._ensure_demo(request.demo_path)
+            try:
+                self._ensure_demo(request.demo_path)
+            except DemoLoadError:
+                if not self.hlae_predates_game:
+                    raise
+                raise HookUnsupported(hook_unsupported_message(self.cs2.cs2_root)) from None
             for take in range(1, TAKES_PER_CLIP + 1):
                 take_dir, landed = self._record_take(request)
                 if landed is not None and abs(landed - request.end_tick) <= LANDING_TOLERANCE_TICKS:

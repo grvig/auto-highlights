@@ -59,11 +59,12 @@ def build_live_recorder(config: Config, steam_root: Path | None = None) -> HlaeR
                 "HLAE cannot hook CS2 build %s (found on an earlier run); recording with "
                 "window capture until HLAE or CS2 updates", cs2_build(config.cs2_root))
             hlae_dir = None
-        elif hlae_dir is not None and hlae_older_than_game(
-                installed_published(hlae_dir), config.cs2_root, worked_on=hlae_worked_on(hlae_dir)):
+        older = hlae_dir is not None and hlae_older_than_game(
+            installed_published(hlae_dir), config.cs2_root, worked_on=hlae_worked_on(hlae_dir))
+        if hlae_dir is not None and older:
             logger.warning(
-                "HLAE %s was released before this CS2 update; if CS2 fails to start or "
-                "record, set recorder = \"window\" until HLAE catches up",
+                "HLAE %s was released before this CS2 update; if it cannot load demos, "
+                "window capture takes over",
                 ".".join(map(str, installed_version(hlae_dir) or ())) or "(installed)",
             )
         if hlae_dir is not None:
@@ -71,7 +72,8 @@ def build_live_recorder(config: Config, steam_root: Path | None = None) -> HlaeR
             args = launch_args(hlae_dir, cs2.executable, rec.width, rec.height, cs2.console_port)
             return HlaeRecorder(cs2, launch_args=args,
                                 on_working=lambda: mark_hlae_working(hlae_dir, config.cs2_root),
-                                on_unusable=lambda: mark_hlae_broken(hlae_dir, config.cs2_root), **common)
+                                on_unusable=lambda: mark_hlae_broken(hlae_dir, config.cs2_root),
+                                hlae_predates_game=older, **common)
         else:
             logger.warning("HLAE not available; falling back to window capture")
 
