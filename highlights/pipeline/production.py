@@ -8,6 +8,7 @@ message fit to show a person.
 from __future__ import annotations
 
 import contextlib
+import logging
 import subprocess
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -28,6 +29,8 @@ from highlights.recorder.naming import build_clip_requests, reel_filename
 from highlights.recorder.session import already_recorded, record_requests
 from highlights.stitcher.aspect import PROFILES, convert
 from highlights.stitcher.runner import StitchError
+
+logger = logging.getLogger(__name__)
 from highlights.stitcher.stitch import stitch_clips
 
 
@@ -71,17 +74,38 @@ def record_clips(
     """Film every request (or log them, when not live), guarding CS2 settings.
 
     One failed clip never stops the run; a game that cannot be started or
-    reached raises ProductionError.
+    reached raises ProductionError. When HLAE turns out unable to hook the
+    installed CS2 build, the clips are recorded again with window capture in
+    the same run, so a CS2 update does not leave the player with nothing.
     """
     if spectator_hud:
         config = replace(config, recording=replace(config.recording, hud="full"))
     try:
         recorder = build_live_recorder(config) if live else DryRunRecorder()
         with settings_guard(config) if live else contextlib.nullcontext():
-            return record_requests(recorder, requests, skip_existing=resume and live,
-                                   progress=progress, cancel=cancel)
+            clips = record_requests(recorder, requests, skip_existing=resume and live,
+                                    progress=progress, cancel=cancel)
+            reason = getattr(recorder, "unusable", None)
+            if live and reason and not (cancel is not None and cancel.cancelled):
+                clips = _record_again_without_hlae(clips, config, reason, progress, cancel)
+            return clips
     except (HlaeError, Cs2Error) as error:
         raise ProductionError(str(error)) from error
+
+
+def _record_again_without_hlae(
+    clips: list[RecordedClip], config: Config, reason: str,
+    progress: ProgressFn, cancel: CancelToken | None,
+) -> list[RecordedClip]:
+    """Retry the failed clips with the window-capture backend."""
+    fallback = build_live_recorder(config)  # HLAE has noted this build as broken
+    if getattr(fallback, "name", "") == "hlae":
+        return clips  # the build could not be noted, so there is nothing else to try
+    logger.warning("%s Recording with window capture instead.", reason)
+    failed = [clip.request for clip in clips if not clip.succeeded]
+    again = {id(clip.request): clip for clip in
+             record_requests(fallback, failed, progress=progress, cancel=cancel)}
+    return [again.get(id(clip.request), clip) for clip in clips]
 
 
 @dataclass(frozen=True)

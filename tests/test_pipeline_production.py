@@ -125,3 +125,48 @@ def test_a_cancelled_reel_stops_before_export(tmp_path, fake_ffmpeg):
     with pytest.raises(Cancelled):
         produce_reel([], "semi", make_config(tmp_path), cancel=token)
     assert "convert" not in fake_ffmpeg
+
+
+class FakeBackend:
+    def __init__(self, name, unusable=None):
+        self.name, self.unusable, self.recorded = name, None, []
+        self._fail_with = unusable
+
+    def open(self):
+        pass
+
+    def close(self):
+        pass
+
+    def record_clip(self, request):
+        from highlights.recorder.base import RecordedClip
+
+        if self._fail_with:
+            self.unusable = self._fail_with
+            return RecordedClip(request, request.output_path, succeeded=False, error=self._fail_with)
+        self.recorded.append(request.index)
+        return RecordedClip(request, request.output_path, succeeded=True)
+
+
+def test_clips_hlae_cannot_record_are_recorded_again_with_window_capture(tmp_path, monkeypatch):
+    from tests.test_hlae_backend import make_request
+
+    backends = [FakeBackend("hlae", unusable="HLAE cannot hook CS2 build 26798866 yet."), FakeBackend("window")]
+    monkeypatch.setattr(production, "build_live_recorder", lambda config: backends.pop(0))
+    monkeypatch.setattr(production, "settings_guard", lambda config: __import__("contextlib").nullcontext())
+    requests = [make_request(tmp_path), replace(make_request(tmp_path), index=2)]
+    clips = production.record_clips(requests, make_config(tmp_path), live=True)
+    assert [c.succeeded for c in clips] == [True, True]
+    assert not backends  # the window backend was used
+
+
+def test_no_second_try_when_hlae_would_be_picked_again(tmp_path, monkeypatch):
+    from tests.test_hlae_backend import make_request
+
+    reason = "HLAE cannot hook this CS2 build yet."
+    backends = [FakeBackend("hlae", unusable=reason), FakeBackend("hlae", unusable=reason)]
+    monkeypatch.setattr(production, "build_live_recorder", lambda config: backends.pop(0))
+    monkeypatch.setattr(production, "settings_guard", lambda config: __import__("contextlib").nullcontext())
+    clips = production.record_clips([make_request(tmp_path)], make_config(tmp_path), live=True)
+    assert [c.succeeded for c in clips] == [False]
+    assert clips[0].error == reason
