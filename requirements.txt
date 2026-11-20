@@ -7,6 +7,8 @@ demoparser2>=0.42.2
 polars>=1.0.0
 # Beat detection in the editor.
 numpy>=1.26
+# FACEIT serves CS2 demos zstd-compressed (.dem.zst).
+zstandard>=0.23
 
 # The desktop window (Edge WebView2, built into Windows 11).
 pywebview>=6.0
