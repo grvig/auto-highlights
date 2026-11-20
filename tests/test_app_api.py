@@ -80,7 +80,7 @@ def test_render_runs_in_the_background_and_reports_the_reel(app, monkeypatch):
 
     def record(requests, config, live, resume, progress, cancel):
         progress(Progress("record", 1, 2, "Recording #001"))
-        return [type("Clip", (), {"succeeded": True})() for _ in requests]
+        return [type("Clip", (), {"succeeded": True, "request": r})() for r in requests]
 
     def produce(clips, player, config, aspect, edit, progress, cancel):
         progress(Progress("export", 0, 1, "Exporting"))
@@ -94,6 +94,7 @@ def test_render_runs_in_the_background_and_reports_the_reel(app, monkeypatch):
     assert status["state"] == "done", status
     assert status["result"]["video"].endswith("semi_highlights.mp4")
     assert status["result"]["failed"] == 0
+    assert 1 <= status["result"]["plays"] <= status["result"]["recorded"]
 
 
 def test_overall_progress_spans_the_stages():
