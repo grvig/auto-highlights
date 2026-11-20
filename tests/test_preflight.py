@@ -111,3 +111,15 @@ def test_an_hlae_older_than_the_cs2_update_is_a_warning_not_a_failure(tmp_path, 
     assert check.ok and check.warning and check.mark == "WARN"
     assert "before the latest CS2 update" in check.detail
     assert Check("x", True, "").mark == "OK" and Check("x", False, "").mark == "FAIL"
+
+
+def test_an_hlae_known_not_to_hook_this_build_says_window_capture_records(tmp_path, monkeypatch):
+    from highlights import preflight
+
+    monkeypatch.setattr(preflight, "hlae_broken_here", lambda hlae_dir, root: True)
+    monkeypatch.setattr(preflight, "cs2_build", lambda root: "26798866")
+    monkeypatch.setattr(preflight, "find_hlae", lambda path: tmp_path)
+    checks = {c.name: c for c in preflight.run_preflight(make_config(tmp_path))}
+    hlae = checks["HLAE"]
+    assert hlae.ok and hlae.warning and hlae.mark == "WARN"
+    assert "cannot hook CS2 build 26798866" in hlae.detail and "window capture" in hlae.detail

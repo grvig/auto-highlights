@@ -14,7 +14,14 @@ from pathlib import Path
 
 from highlights.config import Config, ConfigError
 from highlights.editor.fonts import FontError, find_font
-from highlights.recorder.compat import cs2_updated_at, hlae_older_than_game, hlae_worked_on, recent_update
+from highlights.recorder.compat import (
+    cs2_build,
+    cs2_updated_at,
+    hlae_broken_here,
+    hlae_older_than_game,
+    hlae_worked_on,
+    recent_update,
+)
 from highlights.recorder.hlae import find_hlae
 from highlights.recorder.hlae_release import installed_published, installed_version
 from highlights.stitcher.runner import ffmpeg_available
@@ -79,11 +86,15 @@ def run_preflight(config: Config) -> list[Check]:
         version = installed_version(hlae_dir) if hlae_dir else None
         if version:
             detail += f" (v{'.'.join(map(str, version))})"
+        broken = hlae_broken_here(hlae_dir, config.cs2_root)
         older = hlae_dir is not None and hlae_older_than_game(
             installed_published(hlae_dir), config.cs2_root, worked_on=hlae_worked_on(hlae_dir))
-        if older:
+        if broken:
+            detail += (f" - cannot hook CS2 build {cs2_build(config.cs2_root)}; "
+                       "window capture records until HLAE is updated")
+        elif older:
             detail += " - released before the latest CS2 update; it may not hook it yet"
-        checks.append(Check("HLAE", hlae_dir is not None, detail, warning=older))
+        checks.append(Check("HLAE", hlae_dir is not None, detail, warning=broken or older))
 
     try:
         checks.append(Check("caption font", True, str(find_font("semi"))))
