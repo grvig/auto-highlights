@@ -117,7 +117,7 @@ function Finished({ result, onAnother }: { result: RenderResult; onAnother: () =
         <strong>{fileName(result.video ?? "")}</strong>
         <br />
         <span className="muted">
-          {result.recorded} {result.recorded === 1 ? "play" : "plays"}
+          {result.plays ?? result.recorded} {(result.plays ?? result.recorded) === 1 ? "play" : "plays"}
           {result.failed ? `, ${result.failed} could not be recorded` : ""}
           {result.shape ? ` · ${result.shape}` : ""}
         </span>

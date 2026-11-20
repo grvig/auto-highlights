@@ -212,3 +212,13 @@ def test_readiness_comes_back_as_data(tmp_path, monkeypatch):
     status = AppApi(config_loader=lambda: config, you=lambda: None).check()
     assert status["ready"] and status["warnings"] == 1
     assert status["checks"][1] == {"name": "HLAE", "state": "WARN", "detail": "v2.193.0 - older"}
+
+
+def test_plays_are_counted_once_however_many_clips_they_span():
+    from types import SimpleNamespace
+
+    from highlights.app.api import plays_in
+
+    ace, kill = object(), object()
+    clips = [SimpleNamespace(request=SimpleNamespace(moment=m)) for m in (ace, ace, ace, kill)]
+    assert plays_in(clips) == 2

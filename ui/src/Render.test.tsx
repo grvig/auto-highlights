@@ -20,7 +20,7 @@ function setup(onAnother = () => {}) {
 test("recording shows progress and the stage, then the finished reel", async () => {
   const answers = [
     job("running"),
-    job("done", { fraction: 1, result: { video: "D:\\out\\semi_highlights_2026-11-19_2010.mp4", shape: "stretched", recorded: 8, failed: 0 } }),
+    job("done", { fraction: 1, result: { video: "D:\\out\\semi_highlights_2026-11-19_2010.mp4", shape: "stretched", recorded: 14, plays: 8, failed: 0 } }),
   ];
   const bridge = installFakeBridge({ job: async () => answers.shift() ?? answers[0] });
   const render = vi.spyOn(bridge, "render");

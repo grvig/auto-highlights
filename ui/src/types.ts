@@ -83,7 +83,8 @@ export interface RenderResult {
   shape?: string;
   chapters?: string | null;
   thumbnail?: string | null;
-  recorded: number;
+  recorded: number; // clips; one play can be several clips
+  plays?: number;
   failed: number;
 }
 

@@ -267,7 +267,8 @@ class AppApi:
             cancel.check()
             recorded = [c for c in clips if c.succeeded]
             if options.get("dry_run"):
-                return {"recorded": len(recorded), "failed": len(clips) - len(recorded)}
+                return {"recorded": len(recorded), "failed": len(clips) - len(recorded),
+                        "plays": plays_in(recorded)}
             result = produce_reel(clips, player, config, options.get("aspect"), edit,
                                   progress=progress, cancel=cancel)
             return {
@@ -275,6 +276,7 @@ class AppApi:
                 "chapters": str(result.chapters) if result.chapters else None,
                 "thumbnail": str(result.thumbnail) if result.thumbnail else None,
                 "recorded": len(recorded), "failed": len(clips) - len(recorded),
+                "plays": plays_in(recorded),
             }
 
         return {"job": self.jobs.start(f"{player} reel", work)}
@@ -284,6 +286,11 @@ class AppApi:
 
     def cancel(self, job_id: str) -> dict:
         return {"cancelled": self.jobs.cancel(job_id)}
+
+
+def plays_in(clips: list) -> int:
+    """How many plays the clips show: a multi-kill can span several clips."""
+    return len({id(clip.request.moment) for clip in clips})
 
 
 def _edit_options(options: dict, player: str, loaded: Matches) -> EditOptions | None:
