@@ -17,6 +17,9 @@ CS2_APP_ID = 730
 # Written into HLAE's folder once it has recorded on a CS2 build, so an HLAE
 # that turned out to work on the new build stops being warned about.
 WORKED_FILE = "auto-highlights-cs2-build.txt"
+# And the build it failed to hook, so later runs go straight to window
+# capture instead of failing again. A new HLAE install starts without it.
+BROKEN_FILE = "auto-highlights-cs2-broken.txt"
 # An update this recent is worth mentioning when something breaks.
 RECENT = timedelta(days=14)
 
@@ -53,6 +56,25 @@ def mark_hlae_working(hlae_dir: Path, cs2_root: Path | None) -> None:
     build = cs2_build(cs2_root)
     if build:
         (Path(hlae_dir) / WORKED_FILE).write_text(build + "\n", encoding="utf-8")
+        (Path(hlae_dir) / BROKEN_FILE).unlink(missing_ok=True)
+
+
+def mark_hlae_broken(hlae_dir: Path, cs2_root: Path | None) -> None:
+    """Note that this HLAE could not hook the installed CS2 build."""
+    build = cs2_build(cs2_root)
+    if build:
+        (Path(hlae_dir) / BROKEN_FILE).write_text(build + "\n", encoding="utf-8")
+
+
+def hlae_broken_here(hlae_dir: Path | None, cs2_root: Path | None) -> bool:
+    """Whether this HLAE already failed to hook the CS2 build installed now."""
+    if hlae_dir is None:
+        return False
+    try:
+        broken = (Path(hlae_dir) / BROKEN_FILE).read_text(encoding="utf-8").strip()
+    except OSError:
+        return False
+    return bool(broken) and broken == cs2_build(cs2_root)
 
 
 def hlae_worked_on(hlae_dir: Path | None) -> str | None:

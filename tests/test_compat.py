@@ -72,3 +72,18 @@ def test_the_hook_message_names_the_build_and_the_way_out(tmp_path):
     message = hook_unsupported_message(install(tmp_path))
     assert "CS2 build 26748068" in message and 'recorder = "window"' in message
     assert "this CS2 build" in hook_unsupported_message(None)
+
+
+def test_a_build_hlae_cannot_hook_is_remembered_until_it_changes(tmp_path):
+    from highlights.recorder.compat import hlae_broken_here, mark_hlae_broken, mark_hlae_working
+
+    root, hlae = install(tmp_path), tmp_path / "hlae"
+    hlae.mkdir()
+    assert not hlae_broken_here(hlae, root)
+    mark_hlae_broken(hlae, root)
+    assert hlae_broken_here(hlae, root)
+    newer = install(tmp_path / "next", manifest=MANIFEST.replace("26748068", "26800000"))
+    assert not hlae_broken_here(hlae, newer)  # another CS2 build: worth trying again
+    mark_hlae_working(hlae, root)  # a later success clears it
+    assert not hlae_broken_here(hlae, root)
+    assert not hlae_broken_here(None, root)
