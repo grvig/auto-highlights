@@ -13,7 +13,7 @@ interface Props {
 }
 
 const STAGES: Record<string, string> = {
-  record: "Recording in CS2",
+  record: "Recording",
   edit: "Editing",
   export: "Exporting",
 };
@@ -44,41 +44,10 @@ export function RenderStep({ paths, steamid, playerName, options, onBack, onAnot
     return <Finished result={job.result} onAnother={onAnother} />;
   }
 
+  const percent = Math.round((job?.fraction ?? 0) * 100);
   return (
-    <section className="page">
-      <header className="page-head">
-        <h1>{running ? "Making your reel" : `Make ${playerName}'s reel`}</h1>
-      </header>
-
-      {!running && (
-        <p className="notice">
-          CS2 opens and plays your demos while each play is recorded, so leave the PC alone until it
-          is done. Your CS2 settings are put back afterwards.
-        </p>
-      )}
-
-      {running && (
-        <div className="progress-block">
-          <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((job?.fraction ?? 0) * 100)}>
-            <div style={{ width: `${(job?.fraction ?? 0) * 100}%` }} />
-          </div>
-          <p>
-            <strong>{stopping ? "Stopping after the current clip…" : STAGES[job?.stage ?? ""] ?? "Starting…"}</strong>
-            <span className="muted"> {job?.message}</span>
-          </p>
-        </div>
-      )}
-
-      {startError && <p className="notice fail">{startError}</p>}
-      {job?.state === "failed" && (
-        <div className="notice fail">
-          <p>The reel could not be made: {job.error}</p>
-          <button onClick={() => api.openLogs().catch(() => {})}>Open logs folder</button>
-        </div>
-      )}
-      {job?.state === "cancelled" && <p className="notice">Stopped. Nothing was left running.</p>}
-
-      <footer className="page-foot">
+    <>
+      <div className="toolbar">
         <button onClick={onBack} disabled={running}>
           Back
         </button>
@@ -88,11 +57,38 @@ export function RenderStep({ paths, steamid, playerName, options, onBack, onAnot
           </button>
         ) : (
           <button className="primary" onClick={start}>
-            {job ? "Try again" : "Record and make the reel"}
+            {job ? "Try again" : "Record"}
           </button>
         )}
-      </footer>
-    </section>
+        <span className="spacer" />
+        <span className="muted">{playerName}</span>
+      </div>
+      <div className="body">
+        {startError && <p className="error">{startError}</p>}
+        {job?.state === "failed" && (
+          <p className="error">
+            {job.error}
+            <button onClick={() => api.openLogs().catch(() => {})}>Open logs</button>
+          </p>
+        )}
+        {job?.state === "cancelled" && <p className="error warn">Stopped</p>}
+        {!running && !job && <p className="empty">CS2 is used for recording until this finishes.</p>}
+        {running && (
+          <>
+            <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
+              <div style={{ width: `${percent}%` }} />
+            </div>
+            <div className="status-line">
+              <span>
+                {stopping ? "Stopping after the current clip…" : STAGES[job?.stage ?? ""] ?? "Starting…"}
+                <span className="muted"> {job?.message}</span>
+              </span>
+              <span className="muted">{percent}%</span>
+            </div>
+          </>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -106,35 +102,43 @@ function Finished({ result, onAnother }: { result: RenderResult; onAnother: () =
       setError(message(e));
     }
   };
-  const show = run(api.showInFolder);
-  const play = run(api.play);
+  const plays = result.plays ?? result.recorded;
   return (
-    <section className="page">
-      <header className="page-head">
-        <h1>Your reel is ready</h1>
-      </header>
-      <p className="notice">
-        <strong>{fileName(result.video ?? "")}</strong>
-        <br />
-        <span className="muted">
-          {result.plays ?? result.recorded} {(result.plays ?? result.recorded) === 1 ? "play" : "plays"}
-          {result.failed ? `, ${result.failed} could not be recorded` : ""}
-          {result.shape ? ` · ${result.shape}` : ""}
-        </span>
-      </p>
-      {error && <p className="notice fail">{error}</p>}
-      <footer className="page-foot">
-        <button onClick={onAnother}>Make another</button>
-        <span className="buttons">
-          <button onClick={show} disabled={!result.video}>
-            Show in folder
-          </button>
-          <button className="primary" onClick={play} disabled={!result.video}>
-            Play
-          </button>
-        </span>
-      </footer>
-    </section>
+    <>
+      <div className="toolbar">
+        <button className="primary" onClick={run(api.play)} disabled={!result.video}>
+          Play
+        </button>
+        <button onClick={run(api.showInFolder)} disabled={!result.video}>
+          Show in folder
+        </button>
+        <button onClick={onAnother}>New reel</button>
+      </div>
+      <div className="body">
+        {error && <p className="error">{error}</p>}
+        <table className="grid details">
+          <tbody>
+            <tr>
+              <td className="muted">File</td>
+              <td className="wide">{fileName(result.video ?? "")}</td>
+            </tr>
+            <tr>
+              <td className="muted">Plays</td>
+              <td className="wide">
+                {plays}
+                {result.failed ? <span className="muted"> ({result.failed} clips failed)</span> : null}
+              </td>
+            </tr>
+            {result.shape && (
+              <tr>
+                <td className="muted">Shape</td>
+                <td className="wide">{result.shape}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 

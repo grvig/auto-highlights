@@ -26,12 +26,13 @@ test("recording shows progress and the stage, then the finished reel", async () 
   const render = vi.spyOn(bridge, "render");
   const show = vi.spyOn(bridge, "show_in_folder");
   setup();
-  await userEvent.click(screen.getByRole("button", { name: "Record and make the reel" }));
+  await userEvent.click(screen.getByRole("button", { name: "Record" }));
   expect(render).toHaveBeenCalledWith(["a.dem"], "1", { seconds: 60 });
-  expect(await screen.findByText("Recording in CS2")).toBeInTheDocument();
+  expect(await screen.findByText("Recording")).toBeInTheDocument();
   expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "40");
   expect(await screen.findByText("semi_highlights_2026-11-19_2010.mp4", {}, { timeout: 2000 })).toBeInTheDocument();
-  expect(screen.getByText(/8 plays · stretched/)).toBeInTheDocument();
+  expect(screen.getByRole("cell", { name: "8" })).toBeInTheDocument(); // plays, not the 14 clips
+  expect(screen.getByRole("cell", { name: "stretched" })).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Show in folder" }));
   expect(show).toHaveBeenCalledWith("D:\\out\\semi_highlights_2026-11-19_2010.mp4");
 });
@@ -40,7 +41,7 @@ test("stopping says the current clip is finished first", async () => {
   const bridge = installFakeBridge({ job: async () => job("running") });
   const cancel = vi.spyOn(bridge, "cancel");
   setup();
-  await userEvent.click(screen.getByRole("button", { name: "Record and make the reel" }));
+  await userEvent.click(screen.getByRole("button", { name: "Record" }));
   await userEvent.click(await screen.findByRole("button", { name: "Stop" }));
   expect(cancel).toHaveBeenCalledWith("render");
   expect(await screen.findByText("Stopping after the current clip…")).toBeInTheDocument();
@@ -50,17 +51,17 @@ test("stopping says the current clip is finished first", async () => {
 test("a failed render says why and can be tried again", async () => {
   const bridge = installFakeBridge({ job: async () => job("failed", { error: "CS2 never opened its console" }) });
   setup();
-  await userEvent.click(screen.getByRole("button", { name: "Record and make the reel" }));
+  await userEvent.click(screen.getByRole("button", { name: "Record" }));
   expect(await screen.findByText(/CS2 never opened its console/)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
   const logs = vi.spyOn(bridge, "open_logs");
-  await userEvent.click(screen.getByRole("button", { name: "Open logs folder" }));
+  await userEvent.click(screen.getByRole("button", { name: "Open logs" }));
   expect(logs).toHaveBeenCalled();
 });
 
 test("a render that cannot start shows the reason", async () => {
   installFakeBridge({ render: async () => ({ error: "No plays to record for this player." }) });
   setup();
-  await userEvent.click(screen.getByRole("button", { name: "Record and make the reel" }));
+  await userEvent.click(screen.getByRole("button", { name: "Record" }));
   expect(await screen.findByText("No plays to record for this player.")).toBeInTheDocument();
 });
