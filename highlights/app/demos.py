@@ -3,6 +3,8 @@
 CS2 saves downloaded match demos into its replays folder, and demos from
 FACEIT or friends usually land in Downloads. Both are searched (not
 recursively, so a huge Downloads folder stays quick), newest first.
+FACEIT's compressed demos (.dem.zst, .dem.gz) are listed too; they are
+unpacked when read.
 """
 
 from __future__ import annotations
@@ -11,7 +13,10 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+from highlights.engine.unpack import COMPRESSED, unpacked_name
 from highlights.recorder.cs2_controller import REPLAYS_RELATIVE
+
+PATTERNS = ("*.dem", *(f"*{suffix}" for suffix in COMPRESSED))
 
 
 def default_folders(cs2_root: Path | None) -> list[Path]:
@@ -28,7 +33,7 @@ def find_demos(folders: list[Path], limit: int = 200) -> list[dict]:
     found: dict[tuple[str, int], dict] = {}
     for folder in folders:
         try:
-            entries = list(Path(folder).glob("*.dem"))
+            entries = [path for pattern in PATTERNS for path in Path(folder).glob(pattern)]
         except OSError:
             continue
         for path in entries:
@@ -44,10 +49,14 @@ def find_demos(folders: list[Path], limit: int = 200) -> list[dict]:
                 "name": path.name,
                 "folder": str(path.parent),
                 "megabytes": round(stat.st_size / 1_000_000, 1),
+                "compressed": path.suffix.lower() != ".dem",
                 "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="minutes"),
                 "_mtime": stat.st_mtime,
             }
-    newest = sorted(found.values(), key=lambda d: d["_mtime"], reverse=True)[:limit]
+    # A packed demo that was also unpacked by hand is the same match twice.
+    plain = {d["name"].lower() for d in found.values() if not d["compressed"]}
+    unique = [d for d in found.values() if not (d["compressed"] and unpacked_name(d["name"]).lower() in plain)]
+    newest = sorted(unique, key=lambda d: d["_mtime"], reverse=True)[:limit]
     for demo in newest:
         del demo["_mtime"]
     return newest

@@ -18,6 +18,7 @@ export interface Demo {
   folder: string;
   megabytes: number;
   modified: string; // ISO date and time, to the minute
+  compressed?: boolean; // FACEIT .dem.zst / .dem.gz, unpacked when read
 }
 
 export interface MatchInfo {
