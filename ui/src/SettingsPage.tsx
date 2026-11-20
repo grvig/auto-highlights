@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
 import { message, useAsync } from "./hooks";
+import { Tabs } from "./Shell";
 import type { Settings } from "./types";
 
 export const SHAPES = [
@@ -8,7 +9,7 @@ export const SHAPES = [
   { value: "4:3", label: "4:3" },
   { value: "pillarbox", label: "4:3 with black bars" },
   { value: "16:9", label: "16:9 (cropped)" },
-  { value: "vertical", label: "Vertical 9:16 (Shorts, TikTok)" },
+  { value: "vertical", label: "9:16 vertical" },
 ];
 
 // What the page edits, and the config key each one is saved under.
@@ -31,25 +32,20 @@ export function SettingsPage() {
 
   useEffect(() => setDraft(loaded.data), [loaded.data]);
 
-  if (loaded.error) return <p className="notice fail">{loaded.error}</p>;
-  if (!draft) return <p className="muted">Loading settings…</p>;
-  if (!draft.configured) {
-    return <p className="notice">Nothing is set up yet. Open the readiness page from the side bar and run setup.</p>;
-  }
+  const changes = loaded.data && draft ? changed(loaded.data, draft) : {};
+  const dirty = Object.keys(changes).length > 0;
 
   const set = (field: Field, value: unknown) => {
     setNote(null);
-    setDraft({ ...draft, [field]: value });
+    if (draft) setDraft({ ...draft, [field]: value });
   };
-  const changes = changed(loaded.data!, draft);
 
   const save = async () => {
     setSaving(true);
     try {
-      const saved = await api.saveSettings(changes);
-      setDraft(saved);
+      setDraft(await api.saveSettings(changes));
       loaded.reload();
-      setNote({ kind: "ok", text: "Saved." });
+      setNote({ kind: "ok", text: "Saved" });
     } catch (e) {
       setNote({ kind: "fail", text: message(e) });
     } finally {
@@ -63,93 +59,85 @@ export function SettingsPage() {
   };
 
   return (
-    <section className="page">
-      <header className="page-head">
-        <h1>Settings</h1>
-      </header>
-
-      <div className="form">
-        <label>
-          <span>Reels are saved in</span>
-          <span className="path-field">
-            <input readOnly value={draft.output_dir ?? ""} aria-label="Output folder" />
-            <button onClick={() => browse(api.pickFolder, "output_dir")}>Change…</button>
-          </span>
-        </label>
-
-        <label>
-          <span>Reel shape</span>
-          <select value={draft.aspect} onChange={(e) => set("aspect", e.target.value)}>
-            {SHAPES.map((shape) => (
-              <option key={shape.value} value={shape.value}>
-                {shape.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          <span>Usual reel length (seconds)</span>
-          <input
-            type="number"
-            min={15}
-            max={600}
-            step={15}
-            value={draft.target_seconds ?? 120}
-            onChange={(e) => set("target_seconds", Number(e.target.value))}
-          />
-        </label>
-
-        <label>
-          <span>HUD while recording</span>
-          <select value={draft.hud} onChange={(e) => set("hud", e.target.value)}>
-            <option value="clean">Clean: crosshair and kill feed only</option>
-            <option value="full">Full spectator HUD</option>
-          </select>
-        </label>
-
-        <label>
-          <span>Recorder</span>
-          <select value={draft.recorder} onChange={(e) => set("recorder", e.target.value)}>
-            <option value="hlae">HLAE (frame-perfect)</option>
-            <option value="window">Window capture (when HLAE does not work)</option>
-          </select>
-        </label>
-
-        <label>
-          <span>Music (optional, your own file)</span>
-          <span className="path-field">
-            <input readOnly value={draft.music ?? ""} placeholder="No music: game sound only" aria-label="Music file" />
-            <button onClick={() => browse(api.pickMusic, "music")}>Choose…</button>
-            {draft.music && <button onClick={() => set("music", "")}>Remove</button>}
-          </span>
-        </label>
-
-        {draft.music && (
-          <label>
-            <span>Start the music at (seconds into the track)</span>
-            <input
-              type="number"
-              min={0}
-              step={1}
-              value={draft.music_start ?? 0}
-              onChange={(e) => set("music_start", Number(e.target.value))}
-            />
-          </label>
-        )}
-      </div>
-
-      {note && <p className={`notice ${note.kind === "fail" ? "fail" : ""}`}>{note.text}</p>}
-
-      <footer className="page-foot">
-        <button onClick={() => setDraft(loaded.data)} disabled={!Object.keys(changes).length || saving}>
-          Undo changes
-        </button>
-        <button className="primary" onClick={save} disabled={!Object.keys(changes).length || saving}>
+    <>
+      <Tabs tabs={[{ id: "settings", label: "Settings" }]} current="settings" onSelect={() => {}} />
+      <div className="toolbar">
+        <button className="primary" onClick={save} disabled={!dirty || saving}>
           {saving ? "Saving…" : "Save"}
         </button>
-      </footer>
-    </section>
+        <button onClick={() => setDraft(loaded.data)} disabled={!dirty || saving}>
+          Undo
+        </button>
+        <span className="spacer" />
+        {note && <span className={note.kind === "fail" ? "fail-text" : "muted"}>{note.text}</span>}
+      </div>
+      <div className="body">
+        {loaded.error && <p className="error">{loaded.error}</p>}
+        {draft && !draft.configured && <p className="empty">Not set up yet. Run setup from the status light.</p>}
+        {draft?.configured && (
+          <div className="form">
+            <span>Output folder</span>
+            <span className="path-field">
+              <input readOnly value={draft.output_dir ?? ""} aria-label="Output folder" />
+              <button onClick={() => browse(api.pickFolder, "output_dir")}>Change…</button>
+            </span>
+
+            <span>Reel shape</span>
+            <select aria-label="Reel shape" value={draft.aspect} onChange={(e) => set("aspect", e.target.value)}>
+              {SHAPES.map((shape) => (
+                <option key={shape.value} value={shape.value}>
+                  {shape.label}
+                </option>
+              ))}
+            </select>
+
+            <span>Default length (s)</span>
+            <input
+              type="number"
+              aria-label="Default length"
+              min={15}
+              max={600}
+              step={15}
+              value={draft.target_seconds ?? 120}
+              onChange={(e) => set("target_seconds", Number(e.target.value))}
+            />
+
+            <span>HUD</span>
+            <select aria-label="HUD" value={draft.hud} onChange={(e) => set("hud", e.target.value)}>
+              <option value="clean">Kill feed only</option>
+              <option value="full">Full spectator HUD</option>
+            </select>
+
+            <span>Recorder</span>
+            <select aria-label="Recorder" value={draft.recorder} onChange={(e) => set("recorder", e.target.value)}>
+              <option value="hlae">HLAE</option>
+              <option value="window">Window capture</option>
+            </select>
+
+            <span>Music</span>
+            <span className="path-field">
+              <input readOnly value={draft.music ?? ""} placeholder="None" aria-label="Music file" />
+              <button onClick={() => browse(api.pickMusic, "music")}>Choose…</button>
+              {draft.music && <button onClick={() => set("music", "")}>Remove</button>}
+            </span>
+
+            {draft.music && (
+              <>
+                <span>Music starts at (s)</span>
+                <input
+                  type="number"
+                  aria-label="Music start"
+                  min={0}
+                  step={1}
+                  value={draft.music_start ?? 0}
+                  onChange={(e) => set("music_start", Number(e.target.value))}
+                />
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 

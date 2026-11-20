@@ -30,12 +30,12 @@ test("only changed settings are saved, under their config keys", async () => {
   render(<SettingsPage />);
   const button = await screen.findByRole("button", { name: "Save" });
   expect(button).toBeDisabled();
-  await userEvent.selectOptions(screen.getByRole("combobox", { name: "Reel shape" }), "vertical");
+  await userEvent.selectOptions(await screen.findByRole("combobox", { name: "Reel shape" }), "vertical");
   await userEvent.click(screen.getByRole("button", { name: "Change…" }));
   expect(screen.getByRole("textbox", { name: "Output folder" })).toHaveValue("E:/reels");
   await userEvent.click(button);
   expect(save).toHaveBeenCalledWith({ "recording.aspect": "vertical", "paths.output_dir": "E:/reels" });
-  expect(await screen.findByText("Saved.")).toBeInTheDocument();
+  expect(await screen.findByText("Saved")).toBeInTheDocument();
 });
 
 test("a rejected value is shown and nothing else changes", async () => {
@@ -44,7 +44,7 @@ test("a rejected value is shown and nothing else changes", async () => {
     save_settings: async () => ({ error: "editing.target_seconds must be at least 15" }),
   });
   render(<SettingsPage />);
-  const length = await screen.findByRole("spinbutton", { name: /reel length/ });
+  const length = await screen.findByRole("spinbutton", { name: "Default length" });
   await userEvent.clear(length);
   await userEvent.type(length, "5");
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -60,5 +60,5 @@ test("music can be chosen and removed", () => {
 test("before setup there is nothing to edit yet", async () => {
   installFakeBridge({ settings: async () => ({ configured: false }) });
   render(<SettingsPage />);
-  expect(await screen.findByText(/Nothing is set up yet/)).toBeInTheDocument();
+  expect(await screen.findByText(/Not set up yet/)).toBeInTheDocument();
 });
