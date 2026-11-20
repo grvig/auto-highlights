@@ -35,7 +35,8 @@ Layer 2 sits behind a `Recorder` interface with three backends:
 Download `auto-highlights-<version>-setup.exe` from the Releases page and run
 it. It installs for your Windows account only (no admin prompt) and adds
 auto-highlights to the Start menu. The app opens on four steps: pick demos
-(it finds the ones in CS2's replays folder and your Downloads), pick whose
+(it finds the ones in CS2's replays folder and your Downloads, including
+FACEIT's compressed `.dem.zst` downloads), pick whose
 plays, look over the plays it chose, then record and make the reel. "Your
 reels" lists what it has made; "Settings" holds the output folder, reel
 shape, usual length and music.
@@ -111,14 +112,24 @@ GitHub runs the Python and interface tests on every push to `main`. Pushing a ta
 version in `highlights/__init__.py` (for example `v0.2.0`) builds the
 installer on GitHub and publishes it as a release.
 
+### FACEIT demos
+
+FACEIT serves CS2 demos compressed as `.dem.zst` (older downloads use
+`.dem.gz`). Pick them as they are, in the app or on the command line: they
+are unpacked once into the cache folder and reused after that.
+
 ### When CS2 updates
 
 Updates can break HLAE's hook until HLAE ships a fix (the app picks the fix
 up by itself), and can stop CS2 playing demos recorded before the update.
-`--check` shows when CS2 last updated, and a recording that fails soon after
-an update says so and suggests `recorder = "window"` meanwhile. An HLAE older
-than the update is flagged as a warning until it has recorded a clip on the
-new build; after that the app knows it works and stops warning.
+`--check` shows when CS2 last updated. An HLAE older than the update is
+flagged as a warning until it has recorded a clip on the new build.
+
+When HLAE cannot hook the installed build (CS2 build 26798866 broke HLAE
+2.193.0 on 20 Nov 2026), the run stops trying HLAE at the first clip and
+records everything with window capture instead, in the same run. The app
+remembers the build, so later runs go straight to window capture until HLAE
+or CS2 updates, and `--check` says so.
 
 ## Usage
 
