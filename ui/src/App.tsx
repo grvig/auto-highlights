@@ -23,7 +23,7 @@ export function App() {
     >
       {view === "ready" && <ReadinessPage onChanged={setReadiness} />}
       {/* Kept mounted so picks and a running render survive a look at other pages. */}
-      <div hidden={view !== "new"}>
+      <div className="page" hidden={view !== "new"}>
         <NewReel />
       </div>
       {view === "reels" && <ReelsPage />}

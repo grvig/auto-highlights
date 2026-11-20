@@ -9,10 +9,10 @@ afterEach(() => useBridge(null));
 test("opens on a new reel and switches pages from the side bar", async () => {
   installFakeBridge();
   render(<App />);
-  expect(screen.getByRole("heading", { name: "Pick your demos" })).toBeInTheDocument();
-  await userEvent.click(screen.getByRole("button", { name: "Your reels" }));
-  expect(screen.getByRole("heading", { name: "Your reels" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Your reels" })).toHaveAttribute("aria-current", "page");
+  expect(screen.getByRole("tab", { name: "Demos" })).toHaveAttribute("aria-selected", "true");
+  await userEvent.click(screen.getByRole("button", { name: "Reels" }));
+  expect(screen.getByRole("tab", { name: "Reels" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Reels" })).toHaveAttribute("aria-current", "page");
 });
 
 test("a reel in progress survives visiting another page", async () => {
