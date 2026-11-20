@@ -166,3 +166,19 @@ def test_a_backend_that_cannot_go_on_stops_the_run_with_its_reason():
     assert recorder.events == ["open", "close"]
     assert [c.succeeded for c in results] == [False, False, False]
     assert all("cannot hook" in c.error for c in results)
+
+
+def test_clips_skipped_by_stopping_are_not_logged_as_failures(caplog):
+    from highlights.progress import CancelToken
+
+    token = CancelToken()
+
+    class CancelAfterFirst(ScriptedRecorder):
+        def record_clip(self, request):
+            token.cancel()
+            return super().record_clip(request)
+
+    with caplog.at_level(logging.INFO):
+        record_requests(CancelAfterFirst(), [make_request(i) for i in (1, 2, 3)], cancel=token)
+    assert "failed" not in caplog.text
+    assert "2 of 3 clip(s) not recorded: the run was stopped" in caplog.text

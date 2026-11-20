@@ -86,9 +86,12 @@ def record_requests(
             results.append(recorded.get(id(request)) or RecordedClip(
                 request, request.output_path, succeeded=False, error=stopped_by))
 
-    failed = [clip for clip in results if not clip.succeeded]
+    cancelled = [clip for clip in results if clip.error == "cancelled"]
+    failed = [clip for clip in results if not clip.succeeded and clip.error != "cancelled"]
     if failed:
         logger.warning("%d of %d clip(s) failed", len(failed), len(results))
-    else:
+    if cancelled:
+        logger.info("%d of %d clip(s) not recorded: the run was stopped", len(cancelled), len(results))
+    if not failed and not cancelled:
         logger.info("All %d clip(s) recorded", len(results))
     return results
