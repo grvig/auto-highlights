@@ -155,9 +155,11 @@ def test_clips_hlae_cannot_record_are_recorded_again_with_window_capture(tmp_pat
     monkeypatch.setattr(production, "build_live_recorder", lambda config: backends.pop(0))
     monkeypatch.setattr(production, "settings_guard", lambda config: __import__("contextlib").nullcontext())
     requests = [make_request(tmp_path), replace(make_request(tmp_path), index=2)]
-    clips = production.record_clips(requests, make_config(tmp_path), live=True)
+    events = []
+    clips = production.record_clips(requests, make_config(tmp_path), live=True, progress=events.append)
     assert [c.succeeded for c in clips] == [True, True]
     assert not backends  # the window backend was used
+    assert any("switching to window capture" in e.message for e in events)
 
 
 def test_no_second_try_when_hlae_would_be_picked_again(tmp_path, monkeypatch):

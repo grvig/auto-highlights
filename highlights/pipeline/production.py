@@ -103,6 +103,7 @@ def _record_again_without_hlae(
         return clips  # the build could not be noted, so there is nothing else to try
     logger.warning("%s Recording with window capture instead.", reason)
     failed = [clip.request for clip in clips if not clip.succeeded]
+    progress(Progress("record", 0, len(failed), "HLAE cannot hook this CS2 build: switching to window capture"))
     again = {id(clip.request): clip for clip in
              record_requests(fallback, failed, progress=progress, cancel=cancel)}
     return [again.get(id(clip.request), clip) for clip in clips]
