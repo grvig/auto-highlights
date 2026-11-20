@@ -19,6 +19,7 @@ from highlights.engine.moments import HighlightType
 from highlights.engine.multi import Match, build_multi_plan, match_from_source
 from highlights.engine.scoring import moment_kills
 from highlights.engine.selection import DEFAULT_MIN_SCORE, arrange, select_best
+from highlights.engine.unpack import readable_demo
 from highlights.pipeline.types import FRAG_TYPES
 
 
@@ -78,8 +79,13 @@ def clip_timing(config: Config | None = None) -> ClipConfig:
 def load_matches(
     paths: Iterable[Path | str], cache: DemoCache | None, timing: ClipConfig | None = None
 ) -> Matches:
-    """Parse (or load from cache) every demo. Raises DemoError on a bad one."""
-    sources = [DemoSource(path, cache=cache) for path in paths]
+    """Parse (or load from cache) every demo. Raises DemoError on a bad one.
+
+    Compressed demos (FACEIT's .dem.zst, .dem.gz) are unpacked first, into
+    the cache folder when there is one, so recording gets a demo CS2 can play.
+    """
+    unpack_to = cache.root / "demos" if cache is not None else None
+    sources = [DemoSource(readable_demo(path, unpack_to), cache=cache) for path in paths]
     timing = timing or ClipConfig()
     return Matches(sources, [match_from_source(source, timing) for source in sources])
 
