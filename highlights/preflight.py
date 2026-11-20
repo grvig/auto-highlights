@@ -74,7 +74,9 @@ def run_preflight(config: Config) -> list[Check]:
         updated = cs2_updated_at(config.cs2_root)
         if updated is not None:
             note = " - recent: HLAE may lag behind it" if recent_update(config.cs2_root) else ""
-            checks.append(Check("CS2 updated", True, f"{updated:%d %b %Y %H:%M}{note}"))
+            build = cs2_build(config.cs2_root)
+            when = f"{updated:%d %b %Y %H:%M}" + (f" (build {build})" if build else "")
+            checks.append(Check("CS2 updated", True, f"{when}{note}"))
 
     checks.append(
         Check("ffmpeg", ffmpeg_available(config.ffmpeg_path), config.ffmpeg_path)

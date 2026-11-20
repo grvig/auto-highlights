@@ -100,8 +100,9 @@ def test_the_last_cs2_update_is_reported_when_steam_knows_it(tmp_path, monkeypat
     (tmp_path / "appmanifest_730.acf").write_text('"AppState" { "LastUpdated" "1794976532" }')
     monkeypatch.setattr("highlights.preflight.cs2_updated_at",
                         lambda root: __import__("datetime").datetime(2026, 11, 18, 10, 5))
+    monkeypatch.setattr("highlights.preflight.cs2_build", lambda root: "26748068")
     check = find(run_preflight(config), "CS2 updated")
-    assert check.ok and check.detail.startswith("18 Nov 2026 10:05")
+    assert check.ok and check.detail.startswith("18 Nov 2026 10:05 (build 26748068)")
 
 
 def test_an_hlae_older_than_the_cs2_update_is_a_warning_not_a_failure(tmp_path, monkeypatch):
