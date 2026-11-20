@@ -35,7 +35,7 @@ test("setup runs as a job and the checks are read again afterwards", async () =>
   await userEvent.click(await screen.findByRole("button", { name: /Ready, with warnings/ }));
   await screen.findByText("HLAE");
   const before = checks;
-  await userEvent.click(screen.getByRole("button", { name: "Set up missing tools" }));
+  await userEvent.click(screen.getByRole("button", { name: "Download missing tools" }));
   expect(setup).toHaveBeenCalledOnce();
   await vi.waitFor(() => expect(checks).toBeGreaterThan(before));
 });

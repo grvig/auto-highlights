@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "./api";
 import { message, useAsync, useJob } from "./hooks";
+import { Tabs } from "./Shell";
 import type { Check, Readiness } from "./types";
 
 type Level = "ok" | "warn" | "fail";
@@ -17,13 +18,13 @@ const LABELS: Record<Level, string> = {
   fail: "Not ready to record",
 };
 
-/** The side bar's one-line summary; opens the full list. */
+/** The rail's status square; opens the checks. */
 export function StatusButton({ readiness, onOpen }: { readiness: Readiness | null; onOpen: () => void }) {
   const current = level(readiness);
+  const label = current ? LABELS[current] : "Checking";
   return (
-    <button onClick={onOpen}>
+    <button onClick={onOpen} title={label} aria-label={label}>
       <span className={`dot ${current ?? ""}`} aria-hidden />
-      {current ? LABELS[current] : "Checking…"}
     </button>
   );
 }
@@ -54,28 +55,34 @@ export function ReadinessPage({ onChanged }: { onChanged: (r: Readiness) => void
   };
 
   return (
-    <section className="page">
-      <header className="page-head">
-        <h1>Recording readiness</h1>
+    <>
+      <Tabs tabs={[{ id: "checks", label: "Recording" }]} current="checks" onSelect={() => {}} />
+      <div className="toolbar">
         <button className="primary" onClick={runSetup} disabled={jobId !== null}>
-          {jobId ? "Setting up…" : "Set up missing tools"}
+          {jobId ? "Setting up…" : "Download missing tools"}
         </button>
-      </header>
-      <p className="muted">
-        What recording needs: CS2, ffmpeg and HLAE. Setup finds them or downloads them; checking
-        launches nothing.
-      </p>
-      {job && <p className="muted">{job.message || "Working…"}</p>}
-      {(error || checks.error) && <p className="notice fail">{error ?? checks.error}</p>}
-      <ul className="checks">
-        {checks.data?.checks.map((check) => (
-          <li key={check.name}>
-            <span className={`dot ${MARKS[check.state]}`} aria-label={check.state} />
-            <strong>{check.name}</strong>
-            <span className="muted">{check.detail}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
+        <button onClick={checks.reload} disabled={jobId !== null}>
+          Check again
+        </button>
+        <span className="spacer" />
+        {job && <span className="muted">{job.message}</span>}
+      </div>
+      <div className="body">
+        {(error || checks.error) && <p className="error">{error ?? checks.error}</p>}
+        <table className="grid">
+          <tbody>
+            {checks.data?.checks.map((check) => (
+              <tr key={check.name}>
+                <td className="check">
+                  <span className={`dot ${MARKS[check.state]}`} aria-label={check.state} />
+                </td>
+                <td>{check.name}</td>
+                <td className="wide muted">{check.detail}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
