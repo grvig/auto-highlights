@@ -105,3 +105,11 @@ def test_a_single_pick_given_as_text_still_works():
     bridge = Bridge(FakeApi())
     bridge._attach(FakeDialogWindow("D:/music/track.mp3"))
     assert bridge.pick_music() == {"path": "D:/music/track.mp3"}
+
+
+def test_the_window_keeps_its_browser_profile_in_the_app_folder(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    webview = FakeWebview()
+    (tmp_path / "web").mkdir()
+    open_window(FakeApi(), webview, web_dir=built(tmp_path / "web"))
+    assert webview.started["storage_path"] == str(tmp_path / "auto-highlights" / "webview")

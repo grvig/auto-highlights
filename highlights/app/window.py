@@ -14,6 +14,7 @@ from typing import Any
 
 from highlights import __version__
 from highlights.app.api import AppApi
+from highlights.appdirs import app_data_dir
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +126,12 @@ class Bridge:
         return [str(path) for path in chosen or ()]
 
 
+def storage_dir() -> Path:
+    """The window's own WebView2 profile, beside the app's other data rather
+    than in pywebview's shared default folder."""
+    return app_data_dir() / "webview"
+
+
 def open_window(api: AppApi | None = None, webview: Any = None, web_dir: Path = WEB_DIR,
                 dev_url: str | None = None, debug: bool = False) -> None:
     """Show the window and block until it is closed.
@@ -145,4 +152,4 @@ def open_window(api: AppApi | None = None, webview: Any = None, web_dir: Path = 
     )
     bridge._attach(window)
     logger.info("Opening the app window (%s)", url)
-    webview.start(debug=debug, private_mode=False)
+    webview.start(debug=debug, private_mode=False, storage_path=str(storage_dir()))
