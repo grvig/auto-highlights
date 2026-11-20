@@ -233,3 +233,17 @@ def test_failing_to_note_hlae_works_does_not_fail_the_clip(tmp_path):
     rec = HlaeRecorder(FakeCs2(landings=[26527]), tmp_path, runner=[].append, sleeper=lambda s: None,
                        on_working=broken)
     assert rec.record_clip(make_request(tmp_path)).succeeded
+
+
+def test_an_unhookable_build_marks_the_backend_unusable(tmp_path):
+    from highlights.recorder.cs2_controller import HookUnsupported
+
+    class Unhookable(FakeCs2):
+        def load_demo(self, name, settle_seconds=3.0):
+            raise HookUnsupported("HLAE cannot hook CS2 build 26798866 yet")
+
+    rec = HlaeRecorder(Unhookable(), tmp_path, runner=[].append, sleeper=lambda s: None)
+    assert rec.unusable is None
+    clip = rec.record_clip(make_request(tmp_path))
+    assert not clip.succeeded and "cannot hook" in clip.error
+    assert rec.unusable == clip.error

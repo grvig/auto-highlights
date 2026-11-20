@@ -151,3 +151,18 @@ def test_cancelling_stops_between_clips_and_marks_the_rest():
     assert recorder.events == ["open", "record:1", "close"]
     assert [c.succeeded for c in results] == [True, False, False]
     assert results[2].error == "cancelled"
+
+
+def test_a_backend_that_cannot_go_on_stops_the_run_with_its_reason():
+    class Unhookable(ScriptedRecorder):
+        unusable = None
+
+        def record_clip(self, request):
+            self.unusable = "HLAE cannot hook CS2 build 26798866 yet"
+            return RecordedClip(request, request.output_path, succeeded=False, error=self.unusable)
+
+    recorder = Unhookable()
+    results = record_requests(recorder, [make_request(i) for i in (1, 2, 3)])
+    assert recorder.events == ["open", "close"]
+    assert [c.succeeded for c in results] == [False, False, False]
+    assert all("cannot hook" in c.error for c in results)

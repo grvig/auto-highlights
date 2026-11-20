@@ -18,7 +18,7 @@ from pathlib import Path
 
 from highlights.recorder import mirv
 from highlights.recorder.base import ClipRequest, RecordedClip
-from highlights.recorder.cs2_controller import Cs2Controller, Cs2Error
+from highlights.recorder.cs2_controller import Cs2Controller, Cs2Error, HookUnsupported
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +71,8 @@ class HlaeRecorder:
         # Called once, after the first clip records, to note HLAE works here.
         self._on_working = on_working
         self._loaded: Path | None = None
+        # Set when this backend cannot record at all on this machine.
+        self.unusable: str | None = None
         # Takes started in this game session; numbers each take's preset.
         self._takes = 0
 
@@ -102,6 +104,10 @@ class HlaeRecorder:
                 logger.warning("[%s] take %d stopped at %s, wanted %d",
                                self.name, take, landed, request.end_tick)
             self._finish(request, take_dir)
+        except HookUnsupported as error:
+            logger.error("[%s] %s failed: %s", self.name, request.label, error)
+            self.unusable = str(error)  # tells the session there is no point going on
+            return RecordedClip(request, request.output_path, succeeded=False, error=str(error))
         except (Cs2Error, OSError, subprocess.CalledProcessError) as error:
             logger.error("[%s] %s failed: %s", self.name, request.label, error)
             return RecordedClip(request, request.output_path, succeeded=False, error=str(error))

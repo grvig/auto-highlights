@@ -48,6 +48,9 @@ def record_requests(
     already on disk from an interrupted run are kept, and the game is not even
     launched when nothing is left to record. A cancelled run stops between
     clips; the clips it never reached come back failed as "cancelled".
+    A backend that finds it cannot go on at all (HLAE unable to hook this CS2
+    build) sets `unusable` to the reason; the run stops there too, and the
+    clips it never reached carry that reason.
     """
     kept = {id(r) for r in requests if skip_existing and already_recorded(r)}
     todo = [r for r in requests if id(r) not in kept]
@@ -56,6 +59,7 @@ def record_requests(
         getattr(recorder, "name", "?"), len(todo), len(kept),
     )
     recorded: dict[int, RecordedClip] = {}
+    stopped_by = "cancelled"
     if todo:
         progress(Progress("record", 0, len(todo), "Starting the game"))
         recorder.open()
@@ -66,6 +70,11 @@ def record_requests(
                     break
                 progress(Progress("record", number - 1, len(todo), f"Recording {request.label}"))
                 recorded[id(request)] = recorder.record_clip(request)
+                unusable = getattr(recorder, "unusable", None)
+                if unusable:
+                    logger.error("Stopping the run: %s", unusable)
+                    stopped_by = unusable
+                    break
             progress(Progress("record", len(recorded), len(todo), "Closing the game"))
         finally:
             recorder.close()
@@ -75,7 +84,7 @@ def record_requests(
             results.append(RecordedClip(request, request.output_path, succeeded=True))
         else:
             results.append(recorded.get(id(request)) or RecordedClip(
-                request, request.output_path, succeeded=False, error="cancelled"))
+                request, request.output_path, succeeded=False, error=stopped_by))
 
     failed = [clip for clip in results if not clip.succeeded]
     if failed:
