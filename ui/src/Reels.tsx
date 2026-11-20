@@ -3,6 +3,7 @@ import { api } from "./api";
 import { formatWhen } from "./Demos";
 import { message, useAsync } from "./hooks";
 import { fileName } from "./Render";
+import { Tabs } from "./Shell";
 import type { Reel } from "./types";
 
 export function ReelsPage() {
@@ -19,39 +20,43 @@ export function ReelsPage() {
   };
 
   return (
-    <section className="page">
-      <header className="page-head">
-        <h1>Your reels</h1>
+    <>
+      <Tabs tabs={[{ id: "reels", label: "Reels" }]} current="reels" onSelect={() => {}} />
+      <div className="toolbar">
         <button onClick={reels.reload}>Refresh</button>
-      </header>
-      {(error || reels.error) && <p className="notice fail">{error ?? reels.error}</p>}
-      {reels.data && !reels.data.length && <p className="notice">No reels yet. Make one from New reel.</p>}
-      <ul className="reels" aria-label="Reels">
-        {reels.data?.map((reel) => (
-          <li key={reel.path} className="reel">
-            <Thumbnail reel={reel} />
-            <div className="reel-body">
-              <strong title={reel.path}>{fileName(reel.path)}</strong>
-              <span className="muted small">
-                {reel.player} · {formatWhen(reel.made)} · {reel.megabytes} MB
-              </span>
-              <div className="reel-actions">
-                <button className="primary" onClick={act(() => api.play(reel.path))}>
-                  Play
-                </button>
-                <button onClick={act(() => api.showInFolder(reel.path))}>Show in folder</button>
+        <span className="spacer" />
+        {reels.data && <span className="muted">{reels.data.length}</span>}
+      </div>
+      <div className="body">
+        {(error || reels.error) && <p className="error">{error ?? reels.error}</p>}
+        {reels.data && !reels.data.length && <p className="empty">No reels</p>}
+        <div aria-label="Reels">
+          {reels.data?.map((reel) => (
+            <div key={reel.path} className="reel">
+              <Thumbnail reel={reel} />
+              <div className="reel-body">
+                <strong title={reel.path}>{fileName(reel.path)}</strong>
+                <span className="muted">
+                  {reel.player} · {formatWhen(reel.made)} · {reel.megabytes} MB
+                </span>
+                {reel.chapters && (
+                  <details>
+                    <summary>Chapters</summary>
+                    <pre className="selectable">{reel.chapters}</pre>
+                  </details>
+                )}
+                <div className="reel-actions">
+                  <button className="primary" onClick={act(() => api.play(reel.path))}>
+                    Play
+                  </button>
+                  <button onClick={act(() => api.showInFolder(reel.path))}>Show in folder</button>
+                </div>
               </div>
-              {reel.chapters && (
-                <details>
-                  <summary className="muted small">Chapters for the video description</summary>
-                  <pre className="selectable">{reel.chapters}</pre>
-                </details>
-              )}
             </div>
-          </li>
-        ))}
-      </ul>
-    </section>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -69,5 +74,5 @@ function Thumbnail({ reel }: { reel: Reel }) {
       current = false;
     };
   }, [reel.thumbnail]);
-  return url ? <img className="thumb" src={url} alt="" /> : <div className="thumb empty" aria-hidden />;
+  return url ? <img className="thumb" src={url} alt="" /> : <div className="thumb" aria-hidden />;
 }

@@ -31,10 +31,10 @@ test("reels are listed with their thumbnail, play and folder buttons", async () 
   expect(screen.getByText(/00:14 KILLED RYKER/)).toBeInTheDocument();
 });
 
-test("no reels yet points at making one", async () => {
+test("no reels says so", async () => {
   installFakeBridge();
   render(<ReelsPage />);
-  expect(await screen.findByText(/No reels yet/)).toBeInTheDocument();
+  expect(await screen.findByText("No reels")).toBeInTheDocument();
 });
 
 test("a reel that cannot be opened says why", async () => {
