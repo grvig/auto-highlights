@@ -148,7 +148,8 @@ def test_a_hung_game_is_killed_after_the_grace_period(tmp_path):
                                sleeper=lambda s: None, command_runner=tasks)
     controller.launch()
     controller.quit()
-    assert tasks.calls[-1] == ["taskkill", "/F", "/IM", "cs2.exe"]
+    assert ["taskkill", "/F", "/IM", "cs2.exe"] in tasks.calls
+    assert tasks.calls[-1][0] == "tasklist"  # confirmed gone before returning
 
 
 def test_quit_leaves_a_game_it_did_not_start(tmp_path):
@@ -207,3 +208,26 @@ def test_quit_never_terminates_steam_when_it_was_the_launcher(tmp_path):
     controller.launch(args=["steam.exe", "-applaunch", "730"])
     controller.quit()
     assert not launcher.process.terminated
+
+
+def test_a_killed_game_is_waited_for_until_it_has_really_gone(tmp_path):
+    from highlights.recorder.cs2_controller import CLOSE_GRACE_SECONDS, Cs2Controller
+
+    exe = tmp_path / "game" / "bin" / "win64" / "cs2.exe"
+    exe.parent.mkdir(parents=True)
+    exe.write_text("")
+    # running through the grace period, killed, then listed for 3 more checks
+    listed = iter([True] * (int(CLOSE_GRACE_SECONDS) + 1) + [True, True, True, False])
+    commands, sleeps = [], []
+
+    def run(args):
+        commands.append(args)
+        if args[0] == "tasklist":
+            return "cs2.exe 1234" if next(listed) else "INFO: No tasks"
+        return ""
+
+    ctrl = Cs2Controller(tmp_path, command_runner=run, sleeper=sleeps.append)
+    ctrl.close_game()
+    assert ["taskkill", "/F", "/IM", "cs2.exe"] in commands
+    after_kill = commands[commands.index(["taskkill", "/F", "/IM", "cs2.exe"]) + 1:]
+    assert len(after_kill) == 4 and all(c[0] == "tasklist" for c in after_kill)

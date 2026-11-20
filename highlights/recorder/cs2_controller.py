@@ -61,6 +61,9 @@ GAME_IMAGE = "cs2.exe"
 # Seconds CS2 gets to close its window (and write its settings) before it is
 # killed. The console's own quit command can hang the game, so it is not used.
 CLOSE_GRACE_SECONDS = 20.0
+# A killed CS2 can take a few seconds to leave the process list; until it
+# has, a new recorder would find it "running" and attach to a dead console.
+KILL_WAIT_SECONDS = 15.0
 
 
 class Cs2Error(Exception):
@@ -316,6 +319,13 @@ class Cs2Controller:
                 return
         logger.warning("CS2 did not close within %.0fs; killing it", grace_seconds)
         self._run_command(["taskkill", "/F", "/IM", GAME_IMAGE])
+        waited = 0.0
+        while self.game_running():
+            if waited >= KILL_WAIT_SECONDS:
+                logger.warning("CS2 is still listed %.0fs after being killed", waited)
+                return
+            self._sleep(1.0)
+            waited += 1.0
 
     def quit(self) -> None:
         """Close the console, and the game too if this controller started it.
