@@ -18,6 +18,7 @@ from pathlib import Path
 
 from highlights.recorder import mirv
 from highlights.recorder.base import ClipRequest, RecordedClip
+from highlights.recorder.cs2_console import ConsoleError
 from highlights.recorder.cs2_controller import Cs2Controller, Cs2Error, HookUnsupported
 
 logger = logging.getLogger(__name__)
@@ -116,6 +117,12 @@ class HlaeRecorder:
                 except OSError as note_error:
                     logger.debug("[%s] could not note that HLAE fails here: %s", self.name, note_error)
             return RecordedClip(request, request.output_path, succeeded=False, error=str(error))
+        except ConsoleError as error:
+            # The game closed or crashed: nothing more can be recorded in this
+            # session, so the run ends here instead of erroring out.
+            logger.error("[%s] %s failed: %s", self.name, request.label, error)
+            self.unusable = f"CS2 stopped answering during recording ({error})."
+            return RecordedClip(request, request.output_path, succeeded=False, error=self.unusable)
         except (Cs2Error, OSError, subprocess.CalledProcessError) as error:
             logger.error("[%s] %s failed: %s", self.name, request.label, error)
             return RecordedClip(request, request.output_path, succeeded=False, error=str(error))

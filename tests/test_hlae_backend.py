@@ -247,3 +247,16 @@ def test_an_unhookable_build_marks_the_backend_unusable(tmp_path):
     clip = rec.record_clip(make_request(tmp_path))
     assert not clip.succeeded and "cannot hook" in clip.error
     assert rec.unusable == clip.error
+
+
+def test_a_game_that_drops_the_console_ends_the_run_cleanly(tmp_path):
+    from highlights.recorder.cs2_console import ConsoleError
+
+    class Crashed(FakeCs2):
+        def load_demo(self, name, settle_seconds=3.0):
+            raise ConsoleError("Console connection failed: [WinError 10054] connection reset")
+
+    rec = HlaeRecorder(Crashed(), tmp_path, runner=[].append, sleeper=lambda s: None)
+    clip = rec.record_clip(make_request(tmp_path))  # no exception escapes
+    assert not clip.succeeded and "stopped answering" in clip.error
+    assert rec.unusable == clip.error
