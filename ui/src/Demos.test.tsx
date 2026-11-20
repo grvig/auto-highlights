@@ -15,10 +15,10 @@ const DEMOS: Demo[] = [
 test("found demos are listed and picking one enables the next step", async () => {
   installFakeBridge({ find_demos: async () => ({ demos: DEMOS }) });
   render(<NewReel />);
-  const next = screen.getByRole("button", { name: "Read demos" });
+  const next = screen.getByRole("button", { name: "Next" });
   expect(next).toBeDisabled();
   await userEvent.click(await screen.findByRole("checkbox", { name: /match_382\.dem/ }));
-  expect(screen.getByText("1 demo picked")).toBeInTheDocument();
+  expect(screen.getByText("1 selected")).toBeInTheDocument();
   expect(next).toBeEnabled();
 });
 
@@ -33,11 +33,11 @@ test("browsed demos are added and picked", async () => {
   expect(await screen.findByRole("checkbox", { name: /faceit\.dem/ })).toBeChecked();
   expect(screen.getByRole("checkbox", { name: /match_383\.dem/ })).toBeChecked();
   expect(screen.getAllByRole("checkbox")).toHaveLength(3); // the known one is not listed twice
-  expect(screen.getByText("2 demos picked")).toBeInTheDocument();
+  expect(screen.getByText("2 selected")).toBeInTheDocument();
 });
 
-test("an empty search says where demos come from", async () => {
+test("an empty search says so", async () => {
   installFakeBridge();
   render(<NewReel />);
-  expect(await screen.findByText(/No demos found/)).toBeInTheDocument();
+  expect(await screen.findByText("No demos found")).toBeInTheDocument();
 });

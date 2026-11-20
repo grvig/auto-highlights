@@ -20,9 +20,10 @@ test("the whole flow plans with the length saved in settings", async () => {
   const plan = vi.spyOn(bridge, "plan");
   render(<NewReel />);
   await userEvent.click(await screen.findByRole("checkbox", { name: /a\.dem/ }));
-  await userEvent.click(screen.getByRole("button", { name: "Read demos" }));
+  await userEvent.click(screen.getByRole("button", { name: "Next" }));
   await vi.waitFor(() => expect(screen.getByRole("radio", { name: "semi" })).toBeChecked());
-  await userEvent.click(screen.getByRole("button", { name: "Find plays" }));
+  await userEvent.click(screen.getByRole("button", { name: "Next" }));
   await vi.waitFor(() => expect(plan).toHaveBeenCalledWith(["R:/a.dem"], "1", { seconds: 90, order: "montage" }));
-  expect(screen.getByRole("listitem", { current: "step" })).toHaveTextContent("Plays");
+  expect(screen.getByRole("tab", { name: "Plays" })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByRole("tab", { name: "Record" })).toBeDisabled(); // not reached yet
 });

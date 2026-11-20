@@ -15,7 +15,7 @@ export function DemosStep({ selected, onChange, onNext }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const known = new Set((found.data ?? []).map((d) => d.path));
-  const extra = browsed.filter((path) => !known.has(path));
+  const rows = [...browsed.filter((path) => !known.has(path)).map(browsedDemo), ...(found.data ?? [])];
 
   const toggle = (path: string) =>
     onChange(selected.includes(path) ? selected.filter((p) => p !== path) : [...selected, path]);
@@ -32,52 +32,57 @@ export function DemosStep({ selected, onChange, onNext }: Props) {
   };
 
   return (
-    <section className="page">
-      <header className="page-head">
-        <div>
-          <h1>Pick your demos</h1>
-          <p className="muted">
-            From CS2's replays folder and your Downloads, newest first. Several demos make one reel.
-          </p>
-        </div>
-        <button onClick={browse}>Browse…</button>
-      </header>
-      {(error || found.error) && <p className="notice fail">{error ?? found.error}</p>}
-      {found.loading && <p className="muted">Looking for demos…</p>}
-      {!found.loading && !found.data?.length && !extra.length && (
-        <p className="notice">No demos found. Download one from CS2's Watch tab, or browse for it.</p>
-      )}
-      <ul className="rows" aria-label="Demos">
-        {extra.map((path) => (
-          <DemoRow key={path} demo={browsedDemo(path)} checked={selected.includes(path)} onToggle={toggle} />
-        ))}
-        {found.data?.map((demo) => (
-          <DemoRow key={demo.path} demo={demo} checked={selected.includes(demo.path)} onToggle={toggle} />
-        ))}
-      </ul>
-      <footer className="page-foot">
-        <span className="muted">{countLabel(selected.length)}</span>
+    <>
+      <div className="toolbar">
         <button className="primary" disabled={!selected.length} onClick={onNext}>
-          Read demos
+          Next
         </button>
-      </footer>
-    </section>
-  );
-}
-
-function DemoRow({ demo, checked, onToggle }: { demo: Demo; checked: boolean; onToggle: (p: string) => void }) {
-  return (
-    <li>
-      <label className="row">
-        <input type="checkbox" checked={checked} onChange={() => onToggle(demo.path)} />
-        <span className="grow">
-          <strong>{demo.name}</strong>
-          <span className="muted small">{demo.folder}</span>
-        </span>
-        <span className="muted">{demo.modified ? formatWhen(demo.modified) : ""}</span>
-        <span className="muted">{demo.megabytes ? `${demo.megabytes} MB` : ""}</span>
-      </label>
-    </li>
+        <button onClick={browse}>Browse…</button>
+        <button onClick={found.reload}>Refresh</button>
+        <span className="spacer" />
+        <span className="muted">{selected.length} selected</span>
+      </div>
+      <div className="body">
+        {(error || found.error) && <p className="error">{error ?? found.error}</p>}
+        {found.loading && !rows.length && <p className="empty">Searching…</p>}
+        {!found.loading && !rows.length && <p className="empty">No demos found</p>}
+        {rows.length > 0 && (
+          <table className="grid" aria-label="Demos">
+            <thead>
+              <tr>
+                <th />
+                <th>Name</th>
+                <th>Modified</th>
+                <th className="num">Size</th>
+                <th>Folder</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((demo) => {
+                const checked = selected.includes(demo.path);
+                return (
+                  <tr key={demo.path} className={`clickable${checked ? " selected" : ""}`} onClick={() => toggle(demo.path)}>
+                    <td className="check">
+                      <input
+                        type="checkbox"
+                        aria-label={demo.name}
+                        checked={checked}
+                        onChange={() => toggle(demo.path)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </td>
+                    <td>{demo.name}</td>
+                    <td>{demo.modified ? formatWhen(demo.modified) : ""}</td>
+                    <td className="num">{demo.megabytes ? `${demo.megabytes} MB` : ""}</td>
+                    <td className="wide muted">{demo.folder}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -89,10 +94,5 @@ function browsedDemo(path: string): Demo {
 export function formatWhen(iso: string): string {
   const when = new Date(iso);
   if (Number.isNaN(when.getTime())) return iso;
-  return when.toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-}
-
-function countLabel(count: number): string {
-  if (count === 0) return "No demos picked";
-  return count === 1 ? "1 demo picked" : `${count} demos picked`;
+  return when.toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }

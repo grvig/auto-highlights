@@ -26,9 +26,10 @@ function Harness({ onNext = () => {} }: { onNext?: () => void }) {
 test("the planned plays are listed with a summary", async () => {
   installFakeBridge({ plan: async () => PLAN });
   render(<Harness />);
-  expect(await screen.findByText("2 plays, about 1:35 of footage")).toBeInTheDocument();
+  expect(await screen.findByText("2 plays · 1:35")).toBeInTheDocument();
   expect(screen.getByText("Ace")).toBeInTheDocument();
-  expect(screen.getByText(/Round 5 · 08:08 · swung the round/)).toBeInTheDocument();
+  expect(screen.getByText(/swung the round/)).toBeInTheDocument();
+  expect(screen.getByText("08:08")).toBeInTheDocument();
 });
 
 test("changing the length or order plans again with those options", async () => {
@@ -38,9 +39,9 @@ test("changing the length or order plans again with those options", async () => 
   await screen.findByText("Ace");
   await userEvent.click(screen.getByRole("button", { name: "1 min" }));
   await vi.waitFor(() => expect(plan).toHaveBeenLastCalledWith(["a.dem"], "1", { seconds: 60, order: "montage", all: false }));
-  await userEvent.click(screen.getByRole("button", { name: "Every play" }));
+  await userEvent.click(screen.getByRole("button", { name: "All" }));
   await vi.waitFor(() => expect(plan.mock.lastCall?.[2]).toMatchObject({ all: true }));
-  expect(screen.getByRole("button", { name: "Every play" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
   await userEvent.click(screen.getByRole("button", { name: "Match order" }));
   await vi.waitFor(() => expect(plan.mock.lastCall?.[2]).toMatchObject({ order: "chronological" }));
 });
@@ -48,6 +49,6 @@ test("changing the length or order plans again with those options", async () => 
 test("no plays means nothing to make", async () => {
   installFakeBridge();
   render(<Harness />);
-  expect(await screen.findByText("No plays found for this player.")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Make the reel" })).toBeDisabled();
+  expect(await screen.findByText("No plays")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
 });

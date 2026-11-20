@@ -25,8 +25,8 @@ function setup(steamid: string | null = null) {
 test("players are listed with the map and the signed-in player is picked", async () => {
   installFakeBridge({ analyze: async () => ANALYSIS });
   const { onPick } = setup();
-  expect(await screen.findByText("nuke · 24 rounds")).toBeInTheDocument();
-  expect(screen.getByText("You")).toBeInTheDocument();
+  expect(await screen.findByText("de_nuke · 24 rounds")).toBeInTheDocument();
+  expect(screen.getByText("YOU")).toBeInTheDocument();
   expect(onPick).toHaveBeenCalledWith("1", "semi");
 });
 
@@ -35,7 +35,7 @@ test("another player can be chosen", async () => {
   const { onPick, onNext } = setup("1");
   await userEvent.click(await screen.findByRole("radio", { name: "ICECUBE" }));
   expect(onPick).toHaveBeenLastCalledWith("2", "ICECUBE");
-  await userEvent.click(screen.getByRole("button", { name: "Find plays" }));
+  await userEvent.click(screen.getByRole("button", { name: "Next" }));
   expect(onNext).toHaveBeenCalled();
 });
 
@@ -43,5 +43,5 @@ test("a demo that cannot be read says why", async () => {
   installFakeBridge({ analyze: async () => ({ error: "Demo is corrupt" }) });
   setup();
   expect(await screen.findByText("Demo is corrupt")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Find plays" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
 });

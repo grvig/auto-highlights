@@ -4,15 +4,23 @@ import { DemosStep } from "./Demos";
 import { PlayerStep } from "./Player";
 import { PlaysStep } from "./Plays";
 import { RenderStep } from "./Render";
+import { Tabs } from "./Shell";
 import type { PlanOptions } from "./types";
 
-const STEPS = ["Demos", "Player", "Plays", "Make it"] as const;
-type Step = 0 | 1 | 2 | 3;
+type Step = "demos" | "player" | "plays" | "record";
+const STEPS: { id: Step; label: string }[] = [
+  { id: "demos", label: "Demos" },
+  { id: "player", label: "Player" },
+  { id: "plays", label: "Plays" },
+  { id: "record", label: "Record" },
+];
+const ORDER: Step[] = STEPS.map((s) => s.id);
 const DEFAULT_OPTIONS: PlanOptions = { seconds: 120, order: "montage" };
 
-/** The new-reel flow: demos, then whose plays, then which plays, then render. */
+/** Demos, then whose plays, then which plays, then record. */
 export function NewReel() {
-  const [step, setStep] = useState<Step>(0);
+  const [step, setStep] = useState<Step>("demos");
+  const [reached, setReached] = useState(0);
   const [paths, setPaths] = useState<string[]>([]);
   const [player, setPlayer] = useState<{ steamid: string; name: string } | null>(null);
   const [options, setOptions] = useState<PlanOptions>(DEFAULT_OPTIONS);
@@ -33,56 +41,60 @@ export function NewReel() {
     };
   }, []);
 
+  const go = (next: Step) => {
+    setStep(next);
+    setReached((r) => Math.max(r, ORDER.indexOf(next)));
+  };
   const pickDemos = (next: string[]) => {
     setPaths(next);
-    setPlayer(null); // another set of demos can have other players
+    setPlayer(null); // other demos can have other players
+    setReached(0);
   };
-  const pickPlayer = useCallback((steamid: string, name: string) => setPlayer({ steamid, name }), []);
+  const pickPlayer = useCallback((steamid: string, name: string) => {
+    setPlayer((before) => {
+      if (before && before.steamid !== steamid) setReached((r) => Math.min(r, 1));
+      return { steamid, name };
+    });
+  }, []);
 
   return (
-    <div className="flow">
-      <ol className="steps" aria-label="Steps">
-        {STEPS.map((label, index) => (
-          <li key={label} aria-current={index === step ? "step" : undefined} className={index < step ? "done" : ""}>
-            <span>{index + 1}</span>
-            {label}
-          </li>
-        ))}
-      </ol>
-      {step === 0 && <DemosStep selected={paths} onChange={pickDemos} onNext={() => setStep(1)} />}
-      {step === 1 && (
+    <>
+      <Tabs tabs={STEPS} current={step} onSelect={go} enabled={(id) => ORDER.indexOf(id) <= reached} />
+      {step === "demos" && <DemosStep selected={paths} onChange={pickDemos} onNext={() => go("player")} />}
+      {step === "player" && (
         <PlayerStep
           paths={paths}
           steamid={player?.steamid ?? null}
           onPick={pickPlayer}
-          onBack={() => setStep(0)}
-          onNext={() => setStep(2)}
+          onBack={() => go("demos")}
+          onNext={() => go("plays")}
         />
       )}
-      {step === 2 && player && (
+      {step === "plays" && player && (
         <PlaysStep
           paths={paths}
           steamid={player.steamid}
           options={options}
           onOptions={setOptions}
-          onBack={() => setStep(1)}
-          onNext={() => setStep(3)}
+          onBack={() => go("player")}
+          onNext={() => go("record")}
         />
       )}
-      {step === 3 && player && (
+      {step === "record" && player && (
         <RenderStep
           paths={paths}
           steamid={player.steamid}
           playerName={player.name}
           options={options}
-          onBack={() => setStep(2)}
+          onBack={() => go("plays")}
           onAnother={() => {
             setPaths([]);
             setPlayer(null);
-            setStep(0);
+            setReached(0);
+            setStep("demos");
           }}
         />
       )}
-    </div>
+    </>
   );
 }
