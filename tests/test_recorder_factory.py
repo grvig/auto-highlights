@@ -155,3 +155,20 @@ def test_no_warning_when_hlae_is_newer_than_the_game(tmp_path, monkeypatch, capl
     with caplog.at_level("WARNING"):
         factory.build_live_recorder(make_config(tmp_path))
     assert "CS2 update" not in caplog.text
+
+
+def test_a_build_hlae_failed_on_goes_straight_to_window_capture(tmp_path, monkeypatch, caplog):
+    monkeypatch.setattr(factory, "hlae_broken_here", lambda hlae_dir, root: True)
+    monkeypatch.setattr(factory, "cs2_build", lambda root: "26798866")
+    with caplog.at_level("WARNING"):
+        recorder = factory.build_live_recorder(make_config(tmp_path))
+    assert isinstance(recorder, WindowRecorder)
+    assert "cannot hook CS2 build 26798866" in caplog.text
+
+
+def test_the_hlae_recorder_remembers_a_build_it_cannot_hook(tmp_path, monkeypatch):
+    noted = []
+    monkeypatch.setattr(factory, "mark_hlae_broken", lambda hlae_dir, root: noted.append(hlae_dir))
+    recorder = factory.build_live_recorder(make_config(tmp_path))
+    recorder._on_unusable()
+    assert noted == [tmp_path / "hlae"]

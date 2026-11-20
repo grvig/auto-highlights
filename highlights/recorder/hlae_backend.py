@@ -55,6 +55,7 @@ class HlaeRecorder:
         keep_takes: bool = False,
         restore_commands: Sequence[str] = (),
         on_working: Callable[[], None] | None = None,
+        on_unusable: Callable[[], None] | None = None,
     ) -> None:
         self.cs2 = cs2
         self.output_dir = Path(output_dir)
@@ -70,6 +71,8 @@ class HlaeRecorder:
         self.restore_commands = list(restore_commands)
         # Called once, after the first clip records, to note HLAE works here.
         self._on_working = on_working
+        # Called when HLAE cannot hook this CS2 build, to remember that.
+        self._on_unusable = on_unusable
         self._loaded: Path | None = None
         # Set when this backend cannot record at all on this machine.
         self.unusable: str | None = None
@@ -107,6 +110,11 @@ class HlaeRecorder:
         except HookUnsupported as error:
             logger.error("[%s] %s failed: %s", self.name, request.label, error)
             self.unusable = str(error)  # tells the session there is no point going on
+            if self._on_unusable is not None:
+                try:
+                    self._on_unusable()
+                except OSError as note_error:
+                    logger.debug("[%s] could not note that HLAE fails here: %s", self.name, note_error)
             return RecordedClip(request, request.output_path, succeeded=False, error=str(error))
         except (Cs2Error, OSError, subprocess.CalledProcessError) as error:
             logger.error("[%s] %s failed: %s", self.name, request.label, error)

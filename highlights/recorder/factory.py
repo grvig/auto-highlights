@@ -24,7 +24,14 @@ from highlights.recorder.hlae import (
     resolve_ffmpeg,
     write_ffmpeg_ini,
 )
-from highlights.recorder.compat import hlae_older_than_game, hlae_worked_on, mark_hlae_working
+from highlights.recorder.compat import (
+    cs2_build,
+    hlae_broken_here,
+    hlae_older_than_game,
+    hlae_worked_on,
+    mark_hlae_broken,
+    mark_hlae_working,
+)
 from highlights.recorder.hlae_release import ReleaseError, installed_published, installed_version
 from highlights.recorder.hlae_update import ensure_current
 from highlights.recorder.hlae_backend import HlaeRecorder
@@ -47,7 +54,12 @@ def build_live_recorder(config: Config, steam_root: Path | None = None) -> HlaeR
         if rec.auto_update:
             update_hlae(rec.hlae_path or BUNDLED_DIR)
         hlae_dir = find_hlae(rec.hlae_path)
-        if hlae_dir is not None and hlae_older_than_game(
+        if hlae_dir is not None and hlae_broken_here(hlae_dir, config.cs2_root):
+            logger.warning(
+                "HLAE cannot hook CS2 build %s (found on an earlier run); recording with "
+                "window capture until HLAE or CS2 updates", cs2_build(config.cs2_root))
+            hlae_dir = None
+        elif hlae_dir is not None and hlae_older_than_game(
                 installed_published(hlae_dir), config.cs2_root, worked_on=hlae_worked_on(hlae_dir)):
             logger.warning(
                 "HLAE %s was released before this CS2 update; if CS2 fails to start or "
@@ -58,8 +70,10 @@ def build_live_recorder(config: Config, steam_root: Path | None = None) -> HlaeR
             write_ffmpeg_ini(hlae_dir, resolve_ffmpeg(config.ffmpeg_path))
             args = launch_args(hlae_dir, cs2.executable, rec.width, rec.height, cs2.console_port)
             return HlaeRecorder(cs2, launch_args=args,
-                                on_working=lambda: mark_hlae_working(hlae_dir, config.cs2_root), **common)
-        logger.warning("HLAE not found; falling back to window capture")
+                                on_working=lambda: mark_hlae_working(hlae_dir, config.cs2_root),
+                                on_unusable=lambda: mark_hlae_broken(hlae_dir, config.cs2_root), **common)
+        else:
+            logger.warning("HLAE not available; falling back to window capture")
 
     # Window capture: start CS2 through Steam at the render size so the
     # settings backup is taken before CS2 saves anything (it writes its video
