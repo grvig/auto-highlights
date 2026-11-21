@@ -144,3 +144,21 @@ def test_the_installer_waits_for_the_running_app_by_its_mutex():
 
     text = (ROOT / "packaging" / "installer.iss").read_text(encoding="utf-8")
     assert f"AppMutex={RUNNING_MUTEX}" in text
+
+
+def test_a_relative_build_folder_is_made_absolute_for_inno(tmp_path, monkeypatch):
+    # CI runs "build.py --out build"; Inno Setup would look for that relative
+    # to packaging/ and find nothing, so main() resolves it first.
+    seen = {}
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(build, "build_ui", lambda: None)
+    monkeypatch.setattr(build.sys, "argv", ["build.py", "--out", "build", "--skip-ui"])
+
+    def run(args, **kwargs):
+        seen.setdefault("args", args)
+        return type("Done", (), {"returncode": 1})()
+
+    monkeypatch.setattr(build.subprocess, "run", run)
+    assert build.main() == 1  # stops at the faked PyInstaller failure
+    distpath = seen["args"][seen["args"].index("--distpath") + 1]
+    assert Path(distpath).is_absolute() and Path(distpath) == tmp_path / "build" / "dist"

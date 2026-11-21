@@ -199,7 +199,7 @@ def main() -> int:
     parser.add_argument("--skip-ui", action="store_true",
                         help="bundle the interface already in highlights/app/web as it is")
     options = parser.parse_args()
-    out = options.out or default_out()
+    out = (options.out or default_out()).resolve()  # Inno reads relative paths from packaging/, not here
     if not options.skip_ui:
         build_ui()
     shutil.rmtree(out / "dist" / NAME, ignore_errors=True)
