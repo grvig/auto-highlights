@@ -3,8 +3,8 @@
 Windows can hand out a copy of whatever the speakers play (WASAPI loopback).
 ffmpeg cannot open that itself, so it is read here and passed to ffmpeg as raw
 audio through a named pipe, beside the window video. Loopback delivers nothing
-while nothing plays, so silence is filled in by the clock: the stream never
-stalls and stays in step with the video.
+while nothing plays; soundcard fills those gaps with silence by the clock, so
+the stream never stalls and stays in step with the video.
 """
 
 from __future__ import annotations
@@ -23,11 +23,12 @@ logger = logging.getLogger(__name__)
 SAMPLE_RATE = 48000
 CHANNELS = 2
 BYTES_PER_FRAME = 4 * CHANNELS  # float32
-BLOCK_SECONDS = 0.01
 
 
 class Source(Protocol):
-    def flush(self) -> Any: ...  # numpy float32 array (frames, channels) of what arrived
+    # numpy float32 (frames, channels): what arrived since the last call,
+    # silence included (soundcard pads gaps itself)
+    def record(self, numframes: int | None = None) -> Any: ...
 
 
 class LoopbackError(RuntimeError):
@@ -56,15 +57,11 @@ def pipe_name() -> str:
 class Feed:
     """Writes loopback audio into a sink (the pipe) until stopped.
 
-    `write` gets raw float32 interleaved stereo; `clock` and `sleep` are
-    injectable so the silence filling can be tested without real time.
+    `write` gets raw float32 interleaved stereo.
     """
 
-    def __init__(self, source: Source, write: Callable[[bytes], None],
-                 clock: Callable[[], float] = time.perf_counter,
-                 sleep: Callable[[float], None] = time.sleep) -> None:
+    def __init__(self, source: Source, write: Callable[[bytes], None]) -> None:
         self._source, self._write = source, write
-        self._clock, self._sleep = clock, sleep
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self.frames = 0
@@ -79,24 +76,19 @@ class Feed:
         if self._thread is not None:
             self._thread.join(timeout=5)
 
-    def pump_once(self, started: float) -> None:
-        """Pass on what arrived, then pad with silence up to the clock."""
-        data = self._source.flush()
+    def pump_once(self) -> int:
+        """Pass on whatever the speakers played since the last call."""
+        data = self._source.record(None)
         if len(data):
             self._write(data.astype("float32").tobytes())
             self.frames += len(data)
-        due = int((self._clock() - started) * SAMPLE_RATE)
-        missing = due - self.frames
-        if missing > SAMPLE_RATE * BLOCK_SECONDS * 2:  # well behind: nothing is playing
-            self._write(bytes(missing * BYTES_PER_FRAME))
-            self.frames += missing
+        return len(data)
 
     def _run(self) -> None:
-        started = self._clock()
         try:
             while not self._stop.is_set():
-                self.pump_once(started)
-                self._sleep(BLOCK_SECONDS)
+                if not self.pump_once():
+                    time.sleep(0.005)  # nothing arrived: do not spin
         except Exception as error:  # a closed pipe ends the feed; the clip may survive
             self.error = error
             logger.debug("Loopback feed stopped: %s", error)

@@ -21,8 +21,10 @@ from highlights.recorder.mirv import ramp_filter, speed_pieces
 
 # Measured against weapon_fire ticks: loopback audio arrives this early.
 AUDIO_DELAY_SECONDS = 0.55
-# The speakers' sound through the pipe, measured against the dshow device.
-LOOPBACK_DELAY_SECONDS = 0.55
+# The speakers' sound through the pipe arrives late instead (the pipe opens
+# after the window capture starts), so it is moved earlier. Measured against
+# the dshow device on three clips (2026-11-21): -0.35, -0.51, -0.52 s.
+LOOPBACK_DELAY_SECONDS = -0.46
 # audio_device value meaning "the speakers, through WASAPI loopback".
 LOOPBACK = "loopback"
 # Paused CS2 frames still shimmer slightly; -45dB treats that as frozen.

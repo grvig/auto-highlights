@@ -6,43 +6,32 @@ import threading
 import numpy as np
 import pytest
 
-from highlights.recorder.loopback import BYTES_PER_FRAME, SAMPLE_RATE, Feed, NamedPipe, pipe_name
+from highlights.recorder.loopback import Feed, NamedPipe, pipe_name
 
 
 class FakeSource:
     def __init__(self, chunks):
         self.chunks = list(chunks)
 
-    def flush(self):
+    def record(self, numframes=None):
+        assert numframes is None  # whatever is there, never a fixed block
         return self.chunks.pop(0) if self.chunks else np.zeros((0, 2), dtype="float32")
 
 
 def test_sound_is_passed_on_as_raw_float_stereo():
     written = []
     sound = np.full((480, 2), 0.5, dtype="float32")
-    feed = Feed(FakeSource([sound]), written.append, clock=lambda: 0.0)
-    feed.pump_once(started=0.0)
+    feed = Feed(FakeSource([sound]), written.append)
+    feed.pump_once()
     assert written == [sound.tobytes()]
     assert feed.frames == 480
 
 
-def test_silence_is_filled_in_by_the_clock_when_nothing_plays():
+def test_nothing_is_written_when_nothing_arrived():
     written = []
-    now = [0.0]
-    feed = Feed(FakeSource([]), written.append, clock=lambda: now[0])
-    now[0] = 0.5  # half a second with no sound delivered
-    feed.pump_once(started=0.0)
-    assert sum(len(w) for w in written) == SAMPLE_RATE // 2 * BYTES_PER_FRAME
-    assert feed.frames == SAMPLE_RATE // 2
-    feed.pump_once(started=0.0)  # caught up: nothing more until time passes
-    assert feed.frames == SAMPLE_RATE // 2
-
-
-def test_short_gaps_wait_for_real_sound_instead_of_padding():
-    written = []
-    feed = Feed(FakeSource([]), written.append, clock=lambda: 0.01)
-    feed.pump_once(started=0.0)
-    assert written == []
+    feed = Feed(FakeSource([]), written.append)
+    feed.pump_once()
+    assert written == [] and feed.frames == 0
 
 
 def test_a_broken_sink_ends_the_feed_without_raising():
@@ -50,7 +39,7 @@ def test_a_broken_sink_ends_the_feed_without_raising():
         raise OSError("pipe closed")
 
     sound = np.zeros((480, 2), dtype="float32")
-    feed = Feed(FakeSource([sound] * 3), broken, sleep=lambda s: None)
+    feed = Feed(FakeSource([sound] * 3), broken)
     feed.start()
     feed.stop()
     assert isinstance(feed.error, OSError)

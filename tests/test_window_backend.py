@@ -104,7 +104,7 @@ def test_loopback_sound_goes_through_a_pipe_into_the_capture(tmp_path, monkeypat
             closed.append(True)
 
     class Speakers:
-        def flush(self):
+        def record(self, numframes=None):
             return np.zeros((480, 2), dtype="float32")
 
     def open_loopback():
