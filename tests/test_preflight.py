@@ -124,3 +124,17 @@ def test_an_hlae_known_not_to_hook_this_build_says_window_capture_records(tmp_pa
     hlae = checks["HLAE"]
     assert hlae.ok and hlae.warning and hlae.mark == "WARN"
     assert "cannot hook CS2 build 26798866" in hlae.detail and "window capture" in hlae.detail
+
+
+def test_the_update_note_only_appears_when_hlae_predates_the_update(tmp_path, monkeypatch):
+    import datetime
+
+    monkeypatch.setattr("highlights.preflight.ffmpeg_available", lambda p: True)
+    monkeypatch.setattr("highlights.preflight.cs2_updated_at", lambda root: datetime.datetime(2026, 11, 20, 6, 29))
+    monkeypatch.setattr("highlights.preflight.cs2_build", lambda root: "26798866")
+    monkeypatch.setattr("highlights.preflight.find_hlae", lambda path: tmp_path)
+    config = make_config(tmp_path)
+    for older, expected in ((True, True), (False, False)):
+        monkeypatch.setattr("highlights.preflight.hlae_older_than_game", lambda *a, **k: older)
+        check = find(run_preflight(config), "CS2 updated")
+        assert ("HLAE may lag behind it" in check.detail) is expected

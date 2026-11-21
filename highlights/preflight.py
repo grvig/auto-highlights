@@ -20,7 +20,6 @@ from highlights.recorder.compat import (
     hlae_broken_here,
     hlae_older_than_game,
     hlae_worked_on,
-    recent_update,
 )
 from highlights.recorder.hlae import find_hlae
 from highlights.recorder.hlae_release import installed_published, installed_version
@@ -73,7 +72,9 @@ def run_preflight(config: Config) -> list[Check]:
         checks.append(Check("CS2 install", exe.is_file(), f"{exe}{source}"))
         updated = cs2_updated_at(config.cs2_root)
         if updated is not None:
-            note = " - recent: HLAE may lag behind it" if recent_update(config.cs2_root) else ""
+            hlae_dir = find_hlae(config.recording.hlae_path) if config.recording.recorder == "hlae" else None
+            behind = hlae_dir is not None and hlae_older_than_game(installed_published(hlae_dir), config.cs2_root)
+            note = " - recent: HLAE may lag behind it" if behind else ""
             build = cs2_build(config.cs2_root)
             when = f"{updated:%d %b %Y %H:%M}" + (f" (build {build})" if build else "")
             checks.append(Check("CS2 updated", True, f"{when}{note}"))
