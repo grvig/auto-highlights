@@ -25,23 +25,28 @@ Layer 2 sits behind a `Recorder` interface with three backends:
 - **HLAE** (default): CS2 is launched through HLAE, which renders every frame
   at a fixed framerate straight into ffmpeg and writes the game's audio
   alongside, so clips are frame-exact with sound in sync.
-- **Window capture** (fallback when HLAE is missing): films an already running
-  CS2 window in real time and trims each clip by detecting where playback
-  started.
+- **Window capture** (fallback when HLAE is missing or cannot hook the CS2
+  build): films the CS2 window in real time, takes the game's sound from
+  whatever the speakers play (WASAPI loopback, no extra driver), and trims
+  each clip by detecting where playback started.
 - **Dry run**: logs exactly what would be recorded and launches nothing.
 
 ## Install
 
-Download `auto-highlights-<version>-setup.exe` from the Releases page and run
-it. It installs for your Windows account only (no admin prompt) and adds
+Download `auto-highlights-<version>-setup.exe` from the
+[Releases page](https://github.com/grvig/auto-highlights/releases/latest) and
+run it. The installer is not code-signed yet, so Windows SmartScreen asks
+first: "More info", then "Run anyway". It installs for your Windows account only (no admin prompt) and adds
 auto-highlights to the Start menu. The app opens on four steps: pick demos
 (it finds the ones in CS2's replays folder and your Downloads, including
-FACEIT's compressed `.dem.zst` downloads), pick whose
+FACEIT's compressed `.dem.zst` downloads, and names them by map and score,
+"Cache 13-11 W"), pick whose
 plays, look over the plays it chose, then record and make the reel. "Your
 reels" lists what it has made; "Settings" holds the output folder, reel
 shape, usual length and music.
 
-The side bar says whether recording is ready. The first time, it offers to
+The side bar says whether recording is ready, and shows an arrow when a
+newer release is out. The first time, it offers to
 fetch the two tools recording needs: ffmpeg (the official Windows build,
 checked against its published checksum) and HLAE (from its official GitHub
 releases, kept up to date because CS2 updates break old builds).
