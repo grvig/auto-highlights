@@ -60,6 +60,7 @@ export interface Play {
   tags: string[];
   seconds: number;
   demo: string | null;
+  match?: string | null; // "Cache 1 Jul", for reels made from several demos
 }
 
 export interface Plan {

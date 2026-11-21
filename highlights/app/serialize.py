@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 from highlights.engine.clip_plan import ClipPlan
@@ -57,8 +58,21 @@ def moment_view(moment: Moment, number: int) -> dict:
     }
 
 
-def plan_view(plan: ClipPlan) -> dict:
+def match_label(source) -> str:
+    """"Cache 1 Jul": the map and the day the demo was saved."""
+    try:
+        day = datetime.fromtimestamp(Path(source.path).stat().st_mtime)
+        when = f" {day.day} {day:%b}"
+    except OSError:
+        when = ""
+    return f"{pretty_map(source.info.map_name)}{when}"
+
+
+def plan_view(plan: ClipPlan, loaded: Matches | None = None) -> dict:
+    labels = {source.path.name: match_label(source) for source in loaded.sources} if loaded else {}
     moments = [moment_view(m, n) for n, m in enumerate(plan.moments, start=1)]
+    for moment in moments:
+        moment["match"] = labels.get(moment["demo"]) if moment["demo"] else None
     return {
         "moments": moments,
         "count": len(moments),

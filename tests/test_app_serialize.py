@@ -34,3 +34,18 @@ def test_a_plan_view_is_plain_json():
     assert view["count"] == 2 and view["moments"][0]["number"] == 1
     assert view["moments"][0]["demo"] == "nuke.dem"
     json.dumps(view)  # must not raise
+
+
+def test_plays_name_their_match_by_map_and_day(tmp_path):
+    import os
+    from datetime import datetime
+    from types import SimpleNamespace
+
+    from highlights.app.serialize import match_label
+
+    demo = tmp_path / "match730_1.dem"
+    demo.write_bytes(b"d")
+    stamp = datetime(2026, 7, 1, 18, 35).timestamp()
+    os.utime(demo, (stamp, stamp))
+    source = SimpleNamespace(path=demo, info=SimpleNamespace(map_name="de_cache"))
+    assert match_label(source) == "Cache 1 Jul"

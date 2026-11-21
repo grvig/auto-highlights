@@ -81,7 +81,7 @@ export function PlaysStep({ paths, steamid, options, onOptions, onBack, onNext }
                 <th>Play</th>
                 <th className="num">Round</th>
                 <th className="num">Time</th>
-                {paths.length > 1 && <th>Demo</th>}
+                {paths.length > 1 && <th>Match</th>}
                 <th className="num">Length</th>
               </tr>
             </thead>
@@ -96,7 +96,7 @@ export function PlaysStep({ paths, steamid, options, onOptions, onBack, onNext }
                   </td>
                   <td className="num">{play.round}</td>
                   <td className="num">{play.time}</td>
-                  {paths.length > 1 && <td className="muted">{play.demo}</td>}
+                  {paths.length > 1 && <td className="muted">{play.match ?? play.demo}</td>}
                   <td className="num">{play.seconds.toFixed(0)}s</td>
                 </tr>
               ))}

@@ -252,7 +252,7 @@ class AppApi:
             return _error(str(error))
         self._plan = reel.plan
         self._planned_for = (tuple(paths), steamid)
-        return {**plan_view(reel.plan), "missing_from": reel.missing_from}
+        return {**plan_view(reel.plan, loaded), "missing_from": reel.missing_from}
 
     # --- rendering ---------------------------------------------------------
 
