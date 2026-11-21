@@ -76,6 +76,9 @@ class Bridge:
     def analyze(self, paths: list[str]) -> dict:
         return self._api.analyze(paths)
 
+    def describe_demo(self, path: str) -> dict:
+        return self._api.describe_demo(path)
+
     def plan(self, paths: list[str], steamid: str, options: dict | None = None) -> dict:
         return self._api.plan(paths, steamid, options)
 

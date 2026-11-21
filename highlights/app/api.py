@@ -19,11 +19,13 @@ from highlights.app.jobs import JobRunner
 from highlights.app.reels import list_reels
 from highlights.app.serialize import match_summary, plan_view, player_table
 from highlights.app.settings import SettingsError, apply_changes
-from highlights.appdirs import config_location, ensure_config
+from highlights.appdirs import app_data_dir, config_location, ensure_config
 from highlights.config import Config, ConfigError, load_config
 from highlights.editor.reel import EditOptions
 from highlights.engine.clip_plan import ClipPlan
 from highlights.engine.demo_source import DemoError
+from highlights.engine.describe import Descriptions
+from highlights.engine.unpack import is_compressed, readable_demo
 from highlights.preflight import all_passed, run_preflight
 from highlights.pipeline.planning import (
     Matches,
@@ -195,6 +197,21 @@ class AppApi:
     def find_demos(self) -> dict:
         config = self._config()
         return {"demos": find_demos(default_folders(config.cs2_root if config else None))}
+
+    def describe_demo(self, path: str) -> dict:
+        """Map, score and result from the signed-in player's side, for the
+        demo list. Read once (about two seconds) and remembered."""
+        config = self._config()
+        cache_dir = config.resolved_cache_dir if config else app_data_dir() / "cache"
+        try:
+            readable = readable_demo(path, cache_dir / "demos") if is_compressed(path) else None
+            found = Descriptions(cache_dir / "descriptions.json").describe(path, self._you(), readable)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException as error:  # noqa: BLE001 - the parser panics on bad files
+            logger.info("Could not describe %s: %s", path, error)
+            return _error(f"Could not read {Path(path).name}")
+        return {"path": path, **found}
 
     def analyze(self, paths: list[str]) -> dict:
         """Parse the chosen demos (cached) and list their players."""

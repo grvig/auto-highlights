@@ -223,3 +223,31 @@ def test_plays_are_counted_once_however_many_clips_they_span():
     ace, kill = object(), object()
     clips = [SimpleNamespace(request=SimpleNamespace(moment=m)) for m in (ace, ace, ace, kill)]
     assert plays_in(clips) == 2
+
+
+def test_demos_are_described_from_the_signed_in_players_side(tmp_path, monkeypatch):
+    from highlights.app import api as api_module
+
+    demo = tmp_path / "match730_1.dem"
+    demo.write_bytes(b"demo")
+    seen = []
+
+    def reader(path, steamid):
+        seen.append(steamid)
+        return {"map": "Cache", "score": [13, 11], "result": "W"}
+
+    monkeypatch.setattr(api_module.Descriptions, "__init__",
+                        lambda self, store, reader=reader: (setattr(self, "store", store), setattr(self, "_read", reader))[0])
+    config = Config(cs2_root=None, output_dir=tmp_path / "out", clips_dir=tmp_path / "clips", clips=ClipConfig())
+    app = AppApi(config_loader=lambda: config, you=lambda: "7656")
+    answer = app.describe_demo(str(demo))
+    assert answer == {"path": str(demo), "map": "Cache", "score": [13, 11], "result": "W"}
+    assert seen == ["7656"]
+    assert (tmp_path / "cache" / "descriptions.json").is_file()
+
+
+def test_an_unreadable_demo_gets_an_error_not_a_crash(tmp_path):
+    bad = tmp_path / "broken.dem"
+    bad.write_bytes(b"not a demo")
+    config = Config(cs2_root=None, output_dir=tmp_path / "out", clips_dir=tmp_path / "clips", clips=ClipConfig())
+    assert "error" in AppApi(config_loader=lambda: config, you=lambda: None).describe_demo(str(bad))
