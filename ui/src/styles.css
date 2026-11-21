@@ -464,3 +464,7 @@ details summary {
 .result.L {
   color: var(--fail);
 }
+
+.rail button.update {
+  color: var(--accent);
+}

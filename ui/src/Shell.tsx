@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Logo } from "./Logo";
+import { UpdateButton } from "./Update";
 
 export type View = "new" | "reels" | "settings" | "ready";
 
@@ -61,7 +62,10 @@ export function Shell({ view, onNavigate, status, children }: Props) {
             {page.icon}
           </button>
         ))}
-        <div className="rail-end">{status}</div>
+        <div className="rail-end">
+          <UpdateButton />
+          {status}
+        </div>
       </nav>
       <main className="content">{children}</main>
     </div>

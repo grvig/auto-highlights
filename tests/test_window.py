@@ -83,7 +83,7 @@ def test_the_page_only_sees_the_bridge_methods():
     # pywebview hides names starting with an underscore from the page.
     public = {name for name in dir(Bridge(FakeApi())) if not name.startswith("_")}
     assert public == {
-        "version", "check", "setup", "settings", "save_settings", "find_demos", "analyze", "describe_demo",
+        "version", "check_update", "open_releases", "check", "setup", "settings", "save_settings", "find_demos", "analyze", "describe_demo",
         "plan", "render", "job", "cancel", "reels", "show_in_folder", "thumbnail", "play", "open_logs",
         "pick_demos", "pick_music", "pick_folder",
     }

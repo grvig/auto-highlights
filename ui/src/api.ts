@@ -10,6 +10,8 @@ import type {
 
 export interface Bridge {
   version(): Promise<{ version: string }>;
+  check_update(): Promise<{ available: boolean; version?: string; url?: string }>;
+  open_releases(): Promise<{ opened: string }>;
   check(): Promise<Readiness | Failed>;
   setup(): Promise<{ job: string } | Failed>;
   settings(): Promise<Settings>;
@@ -79,6 +81,8 @@ function unwrap<T>(answer: T | Failed): T {
 
 export const api = {
   version: async () => (await (await bridge()).version()).version,
+  checkUpdate: async () => (await bridge()).check_update(),
+  openReleases: async () => (await bridge()).open_releases(),
   check: async () => unwrap(await (await bridge()).check()),
   setup: async () => unwrap(await (await bridge()).setup()).job,
   settings: async () => (await bridge()).settings(),

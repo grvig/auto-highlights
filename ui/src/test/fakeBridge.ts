@@ -13,7 +13,9 @@ export const READY: Readiness = {
 /** A bridge answering like the Python side; override what a test needs. */
 export function installFakeBridge(overrides: Partial<Bridge> = {}): Bridge {
   const bridge: Bridge = {
-    version: async () => ({ version: "0.1.0" }),
+    version: async () => ({ version: "1.0.0" }),
+    check_update: async () => ({ available: false }),
+    open_releases: async () => ({ opened: "https://github.com/grvig/auto-highlights/releases" }),
     check: async () => READY,
     setup: async () => ({ job: "setup" }),
     settings: async () => ({ configured: true }),

@@ -15,6 +15,7 @@ from typing import Any
 
 from highlights import __version__
 from highlights.app.api import AppApi
+from highlights.app.updates import RELEASES_PAGE, check_for_update
 from highlights.appdirs import app_data_dir
 
 logger = logging.getLogger(__name__)
@@ -57,6 +58,16 @@ class Bridge:
 
     def version(self) -> dict:
         return {"version": __version__}
+
+    def check_update(self) -> dict:
+        return check_for_update()
+
+    def open_releases(self) -> dict:
+        """Open this project's releases page in the browser (nothing else)."""
+        import webbrowser  # noqa: PLC0415
+
+        webbrowser.open(RELEASES_PAGE)
+        return {"opened": RELEASES_PAGE}
 
     def check(self) -> dict:
         return self._api.check()

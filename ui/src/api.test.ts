@@ -22,7 +22,7 @@ test("Python's error answers become ApiFailure with its message", async () => {
 
 test("the bridge is waited for until pywebview says it is ready", async () => {
   const waiting = bridge();
-  const injected = fake({ version: async () => ({ version: "0.1.0" }) });
+  const injected = fake({ version: async () => ({ version: "1.0.0" }) });
   window.pywebview = { api: injected };
   window.dispatchEvent(new Event("pywebviewready"));
   expect(await waiting).toBe(injected);
