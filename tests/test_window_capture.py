@@ -78,3 +78,14 @@ def test_trim_plays_ramps_from_the_single_capture_file():
                            ramps=((2.0, 2.5),), ramp_speed=0.5)
     graph = trim[trim.index("-filter_complex") + 1]
     assert graph.startswith("[0:v]split=3") and "[0:a]asplit=3" in graph
+
+
+def test_speaker_sound_is_read_from_a_pipe_with_its_own_delay():
+    from pathlib import Path
+
+    from highlights.recorder.window_capture import LOOPBACK_DELAY_SECONDS, capture_command
+
+    args = capture_command(Path("raw.mkv"), audio_pipe=r"\\.\pipe\x")
+    assert args[args.index("-itsoffset") + 1] == f"{LOOPBACK_DELAY_SECONDS}"
+    assert args[args.index("-f", args.index("-itsoffset")) + 1] == "f32le"
+    assert r"\\.\pipe\x" in args and "1:a" in args and "dshow" not in args

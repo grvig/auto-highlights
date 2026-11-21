@@ -7,14 +7,18 @@ then the played stretch is found by freeze detection and cut out.
 
 from __future__ import annotations
 
+import logging
 import subprocess
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
+from highlights.recorder import loopback
 from highlights.recorder import window_capture as wc
 from highlights.recorder.base import ClipRequest
 from highlights.recorder.cs2_controller import Cs2Error
 from highlights.recorder.hlae_backend import LEAD_TICKS, HlaeRecorder
+
+logger = logging.getLogger(__name__)
 
 RAW_NAME = "raw.mkv"
 
@@ -37,12 +41,40 @@ class WindowRecorder(HlaeRecorder):
         audio_device: str | None = None,
         popen: Popen = subprocess.Popen,
         probe: Probe = _probe,
+        open_loopback=loopback.open_loopback,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
         self.audio_device = audio_device
         self._popen = popen
         self._probe = probe
+        self._open_loopback = open_loopback
+        self._loopback = None  # (context, recorder) while the game is open
+
+    @property
+    def uses_loopback(self) -> bool:
+        return self.audio_device == wc.LOOPBACK
+
+    def open(self) -> None:
+        super().open()
+        if self.uses_loopback:
+            try:
+                self._loopback = self._open_loopback()
+            except loopback.LoopbackError as error:
+                logger.warning("%s; clips will have no sound", error)
+                self.audio_device = None
+
+    def close(self) -> None:
+        try:
+            super().close()
+        finally:
+            if self._loopback is not None:
+                context, _ = self._loopback
+                try:
+                    context.__exit__(None, None, None)
+                except Exception as error:  # closing the speakers must not mask anything
+                    logger.debug("closing loopback failed: %s", error)
+                self._loopback = None
 
     def _record_take(self, request: ClipRequest) -> tuple[Path, int | None]:
         start = max(1, request.start_tick - LEAD_TICKS)
@@ -53,16 +85,29 @@ class WindowRecorder(HlaeRecorder):
         self._sleep(0.5)
         take_dir = self._take_dir(request)
         take_dir.mkdir(parents=True)
+        pipe = feed = None
+        if self.uses_loopback and self._loopback is not None:
+            pipe = loopback.NamedPipe(loopback.pipe_name())
         capture = self._popen(
-            wc.capture_command(take_dir / RAW_NAME, self.framerate, self.audio_device, self.ffmpeg),
+            wc.capture_command(take_dir / RAW_NAME, self.framerate,
+                               None if pipe else self.audio_device, self.ffmpeg,
+                               audio_pipe=pipe.name if pipe else None),
             stdin=subprocess.PIPE,
         )
         try:
+            if pipe is not None:
+                pipe.wait_for_reader()
+                feed = loopback.Feed(self._loopback[1], pipe.write)
+                feed.start()
             self._sleep(1.2)  # gfxcapture needs a moment before its first frame
             landed = self.cs2.play_ticks(request.end_tick - start)
             self._sleep(0.2)
         finally:
             capture.communicate(b"q", timeout=30)
+            if feed is not None:
+                feed.stop()
+            if pipe is not None:
+                pipe.close()
         return take_dir, landed
 
     def _finish(self, request: ClipRequest, take_dir: Path) -> None:

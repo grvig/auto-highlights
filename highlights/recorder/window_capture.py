@@ -6,8 +6,10 @@ capture starts while the demo is paused and stops after it pauses again, so
 the moment playback started is found afterwards: paused frames are pixel
 identical (within the anti-aliasing shimmer), which freezedetect can see.
 
-Game audio, when wanted, comes from a loopback device and reaches ffmpeg about
-half a second before the matching frames, so it is delayed by that much.
+Game audio, when wanted, comes either from the speakers themselves (WASAPI
+loopback, passed in through a named pipe; see loopback.py) or from a dshow
+loopback device. Both reach ffmpeg ahead of the matching frames, so each is
+delayed by its own measured amount.
 """
 
 from __future__ import annotations
@@ -19,6 +21,10 @@ from highlights.recorder.mirv import ramp_filter, speed_pieces
 
 # Measured against weapon_fire ticks: loopback audio arrives this early.
 AUDIO_DELAY_SECONDS = 0.55
+# The speakers' sound through the pipe, measured against the dshow device.
+LOOPBACK_DELAY_SECONDS = 0.55
+# audio_device value meaning "the speakers, through WASAPI loopback".
+LOOPBACK = "loopback"
 # Paused CS2 frames still shimmer slightly; -45dB treats that as frozen.
 FREEZE_NOISE = "-45dB"
 FREEZE_MIN_SECONDS = 0.3
@@ -31,11 +37,21 @@ def capture_command(
     framerate: int = 60,
     audio_device: str | None = None,
     ffmpeg: str = "ffmpeg",
+    audio_pipe: str | None = None,
 ) -> list[str]:
-    """ffmpeg arguments that record the CS2 window until sent "q"."""
+    """ffmpeg arguments that record the CS2 window until sent "q".
+
+    With audio_pipe, the game sound is raw float stereo read from that pipe;
+    otherwise audio_device names a dshow loopback device, if any.
+    """
     source = f"gfxcapture=window_exe=cs2\\.exe:capture_cursor=0:max_framerate={int(framerate)}"
     args = [ffmpeg, "-y", "-loglevel", "error", "-f", "lavfi", "-i", source]
-    if audio_device:
+    if audio_pipe:
+        args += [
+            "-itsoffset", f"{LOOPBACK_DELAY_SECONDS}", "-f", "f32le", "-ar", "48000", "-ac", "2",
+            "-thread_queue_size", "1024", "-i", audio_pipe,
+        ]
+    elif audio_device:
         args += [
             "-itsoffset", f"{AUDIO_DELAY_SECONDS}", "-f", "dshow",
             "-audio_buffer_size", "20", "-i", f"audio={audio_device}",
@@ -44,7 +60,7 @@ def capture_command(
         "-filter_complex", "[0:v]hwdownload,format=bgra[v]", "-map", "[v]",
         "-c:v", "libx264", "-preset", "ultrafast", "-crf", "14", "-pix_fmt", "yuv420p",
     ]
-    if audio_device:
+    if audio_pipe or audio_device:
         args += ["-map", "1:a", "-c:a", "aac", "-b:a", "192k"]
     return args + [str(output)]
 
