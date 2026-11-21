@@ -149,3 +149,12 @@ def test_a_window_without_a_native_form_keeps_its_icon_quietly():
     from highlights.app.window import set_window_icon
 
     assert set_window_icon(object()) is False
+
+
+def test_the_running_mutex_can_be_held():
+    import sys
+
+    from highlights.app.window import hold_running_mutex
+
+    handle = hold_running_mutex("auto-highlights-test-mutex")
+    assert (handle is not None) == (sys.platform == "win32")

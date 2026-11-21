@@ -25,6 +25,9 @@ ICON = Path(__file__).parent / "icon.ico"
 TITLE = "auto-highlights"
 SIZE = (1180, 780)
 MIN_SIZE = (900, 620)
+# Held while the window is open; the installer checks it (AppMutex) so it
+# never replaces or removes files the running app is using.
+RUNNING_MUTEX = "auto-highlights-running"
 BACKGROUND = "#101216"  # the page's own background, so opening never flashes white
 DEMO_FILES = ("CS2 demos (*.dem;*.dem.zst;*.dem.gz)", "All files (*.*)")
 MUSIC_FILES = ("Music (*.mp3;*.wav;*.flac;*.ogg;*.m4a)", "All files (*.*)")
@@ -161,6 +164,16 @@ def set_window_icon(window: Any, icon: Path = ICON) -> bool:
         return False
 
 
+def hold_running_mutex(name: str = RUNNING_MUTEX) -> object | None:
+    """Create the named mutex the installer looks for; None off Windows."""
+    try:
+        import ctypes  # noqa: PLC0415
+
+        return ctypes.windll.kernel32.CreateMutexW(None, False, name) or None
+    except (AttributeError, OSError):
+        return None
+
+
 def storage_dir() -> Path:
     """The window's own WebView2 profile, beside the app's other data rather
     than in pywebview's shared default folder."""
@@ -181,6 +194,7 @@ def open_window(api: AppApi | None = None, webview: Any = None, web_dir: Path = 
             raise WindowError("pywebview is not installed: pip install pywebview") from error
     url = dev_url or str(index_path(web_dir))
     bridge = Bridge(api or AppApi())
+    bridge._mutex = hold_running_mutex()  # held as long as the window lives
     window = webview.create_window(
         TITLE, url, js_api=bridge, width=SIZE[0], height=SIZE[1], min_size=MIN_SIZE,
         background_color=BACKGROUND, text_select=False,

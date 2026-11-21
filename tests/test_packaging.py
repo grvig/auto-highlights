@@ -137,3 +137,10 @@ def test_the_changelog_has_notes_for_this_version():
 
     text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     assert f"## {__version__} " in text  # the release workflow publishes this section
+
+
+def test_the_installer_waits_for_the_running_app_by_its_mutex():
+    from highlights.app.window import RUNNING_MUTEX
+
+    text = (ROOT / "packaging" / "installer.iss").read_text(encoding="utf-8")
+    assert f"AppMutex={RUNNING_MUTEX}" in text

@@ -25,6 +25,8 @@ AppPublisher=GR
 DefaultDirName={localappdata}\Programs\auto-highlights
 DefaultGroupName=auto-highlights
 PrivilegesRequired=lowest
+; the app holds this while open, so setup and uninstall ask to close it first
+AppMutex=auto-highlights-running
 DisableProgramGroupPage=yes
 OutputDir={#OutputDir}
 OutputBaseFilename=auto-highlights-{#AppVersion}-setup
