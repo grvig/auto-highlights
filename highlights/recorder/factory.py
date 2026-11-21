@@ -36,6 +36,7 @@ from highlights.recorder.hlae_release import ReleaseError, installed_published, 
 from highlights.recorder.hlae_update import ensure_current
 from highlights.recorder.hlae_backend import HlaeRecorder
 from highlights.recorder.window_backend import WindowRecorder
+from highlights.recorder.window_capture import LOOPBACK
 from highlights.steam.account import signed_in_account
 from highlights.steam.locate import find_steam_root
 
@@ -86,7 +87,15 @@ def build_live_recorder(config: Config, steam_root: Path | None = None) -> HlaeR
         if steam is not None:
             launch = window_launch_args(steam, rec.width, rec.height, cs2.console_port)
             cs2 = Cs2Controller(config.cs2_root, full_hud=rec.hud != "clean", terminate_launcher=False)
-    return WindowRecorder(cs2, audio_device=rec.audio_device, launch_args=launch, **common)
+    return WindowRecorder(cs2, audio_device=window_audio(rec.audio_device), launch_args=launch, **common)
+
+
+def window_audio(configured: str | None) -> str | None:
+    """The speakers by default; "none" records silently; anything else names a
+    dshow device (the old virtual-audio-capturer setup)."""
+    if configured is None:
+        return LOOPBACK
+    return None if configured.strip().lower() == "none" else configured
 
 
 def steam_exe(steam_root: Path | None = None) -> Path | None:

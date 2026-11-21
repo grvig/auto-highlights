@@ -118,7 +118,9 @@ def test_window_capture_records_from_the_configured_sound_device(tmp_path):
     config = make_config(tmp_path, "window")
     with_sound = replace(config, recording=replace(config.recording, audio_device="virtual-audio-capturer"))
     assert factory.build_live_recorder(with_sound).audio_device == "virtual-audio-capturer"
-    assert factory.build_live_recorder(config).audio_device is None
+    assert factory.build_live_recorder(config).audio_device == "loopback"  # the speakers
+    silent = replace(config, recording=replace(config.recording, audio_device="none"))
+    assert factory.build_live_recorder(silent).audio_device is None
 
 
 def test_window_mode_starts_cs2_through_steam_when_it_is_not_running(tmp_path, monkeypatch):

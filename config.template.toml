@@ -43,9 +43,10 @@ aspect = "stretched"
 # a HUD, but demos only offer CS2's spectator HUD (team bar with money and
 # avatars), not the one you see in-game.
 hud = "clean"
-# Window capture only: the sound device that hears the game, e.g. a loopback
-# such as "virtual-audio-capturer". Leave out to record without sound.
-# audio_device = "virtual-audio-capturer"
+# Window capture only: where the game sound comes from. Left out, it is
+# whatever your speakers or headphones play. "none" records without sound;
+# a device name (e.g. "virtual-audio-capturer") uses that loopback instead.
+# audio_device = "none"
 
 [clips]
 # Seconds kept before the action and after the last kill. A firefight that
