@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Logo } from "./Logo";
 
 export type View = "new" | "reels" | "settings" | "ready";
 
@@ -46,6 +47,9 @@ export function Shell({ view, onNavigate, status, children }: Props) {
   return (
     <div className="shell">
       <nav className="rail" aria-label="Main">
+        <div className="rail-logo" title="auto-highlights">
+          <Logo size={24} />
+        </div>
         {PAGES.map((page) => (
           <button
             key={page.view}

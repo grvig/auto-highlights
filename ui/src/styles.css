@@ -6,9 +6,9 @@
   --border: #2c2e33;
   --text: #d6d7d9;
   --muted: #868a91;
-  --accent: #e3a812;
-  --accent-text: #141005;
-  --ok: #4caf6a;
+  --accent: #2fbf71;
+  --accent-text: #03140a;
+  --ok: #2fbf71;
   --warn: #e3a812;
   --fail: #d9534f;
   color-scheme: dark;
@@ -60,7 +60,7 @@ button.primary {
 }
 
 button.primary:hover:not(:disabled) {
-  background: #f0b828;
+  background: #45d184;
 }
 
 input,
@@ -439,4 +439,11 @@ details summary {
   font-size: 11px;
   border: 1px solid var(--border);
   color: var(--muted);
+}
+
+.rail-logo {
+  display: grid;
+  place-items: center;
+  height: 52px;
+  border-bottom: 1px solid var(--border);
 }
