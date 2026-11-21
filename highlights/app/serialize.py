@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from highlights.engine.clip_plan import ClipPlan
+from highlights.engine.describe import pretty_map
 from highlights.engine.models import deaths_of_player, kills_by_player
 from highlights.engine.moments import Moment
 from highlights.pipeline.planning import Matches
@@ -16,7 +17,7 @@ def match_summary(loaded: Matches) -> list[dict]:
         {
             "path": str(source.path),
             "file": source.path.name,
-            "map": source.info.map_name,
+            "map": pretty_map(source.info.map_name),
             "gotv": source.info.is_gotv,
             "rounds": len(match.context.rounds),
         }

@@ -8,7 +8,7 @@ import type { Analysis } from "./types";
 afterEach(() => useBridge(null));
 
 const ANALYSIS: Analysis = {
-  matches: [{ path: "a.dem", file: "a.dem", map: "de_nuke", gotv: false, rounds: 24 }],
+  matches: [{ path: "a.dem", file: "a.dem", map: "Nuke", gotv: false, rounds: 24 }],
   players: [
     { steamid: "1", name: "semi", matches: 1, kills: 27, deaths: 14, you: true },
     { steamid: "2", name: "ICECUBE", matches: 1, kills: 19, deaths: 20, you: false },
@@ -25,7 +25,7 @@ function setup(steamid: string | null = null) {
 test("players are listed with the map and the signed-in player is picked", async () => {
   installFakeBridge({ analyze: async () => ANALYSIS });
   const { onPick } = setup();
-  expect(await screen.findByText("de_nuke · 24 rounds")).toBeInTheDocument();
+  expect(await screen.findByText("Nuke · 24 rounds")).toBeInTheDocument();
   expect(screen.getByText("YOU")).toBeInTheDocument();
   expect(onPick).toHaveBeenCalledWith("1", "semi");
 });
