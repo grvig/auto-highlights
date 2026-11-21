@@ -9,6 +9,8 @@ polars>=1.0.0
 numpy>=1.26
 # FACEIT serves CS2 demos zstd-compressed (.dem.zst).
 zstandard>=0.23
+# Game sound for window capture (WASAPI loopback, no extra driver).
+soundcard>=0.4.3
 
 # The desktop window (Edge WebView2, built into Windows 11).
 pywebview>=6.0
