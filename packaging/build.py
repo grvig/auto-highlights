@@ -25,6 +25,7 @@ NAME = "auto-highlights"
 EXCLUDED = ("matplotlib", "scipy", "PIL", "tkinter", "IPython", "notebook")
 UI = ROOT / "ui"
 WEB = ROOT / "highlights" / "app" / "web"
+ICON = ROOT / "highlights" / "app" / "icon.ico"
 SEP = ";" if sys.platform == "win32" else ":"
 
 
@@ -35,7 +36,7 @@ def pyinstaller_args(out: Path) -> list[str]:
         "--name", NAME,
         "--onedir",
         "--windowed",  # no console behind the app window; see entry.py
-        "--icon", str(ROOT / "packaging" / "icon.ico"),
+        "--icon", str(ICON),
         "--noconfirm",
         "--clean",
         "--distpath", str(out / "dist"),
@@ -50,7 +51,7 @@ def pyinstaller_args(out: Path) -> list[str]:
         *[arg for module in EXCLUDED for arg in ("--exclude-module", module)],
         "--add-data", f"{ROOT / 'config.template.toml'}{SEP}.",
         "--add-data", f"{WEB}{SEP}highlights/app/web",
-        "--add-data", f"{ROOT / 'packaging' / 'icon.ico'}{SEP}highlights/app",
+        "--add-data", f"{ICON}{SEP}highlights/app",
     ]
 
 

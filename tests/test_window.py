@@ -16,13 +16,30 @@ class FakeApi:
         return call
 
 
+class FakeEvent:
+    def __init__(self):
+        self.handlers = []
+
+    def __iadd__(self, handler):
+        self.handlers.append(handler)
+        return self
+
+
+class FakeWindow(str):
+    def __new__(cls):
+        window = super().__new__(cls, "window")
+        window.events = type("Events", (), {"shown": FakeEvent()})()
+        return window
+
+
 class FakeWebview:
     def __init__(self):
         self.created, self.started = None, None
 
     def create_window(self, title, url, **kwargs):
         self.created = (title, url, kwargs)
-        return "window"
+        self.window = FakeWindow()
+        return self.window
 
     def start(self, **kwargs):
         self.started = kwargs
@@ -113,3 +130,22 @@ def test_the_window_keeps_its_browser_profile_in_the_app_folder(tmp_path, monkey
     (tmp_path / "web").mkdir()
     open_window(FakeApi(), webview, web_dir=built(tmp_path / "web"))
     assert webview.started["storage_path"] == str(tmp_path / "auto-highlights" / "webview")
+
+
+def test_the_app_icon_is_set_once_the_window_shows(tmp_path, monkeypatch):
+    from highlights.app import window as window_module
+
+    set_on = []
+    monkeypatch.setattr(window_module, "set_window_icon", lambda w: set_on.append(w))
+    webview = FakeWebview()
+    open_window(FakeApi(), webview, web_dir=built(tmp_path))
+    for handler in webview.window.events.shown.handlers:
+        handler()
+    assert set_on == [webview.window]
+    assert window_module.ICON.is_file()
+
+
+def test_a_window_without_a_native_form_keeps_its_icon_quietly():
+    from highlights.app.window import set_window_icon
+
+    assert set_window_icon(object()) is False

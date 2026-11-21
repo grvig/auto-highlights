@@ -1,10 +1,10 @@
-"""Draw the app's icon: an amber tile with a play mark inside crosshair ticks.
+"""Draw the app's icon: a green tile with a play mark inside crosshair ticks.
 
     python scripts/make_icon.py
 
-Writes packaging/icon.ico (every size Windows asks for) and
-packaging/icon.png (256 px). The same mark is drawn as SVG in ui/src/Logo.tsx;
-change both together.
+Writes highlights/app/icon.ico (every size Windows asks for; the window,
+the exe and the installer all use it) and packaging/icon.png (256 px).
+The same mark is drawn as SVG in ui/src/Logo.tsx; change both together.
 """
 
 from __future__ import annotations
@@ -14,8 +14,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
-AMBER = (227, 168, 18, 255)
-INK = (20, 16, 5, 255)
+GREEN = (47, 191, 113, 255)  # the interface's accent, --accent in styles.css
+INK = (3, 20, 10, 255)
 SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)
 # The design grid: a 64-unit square, the same numbers as the SVG.
 GRID = 64
@@ -25,7 +25,7 @@ def draw(size: int) -> Image.Image:
     scale = 8  # draw large, shrink once: clean edges at every size
     big = size * scale
     unit = big / GRID
-    image = Image.new("RGBA", (big, big), AMBER)
+    image = Image.new("RGBA", (big, big), GREEN)
     pen = ImageDraw.Draw(image)
 
     def box(x0, y0, x1, y1):
@@ -42,12 +42,11 @@ def draw(size: int) -> Image.Image:
 
 
 def main() -> None:
-    out = ROOT / "packaging"
     largest = draw(256)
-    largest.save(out / "icon.png")
-    largest.save(out / "icon.ico", sizes=[(s, s) for s in SIZES],
-                 append_images=[draw(s) for s in SIZES[:-1]])
-    print(f"Wrote {out / 'icon.ico'} and {out / 'icon.png'}")
+    largest.save(ROOT / "packaging" / "icon.png")
+    ico = ROOT / "highlights" / "app" / "icon.ico"
+    largest.save(ico, sizes=[(s, s) for s in SIZES], append_images=[draw(s) for s in SIZES[:-1]])
+    print(f"Wrote {ico}")
 
 
 if __name__ == "__main__":

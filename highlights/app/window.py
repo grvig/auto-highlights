@@ -8,6 +8,7 @@ reachable from it, so the page cannot wander into the rest of the app.
 
 from __future__ import annotations
 
+import importlib
 import logging
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,7 @@ from highlights.appdirs import app_data_dir
 logger = logging.getLogger(__name__)
 
 WEB_DIR = Path(__file__).parent / "web"
+ICON = Path(__file__).parent / "icon.ico"
 TITLE = "auto-highlights"
 SIZE = (1180, 780)
 MIN_SIZE = (900, 620)
@@ -126,6 +128,25 @@ class Bridge:
         return [str(path) for path in chosen or ()]
 
 
+def set_window_icon(window: Any, icon: Path = ICON) -> bool:
+    """Put the app icon on the window's title bar and taskbar button.
+
+    The packaged exe already carries it; run from source the window would
+    otherwise show Python's. Best effort: a missing icon is no reason to fail.
+    """
+    try:
+        importlib.import_module("clr")  # pythonnet, which pywebview uses on Windows
+        from System import Action  # noqa: PLC0415 - exists once clr is loaded
+        from System.Drawing import Icon  # noqa: PLC0415
+
+        form = window.native
+        form.Invoke(Action(lambda: setattr(form, "Icon", Icon(str(icon)))))
+        return True
+    except Exception as error:  # noqa: BLE001 - any failure just keeps the default icon
+        logger.debug("Could not set the window icon: %s", error)
+        return False
+
+
 def storage_dir() -> Path:
     """The window's own WebView2 profile, beside the app's other data rather
     than in pywebview's shared default folder."""
@@ -151,5 +172,6 @@ def open_window(api: AppApi | None = None, webview: Any = None, web_dir: Path = 
         background_color=BACKGROUND, text_select=False,
     )
     bridge._attach(window)
+    window.events.shown += lambda: set_window_icon(window)
     logger.info("Opening the app window (%s)", url)
     webview.start(debug=debug, private_mode=False, storage_path=str(storage_dir()))

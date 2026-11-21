@@ -91,6 +91,6 @@ def test_the_exe_is_windowed_but_keeps_output_streams(monkeypatch):
 def test_the_exe_and_installer_carry_the_app_icon():
     args = build.pyinstaller_args(Path("out"))
     assert args[args.index("--icon") + 1].endswith("icon.ico")
-    assert (ROOT / "packaging" / "icon.ico").is_file()
+    assert (ROOT / "highlights" / "app" / "icon.ico").is_file()
     text = (ROOT / "packaging" / "installer.iss").read_text(encoding="utf-8")
-    assert "SetupIconFile=icon.ico" in text
+    assert "SetupIconFile=..\\highlights\\app\\icon.ico" in text

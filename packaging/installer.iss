@@ -33,7 +33,7 @@ SolidCompression=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern
-SetupIconFile=icon.ico
+SetupIconFile=..\highlights\app\icon.ico
 UninstallDisplayIcon={app}\auto-highlights.exe
 
 [Files]
