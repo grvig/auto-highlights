@@ -130,3 +130,10 @@ def test_every_version_number_agrees():
     assert tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"] == __version__
     assert json.loads((ROOT / "ui" / "package.json").read_text(encoding="utf-8"))["version"] == __version__
     assert f'#define AppVersion "{__version__}"' in (ROOT / "packaging" / "installer.iss").read_text(encoding="utf-8")
+
+
+def test_the_changelog_has_notes_for_this_version():
+    from highlights import __version__
+
+    text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert f"## {__version__} " in text  # the release workflow publishes this section

@@ -38,5 +38,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          version="${GITHUB_REF_NAME#v}"
+          # this version's section of CHANGELOG.md, without its heading
+          awk -v v="## $version " 'index($0, v) == 1 {on=1; next} /^## / {on=0} on' CHANGELOG.md > notes.md
+          test -s notes.md || { echo "CHANGELOG.md has no section for $version"; exit 1; }
           gh release create "${GITHUB_REF_NAME}" build/installer/*-setup.exe \
-            --title "auto-highlights ${GITHUB_REF_NAME#v}" --generate-notes
+            --title "auto-highlights $version" --notes-file notes.md
