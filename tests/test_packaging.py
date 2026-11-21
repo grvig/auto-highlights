@@ -119,3 +119,14 @@ def test_requirement_names_skip_optional_extras():
     assert build._requirement_name("numpy>=1.26") == "numpy"
     assert build._requirement_name("typing_extensions; python_version < '3.11'") == "typing-extensions"
     assert build._requirement_name("pytest; extra == 'test'") is None
+
+
+def test_every_version_number_agrees():
+    import json
+    import tomllib
+
+    from highlights import __version__
+
+    assert tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"] == __version__
+    assert json.loads((ROOT / "ui" / "package.json").read_text(encoding="utf-8"))["version"] == __version__
+    assert f'#define AppVersion "{__version__}"' in (ROOT / "packaging" / "installer.iss").read_text(encoding="utf-8")

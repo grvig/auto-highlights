@@ -8,7 +8,7 @@
 ; update when CS2 changes.
 
 #ifndef AppVersion
-  #define AppVersion "0.1.0"
+  #define AppVersion "1.0.0"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\build\dist\auto-highlights"
