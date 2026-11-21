@@ -20,6 +20,7 @@ export function installFakeBridge(overrides: Partial<Bridge> = {}): Bridge {
     save_settings: async () => ({ configured: true }),
     find_demos: async () => ({ demos: [] }),
     analyze: async () => ({ matches: [], players: [] }),
+    describe_demo: async () => ({ error: "not described" }),
     plan: async () => ({ moments: [], count: 0, seconds: 0, missing_from: [] }),
     render: async () => ({ job: "render" }),
     job: async (id) => ({

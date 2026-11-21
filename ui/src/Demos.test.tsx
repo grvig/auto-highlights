@@ -44,6 +44,22 @@ test("packed FACEIT demos are marked", async () => {
   expect(await screen.findByText("packed")).toBeInTheDocument();
 });
 
+test("demos are named by map and score once read", async () => {
+  installFakeBridge({
+    find_demos: async () => ({ demos: DEMOS }),
+    describe_demo: async (path) =>
+      path.endsWith("382.dem")
+        ? { path, map: "Cache", score: [13, 11], result: "W" }
+        : { error: "Could not read match_383.dem" },
+  });
+  render(<NewReel />);
+  expect(await screen.findByText("Cache")).toBeInTheDocument();
+  expect(screen.getByText("13–11")).toBeInTheDocument();
+  expect(screen.getByText("W")).toHaveClass("result", "W");
+  expect(await screen.findByText("Unknown match")).toBeInTheDocument();
+  expect(screen.getByText("match_382.dem")).toBeInTheDocument(); // the file is still shown
+});
+
 test("an empty search says so", async () => {
   installFakeBridge();
   render(<NewReel />);

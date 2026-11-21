@@ -21,6 +21,13 @@ export interface Demo {
   compressed?: boolean; // FACEIT .dem.zst / .dem.gz, unpacked when read
 }
 
+export interface DemoDescription {
+  path: string;
+  map: string;
+  score: [number, number] | null; // the signed-in player's rounds first
+  result: "W" | "L" | "T" | null;
+}
+
 export interface MatchInfo {
   path: string;
   file: string;

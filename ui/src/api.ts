@@ -4,7 +4,8 @@
 // those become ApiFailure so a screen can show the message in one place.
 
 import type {
-  Analysis, Demo, Job, Plan, PlanOptions, Readiness, Reel, RenderOptions, RenderResult, Settings,
+  Analysis, Demo, DemoDescription, Job, Plan, PlanOptions, Readiness, Reel, RenderOptions, RenderResult,
+  Settings,
 } from "./types";
 
 export interface Bridge {
@@ -15,6 +16,7 @@ export interface Bridge {
   save_settings(changes: Record<string, unknown>): Promise<Settings | Failed>;
   find_demos(): Promise<{ demos: Demo[] }>;
   analyze(paths: string[]): Promise<Analysis | Failed>;
+  describe_demo(path: string): Promise<DemoDescription | Failed>;
   plan(paths: string[], steamid: string, options?: PlanOptions): Promise<Plan | Failed>;
   render(paths: string[], steamid: string, options?: RenderOptions): Promise<{ job: string } | Failed>;
   job(id: string): Promise<Job | Failed>;
@@ -84,6 +86,7 @@ export const api = {
     unwrap(await (await bridge()).save_settings(changes)),
   findDemos: async () => (await (await bridge()).find_demos()).demos,
   analyze: async (paths: string[]) => unwrap(await (await bridge()).analyze(paths)),
+  describeDemo: async (path: string) => unwrap(await (await bridge()).describe_demo(path)),
   plan: async (paths: string[], steamid: string, options?: PlanOptions) =>
     unwrap(await (await bridge()).plan(paths, steamid, options)),
   render: async (paths: string[], steamid: string, options?: RenderOptions) =>

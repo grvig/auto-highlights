@@ -447,3 +447,20 @@ details summary {
   height: 52px;
   border-bottom: 1px solid var(--border);
 }
+
+.score {
+  font-variant-numeric: tabular-nums;
+}
+
+.result {
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.result.W {
+  color: var(--ok);
+}
+
+.result.L {
+  color: var(--fail);
+}
