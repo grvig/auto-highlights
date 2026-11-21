@@ -94,3 +94,9 @@ def test_the_exe_and_installer_carry_the_app_icon():
     assert (ROOT / "highlights" / "app" / "icon.ico").is_file()
     text = (ROOT / "packaging" / "installer.iss").read_text(encoding="utf-8")
     assert "SetupIconFile=..\\highlights\\app\\icon.ico" in text
+
+
+def test_libraries_with_data_files_are_bundled_whole():
+    args = build.pyinstaller_args(Path("out"))
+    collected = [args[i + 1] for i, a in enumerate(args) if a == "--collect-all"]
+    assert {"demoparser2", "awpy", "soundcard", "zstandard"} <= set(collected)

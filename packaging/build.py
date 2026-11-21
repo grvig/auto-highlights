@@ -46,6 +46,9 @@ def pyinstaller_args(out: Path) -> list[str]:
         # parsers with native code and data files that imports alone miss
         "--collect-all", "demoparser2",
         "--collect-all", "awpy",
+        # window-capture sound: soundcard reads its C headers at run time
+        "--collect-all", "soundcard",
+        "--collect-all", "zstandard",
         "--collect-submodules", "highlights",
         # awpy's plotting and navmesh extras, never used by the app (~95 MB)
         *[arg for module in EXCLUDED for arg in ("--exclude-module", module)],
