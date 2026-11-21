@@ -35,6 +35,7 @@ def pyinstaller_args(out: Path) -> list[str]:
         "--name", NAME,
         "--onedir",
         "--windowed",  # no console behind the app window; see entry.py
+        "--icon", str(ROOT / "packaging" / "icon.ico"),
         "--noconfirm",
         "--clean",
         "--distpath", str(out / "dist"),
@@ -49,6 +50,7 @@ def pyinstaller_args(out: Path) -> list[str]:
         *[arg for module in EXCLUDED for arg in ("--exclude-module", module)],
         "--add-data", f"{ROOT / 'config.template.toml'}{SEP}.",
         "--add-data", f"{WEB}{SEP}highlights/app/web",
+        "--add-data", f"{ROOT / 'packaging' / 'icon.ico'}{SEP}highlights/app",
     ]
 
 
