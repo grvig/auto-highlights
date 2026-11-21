@@ -100,3 +100,22 @@ def test_libraries_with_data_files_are_bundled_whole():
     args = build.pyinstaller_args(Path("out"))
     collected = [args[i + 1] for i, a in enumerate(args) if a == "--collect-all"]
     assert {"demoparser2", "awpy", "soundcard", "zstandard"} <= set(collected)
+
+
+def test_notices_list_shipped_libraries_but_not_build_tools(tmp_path):
+    js = tmp_path / "node_modules" / "react"
+    js.mkdir(parents=True)
+    (js / "LICENSE").write_text("MIT License\nCopyright (c) Meta Platforms")
+    text = build.notices(tmp_path / "node_modules")
+    assert text.startswith("auto-highlights - third-party notices")
+    assert "=== demoparser2" in text and "=== polars" in text
+    assert "=== pytest" not in text and "=== pyinstaller" not in text.lower()
+    assert "=== matplotlib" not in text and "=== customtkinter" not in text.lower()
+    assert "=== react (JavaScript) ===" in text and "Meta Platforms" in text
+    assert "ffmpeg" in text and "HLAE" in text
+
+
+def test_requirement_names_skip_optional_extras():
+    assert build._requirement_name("numpy>=1.26") == "numpy"
+    assert build._requirement_name("typing_extensions; python_version < '3.11'") == "typing-extensions"
+    assert build._requirement_name("pytest; extra == 'test'") is None

@@ -13,6 +13,8 @@ the installer small and lets HLAE update itself when CS2 changes.
 from __future__ import annotations
 
 import argparse
+import importlib.metadata as metadata
+import re
 import shutil
 import subprocess
 import sys
@@ -56,6 +58,76 @@ def pyinstaller_args(out: Path) -> list[str]:
         "--add-data", f"{WEB}{SEP}highlights/app/web",
         "--add-data", f"{ICON}{SEP}highlights/app",
     ]
+
+
+# The app's own dependencies (pyproject.toml); what they pull in is followed.
+SHIPPED_ROOTS = ("awpy", "demoparser2", "polars", "numpy", "pywebview", "zstandard", "soundcard")
+# Pulled in by those, but left out of the build (see EXCLUDED).
+NOT_SHIPPED = {"matplotlib", "scipy", "pillow", "contourpy", "cycler", "fonttools", "kiwisolver"}
+JS_SHIPPED = ("react", "react-dom", "scheduler")
+NOTICES_HEADER = """auto-highlights - third-party notices
+
+The app bundles the Python and JavaScript libraries listed below; each one's
+licence follows its name. Two tools are not bundled but downloaded on first
+run from their own publishers, under their own licences:
+
+  ffmpeg  - the gyan.dev Windows build (GPL v3), https://www.gyan.dev/ffmpeg/builds/
+  HLAE    - advancedfx (MIT), https://github.com/advancedfx/advancedfx
+
+"""
+
+
+def licence_text(dist: metadata.Distribution) -> str:
+    """The licence files a distribution ships, or its licence field."""
+    texts = []
+    for file in dist.files or ():
+        name = file.name.upper()
+        if name.startswith(("LICENSE", "LICENCE", "COPYING", "NOTICE")):
+            try:
+                texts.append(Path(file.locate()).read_text(encoding="utf-8", errors="replace").strip())
+            except OSError:
+                continue
+    if texts:
+        return "\n\n".join(texts)
+    return f"License: {dist.metadata.get('License') or dist.metadata.get('License-Expression') or 'see project'}"
+
+
+def _requirement_name(requirement: str) -> str | None:
+    """"numpy>=1.26; extra == 'x'" -> numpy, or None for an optional extra."""
+    if "extra ==" in requirement.replace('"', "'"):
+        return None
+    name = re.split(r"[\s;<>=!~\[(]", requirement.strip(), maxsplit=1)[0]
+    return name.lower().replace("_", "-") or None
+
+
+def shipped_distributions() -> list[metadata.Distribution]:
+    """The installed distributions the packaged app carries: its own
+    dependencies and everything they require, minus what the build excludes."""
+    found: dict[str, metadata.Distribution] = {}
+    todo = list(SHIPPED_ROOTS)
+    while todo:
+        name = todo.pop().lower().replace("_", "-")
+        if name in found or name in NOT_SHIPPED:
+            continue
+        try:
+            dist = metadata.distribution(name)
+        except metadata.PackageNotFoundError:
+            continue
+        found[name] = dist
+        todo += [n for n in map(_requirement_name, dist.requires or ()) if n]
+    return sorted(found.values(), key=lambda d: d.metadata["Name"].lower())
+
+
+def notices(js_root: Path = UI / "node_modules") -> str:
+    """Every shipped library with its licence, Python then JavaScript."""
+    parts = [NOTICES_HEADER]
+    for dist in shipped_distributions():
+        parts.append(f"=== {dist.metadata['Name']} {dist.version} ===\n{licence_text(dist)}\n")
+    for package in JS_SHIPPED:
+        licence = js_root / package / "LICENSE"
+        if licence.is_file():
+            parts.append(f"=== {package} (JavaScript) ===\n{licence.read_text(encoding='utf-8').strip()}\n")
+    return "\n".join(parts)
 
 
 def npm() -> str:
@@ -136,6 +208,7 @@ def main() -> int:
     if result.returncode != 0 or not exe.is_file():
         print("Build failed", file=sys.stderr)
         return 1
+    (exe.parent / "THIRD_PARTY_NOTICES.txt").write_text(notices(), encoding="utf-8")
     print(f"Built {exe}")
     if not options.installer:
         return 0
